@@ -2,64 +2,56 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'demo-api-key',
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'demo-project.firebaseapp.com',
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'demo-project',
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'demo-project.appspot.com',
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '123456789',
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:123456789:web:abcdef123456',
-};
-
-// Check if we have real Firebase config (not demo values)
+// Check if we have valid Firebase environment variables (not just placeholders)
 const isValidConfig = process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
                      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
-                     process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== 'demo-api-key';
+                     process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN &&
+                     process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== 'your-firebase-api-key-here' &&
+                     process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID !== 'your-project-id' &&
+                     process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN !== 'your-project-id.firebaseapp.com' &&
+                     process.env.NEXT_PUBLIC_FIREBASE_API_KEY.length > 20;
+
+// Debug logging for environment variables (only in browser)
+if (typeof window !== 'undefined') {
+  console.log('Firebase Environment Check:', {
+    hasApiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    apiKeyLength: process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.length || 0,
+    hasProjectId: !!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    hasAuthDomain: !!process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    isValidConfig,
+    mode: isValidConfig ? 'Firebase' : 'Demo'
+  });
+}
 
 let app: any = null;
 let auth: any = null;
 let db: any = null;
-let isFirebaseEnabled = false;
 
-// Initialize Firebase if we're in the browser
-if (typeof window !== 'undefined') {
+// Only initialize Firebase if we have valid config and we're in the browser
+if (typeof window !== 'undefined' && isValidConfig) {
   try {
-    // Always initialize Firebase app (even with demo config for development)
+    const firebaseConfig = {
+      apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+      appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+    };
+
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
     db = getFirestore(app);
-    isFirebaseEnabled = isValidConfig;
-    
-    if (!isValidConfig) {
-      console.warn('Firebase initialized with demo configuration. Authentication will not work in production.');
-    }
+    console.log('Firebase initialized successfully');
   } catch (error) {
-    console.error('Firebase initialization failed:', error);
-    // Create mock objects to prevent null errors
-    app = { options: firebaseConfig };
+    console.warn('Firebase initialization failed:', error);
+    // Reset to null if initialization fails
+    app = null;
     auth = null;
     db = null;
-    isFirebaseEnabled = false;
   }
+} else if (typeof window !== 'undefined') {
+  console.log('Running in demo mode: Firebase environment variables not configured');
 }
-
-// Helper function to check if Firebase is properly configured
-export const isFirebaseConfigured = () => isFirebaseEnabled;
-
-// Helper function to safely use auth
-export const getFirebaseAuth = () => {
-  if (!auth) {
-    throw new Error('Firebase Auth is not available. Please check your Firebase configuration.');
-  }
-  return auth;
-};
-
-// Helper function to safely use firestore
-export const getFirebaseDb = () => {
-  if (!db) {
-    throw new Error('Firestore is not available. Please check your Firebase configuration.');
-  }
-  return db;
-};
 
 export { app, auth, db };
