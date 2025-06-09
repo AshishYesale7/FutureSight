@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 // Get the repository name from an environment variable.
@@ -11,7 +12,7 @@ const repoName = process.env.GITHUB_REPOSITORY
 const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
 
 const nextConfig: NextConfig = {
-  output: 'export', // Crucial for static site generation
+  // output: 'export', // Crucial for static site generation - REMOVED to allow middleware
 
   // Only set basePath and assetPrefix when building for GitHub Pages
   ...(isGithubActions && {
@@ -30,6 +31,7 @@ const nextConfig: NextConfig = {
   images: {
     // GitHub Pages doesn't support Next.js default image optimization server.
     // Setting unoptimized to true will serve images as-is.
+    // This can be set to false if not exporting and using a platform that supports Next.js image optimization.
     unoptimized: true,
     remotePatterns: [
       {
@@ -38,6 +40,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
 };
