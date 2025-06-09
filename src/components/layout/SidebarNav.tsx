@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -50,15 +50,10 @@ export default function SidebarNav() {
 
   const handleSignOut = async () => {
     try {
-      // Check if we're in demo mode
-      if (!auth || localStorage.getItem('demo-user')) {
-        // Demo mode logout
-        localStorage.removeItem('demo-user');
-        window.location.href = '/auth/signin';
-        return;
+      const firebaseAuth = getFirebaseAuth();
+      if (firebaseAuth) {
+        await signOut(firebaseAuth);
       }
-      
-      await signOut(auth);
       router.push('/auth/signin');
     } catch (error) {
       console.error('Error signing out:', error);
