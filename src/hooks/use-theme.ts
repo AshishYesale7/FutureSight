@@ -5,46 +5,43 @@ import { useState, useEffect, useCallback } from 'react';
 type Theme = 'light' | 'dark';
 
 // Helper function to safely access localStorage
-const getStoredTheme = (): Theme | null => {
+const setStoredTheme = (theme: Theme) => {
   if (typeof window !== 'undefined' && window.localStorage) {
-    return localStorage.getItem('theme') as Theme | null;
+    localStorage.setItem('theme', theme);
   }
-  return null;
-};
-
-const getPreferredTheme = (): Theme => {
-  if (typeof window !== 'undefined' && window.matchMedia) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  return 'light'; // Default if window or matchMedia is not available
 };
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>('light'); // Default to light SSR
+  // Theme is always 'dark'. useState is used to fit the hook structure.
+  const [themeState, setThemeStateInternal] = useState<Theme>('dark');
 
   useEffect(() => {
     // This effect runs only on the client after hydration
-    const storedTheme = getStoredTheme();
-    const preferredTheme = getPreferredTheme();
-    const initialTheme = storedTheme || preferredTheme;
-    
-    setThemeState(initialTheme);
-    document.documentElement.classList.remove('light', 'dark'); // Clear any server-set class
-    document.documentElement.classList.add(initialTheme);
-  }, []);
+    // Force dark theme
+    const forcedTheme = 'dark';
+    setThemeStateInternal(forcedTheme);
+    setStoredTheme(forcedTheme);
+    document.documentElement.classList.remove('light'); // Remove light if it was somehow set
+    document.documentElement.classList.add(forcedTheme);
+  }, []); // Empty dependency array, runs once on mount
 
+  // setTheme function will now only allow setting to 'dark'
   const setTheme = useCallback((newTheme: Theme) => {
-    setThemeState(newTheme);
-    if (typeof window !== 'undefined' && window.localStorage) {
-      localStorage.setItem('theme', newTheme);
+    if (newTheme === 'dark') {
+      setThemeStateInternal('dark');
+      setStoredTheme('dark');
+      document.documentElement.classList.remove('light');
+      document.documentElement.classList.add('dark');
     }
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(newTheme);
+    // If 'light' is passed, we ignore it to keep the theme dark.
   }, []);
 
+  // toggleTheme function now ensures the theme remains (or is set to) dark
   const toggleTheme = useCallback(() => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  }, [theme, setTheme]);
+    setTheme('dark');
+  }, [setTheme]);
 
-  return { theme, setTheme, toggleTheme };
+  // Always return 'dark' as the current theme
+  return { theme: 'dark' as const, setTheme, toggleTheme };
 }
+
