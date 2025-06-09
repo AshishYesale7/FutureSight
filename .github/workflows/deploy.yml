@@ -25,18 +25,11 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      # These environment variables are needed for the 'next build' command
-      # if your application uses them at build time.
-      # Please add these as secrets in your GitHub repository settings:
-      # Settings > Secrets and variables > Actions > New repository secret
-      NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
-      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${{ secrets.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN }}
-      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
-      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${{ secrets.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET }}
-      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
-      NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
-      # GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }} # Uncomment if Genkit/Gemini API calls are made during build
+    # Note: Firebase environment variables are optional
+    # The app has built-in fallbacks for demo mode when secrets are not configured
+    # To enable full Firebase functionality, add these as secrets in your GitHub repository:
+    # Settings > Secrets and variables > Actions > New repository secret
+    # NEXT_PUBLIC_FIREBASE_API_KEY, NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN, etc.
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

@@ -46,3 +46,155 @@ Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allow
  ○ Compiling / ...
  ✓ Compiled / in 5.1s
  GET / 200 in 5626ms
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'
+}
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 1359ms
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.vwjfn6x6vc'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.vwjfn6x6vc'
+}
+[Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.5gqn5nu8m6a'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.5gqn5nu8m6a'
+}
+[Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.c0auvch2b6'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.c0auvch2b6'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.h1mh3rqo62e'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.h1mh3rqo62e'
+}
+[Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.tx14cdrkp5i'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.tx14cdrkp5i'
+}
+[Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.ydnitrq2th'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.ydnitrq2th'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.nl3uew00hbh'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.nl3uew00hbh'
+}
+[Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.6dygadoehnq'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.6dygadoehnq'
+}
+[Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.c9yz5ipxosd'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.c9yz5ipxosd'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.tg4ay5knujf'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.tg4ay5knujf'
+}
+[Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.g3yeoitjggu'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.g3yeoitjggu'
+}
+[Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.yzziywclc3'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.yzziywclc3'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.6q6wms34djs'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.6q6wms34djs'
+}
+[Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/server/app/page/app-build-manifest.json'
+}
+ ⨯ [Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.vj8mnftdtao'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.vj8mnftdtao'
+}
+[Error: ENOENT: no such file or directory, open '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.zs637apr8ce'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/workspace/FutureSight/.next/static/development/_buildManifest.js.tmp.zs637apr8ce'
+}
