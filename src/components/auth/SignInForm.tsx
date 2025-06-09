@@ -25,7 +25,7 @@ import { Eye, EyeOff } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
-  password: z.string().min(1, { message: 'Password cannot be empty.' }), // Changed min to 1 as per image style
+  password: z.string().min(1, { message: 'Password cannot be empty.' }),
 });
 
 export default function SignInForm() {
@@ -83,7 +83,7 @@ export default function SignInForm() {
                     <Input 
                       placeholder="Email" 
                       {...field} 
-                      className="bg-transparent border-0 border-b-2 border-input rounded-none px-1 py-2 focus:ring-0 focus:border-primary placeholder-muted-foreground/80 text-center"
+                      className="bg-transparent text-foreground border-0 border-b-2 border-muted-foreground/30 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary focus-visible:border-primary placeholder-muted-foreground/80 text-center"
                     />
                   </FormControl>
                   <FormMessage className="text-center" />
@@ -101,7 +101,7 @@ export default function SignInForm() {
                         type={showPassword ? "text" : "password"} 
                         placeholder="Password" 
                         {...field} 
-                        className="bg-transparent border-0 border-b-2 border-input rounded-none px-1 py-2 focus:ring-0 focus:border-primary placeholder-muted-foreground/80 text-center"
+                        className="bg-transparent text-foreground border-0 border-b-2 border-muted-foreground/30 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary focus-visible:border-primary placeholder-muted-foreground/80 text-center"
                       />
                       <Button
                         type="button"
