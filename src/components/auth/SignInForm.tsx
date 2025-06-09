@@ -55,7 +55,12 @@ export default function SignInForm() {
 
       await signInWithEmailAndPassword(firebaseAuth, values.email, values.password);
       toast({ title: 'Success', description: 'Signed in successfully.' });
-      router.push('/');
+      // Use window.location.href to ensure proper redirect with base path
+      if (typeof window !== 'undefined') {
+        window.location.href = '/FutureSight/';
+      } else {
+        router.push('/');
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
