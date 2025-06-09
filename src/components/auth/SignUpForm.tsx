@@ -89,7 +89,7 @@ export default function SignUpForm() {
                     <Input 
                       placeholder="Email" 
                       {...field} 
-                      className="bg-transparent text-foreground border-0 border-b-2 border-muted-foreground/30 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary focus-visible:border-primary placeholder-muted-foreground/80 text-center"
+                      className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
                     />
                   </FormControl>
                   <FormMessage className="text-center" />
@@ -107,7 +107,7 @@ export default function SignUpForm() {
                         type={showPassword ? "text" : "password"} 
                         placeholder="Password" 
                         {...field} 
-                        className="bg-transparent text-foreground border-0 border-b-2 border-muted-foreground/30 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary focus-visible:border-primary placeholder-muted-foreground/80 text-center"
+                        className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
                       />
                        <Button
                         type="button"
@@ -135,7 +135,7 @@ export default function SignUpForm() {
                         type={showConfirmPassword ? "text" : "password"} 
                         placeholder="Confirm Password" 
                         {...field} 
-                        className="bg-transparent text-foreground border-0 border-b-2 border-muted-foreground/30 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary focus-visible:border-primary placeholder-muted-foreground/80 text-center"
+                        className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
                       />
                       <Button
                         type="button"
