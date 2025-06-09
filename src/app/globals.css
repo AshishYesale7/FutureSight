@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,87 +9,91 @@ body {
 
 @layer base {
   :root {
-    --background: 206 23% 89%; /* #D0DCE5 - Light grayish-blue */
-    --foreground: 210 29% 29%; /* #4A6580 - Deep slate blue */
+    --background: 210 40% 98%; /* Lighter, cooler white */
+    --foreground: 215 30% 15%; /* Darker for more contrast */
 
-    --card: 206 23% 89%; /* Base for card, alpha applied in specific classes */
-    --card-foreground: 210 29% 29%;
+    --card: 210 50% 100%; /* Pure white for cards to make frost pop */
+    --card-foreground: 215 30% 15%; /* Strong contrast on semi-transparent card */
 
-    --popover: 206 23% 89%; /* Base for popover, alpha applied in specific classes */
-    --popover-foreground: 210 29% 29%;
+    --popover: 210 50% 100%; 
+    --popover-foreground: 215 30% 15%;
 
-    --primary: 210 29% 40%; /* #4A6580 (adjusted) */
-    --primary-foreground: 210 20% 95%;
+    --primary: 200 80% 50%; /* Vibrant Sky Blue */
+    --primary-foreground: 0 0% 100%; /* Pure white for max contrast */
 
-    --secondary: 210 25% 80%; /* Lighter shade of primary for secondary elements */
-    --secondary-foreground: 210 29% 29%;
+    --secondary: 210 30% 92%; /* Lighter gray-blue */
+    --secondary-foreground: 215 30% 20%; /* Darker text for secondary */
 
-    --muted: 210 25% 75%;
-    --muted-foreground: 210 20% 45%;
+    --muted: 210 30% 88%; /* Light Muted */
+    --muted-foreground: 215 25% 45%; /* Muted text, clear */
 
-    --accent: 51 15% 53%; /* #A2997A - Muted gold */
-    --accent-foreground: 0 0% 100%; /* White */
+    --accent: 250 70% 60%; /* Electric Violet */
+    --accent-foreground: 0 0% 100%; /* Pure white for max contrast */
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 72% 51%; /* Brighter red */
+    --destructive-foreground: 0 0% 100%; /* Pure white */
 
-    --border: 210 20% 70%; /* Adjusted for visibility on light background */
-    --input: 210 20% 80%;
-    --ring: 210 29% 40%; /* Primary color for rings */
+    --border: 210 20% 88%; /* Softer border */
+    --input: 210 30% 95%; /* Input background, distinct */
+    --ring: 200 80% 60%; /* Primary color for rings, slightly lighter */
 
-    --radius: 0.5rem;
+    --radius: 1rem; /* Increased for more pronounced rounding */
 
-    --chart-1: 210 29% 40%;
-    --chart-2: 51 15% 53%;
-    --chart-3: 210 25% 60%;
-    --chart-4: 51 15% 70%;
-    --chart-5: 210 20% 50%;
+    --chart-1: 200 80% 55%;
+    --chart-2: 250 70% 65%;
+    --chart-3: 200 75% 70%;
+    --chart-4: 250 65% 75%;
+    --chart-5: 200 70% 50%;
 
-    --sidebar-background: 210 29% 35%; /* Darker slate blue for sidebar */
-    --sidebar-foreground: 210 20% 95%; /* Light text for sidebar */
-    --sidebar-primary: 51 15% 53%; /* Accent for sidebar active items */
+    /* Sidebar colors */
+    --sidebar-background: hsl(var(--card)); 
+    --sidebar-foreground: 215 30% 20%; /* Darker text for readability on light frosted sidebar */
+    --sidebar-primary: hsl(var(--accent)); 
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 29% 45%; /* Hover/focus for sidebar items */
-    --sidebar-accent-foreground: 210 20% 95%;
-    --sidebar-border: 210 29% 30%;
-    --sidebar-ring: 51 15% 53%;
+    --sidebar-accent: 210 30% 90%; /* Lighter hover for sidebar items */
+    --sidebar-accent-foreground: 215 30% 15%; 
+    --sidebar-border: 210 20% 80%; 
+    --sidebar-ring: hsl(var(--accent));
   }
 
   .dark {
-    /* Define dark theme if needed, for now, focusing on light theme */
-    --background: 210 29% 15%;
-    --foreground: 206 23% 89%;
+    --background: 220 25% 10%; /* Deep, dark blue */
+    --foreground: 210 30% 92%; /* Brighter for more contrast */
 
-    --card: 210 29% 20%;
-    --card-foreground: 206 23% 89%;
+    --card: 220 25% 15%; /* Slightly lighter than bg for dark frosted effect */
+    --card-foreground: 210 30% 92%; /* Strong contrast on semi-transparent card */
 
-    --popover: 210 29% 20%;
-    --popover-foreground: 206 23% 89%;
+    --popover: 220 25% 15%; 
+    --popover-foreground: 210 30% 92%;
 
-    --primary: 51 15% 53%; /* Muted gold as primary in dark */
-    --primary-foreground: 210 29% 10%;
+    --primary: 200 70% 65%; /* Softer Sky Blue for dark mode */
+    --primary-foreground: 220 25% 5%; /* Very dark text for max contrast */
 
-    --secondary: 210 29% 25%;
-    --secondary-foreground: 206 23% 89%;
+    --secondary: 220 25% 20%; /* Darker secondary */
+    --secondary-foreground: 210 30% 88%; /* Lighter text for secondary */
 
-    --muted: 210 29% 30%;
-    --muted-foreground: 206 23% 60%;
+    --muted: 220 25% 25%; /* Dark Muted */
+    --muted-foreground: 210 25% 75%; /* Clearer muted text */
 
-    --accent: 206 23% 75%; /* Lighter blue for accent in dark */
-    --accent-foreground: 210 29% 10%;
+    --accent: 250 60% 70%; /* Muted Violet for dark mode */
+    --accent-foreground: 220 25% 5%; /* Very dark text for max contrast */
+    
+    --destructive: 0 65% 55%; /* Slightly desaturated red for dark mode */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 210 29% 35%;
-    --input: 210 29% 30%;
-    --ring: 51 15% 53%;
-
-    --sidebar-background: 210 29% 10%; 
-    --sidebar-foreground: 206 23% 89%;
-    --sidebar-primary: 51 15% 53%;
-    --sidebar-primary-foreground: 210 29% 10%;
-    --sidebar-accent: 210 29% 20%;
-    --sidebar-accent-foreground: 206 23% 89%;
-    --sidebar-border: 210 29% 15%;
-    --sidebar-ring: 51 15% 53%;
+    --border: 220 25% 20%; /* Subtle border for dark theme */
+    --input: 220 25% 12%; /* Input background, distinct */
+    --ring: 200 70% 70%; /* Primary color for rings, slightly lighter */
+    
+    /* Sidebar colors */
+    --sidebar-background: hsl(var(--card)); 
+    --sidebar-foreground: 210 30% 90%; /* Lighter text for readability */
+    --sidebar-primary: hsl(var(--accent)); 
+    --sidebar-primary-foreground: 220 25% 5%; 
+    --sidebar-accent: 220 25% 20%; 
+    --sidebar-accent-foreground: 210 30% 92%; 
+    --sidebar-border: 220 25% 18%; 
+    --sidebar-ring: hsl(var(--accent));
   }
 }
 
@@ -105,5 +110,6 @@ body {
 
 /* Custom utility for frosted glass effect */
 .frosted-glass {
-  @apply bg-card/70 backdrop-blur-md border border-white/20 shadow-lg;
+  @apply bg-card/20 backdrop-blur-md border border-border/15 shadow-lg;
 }
+

@@ -1,7 +1,8 @@
+
 import TimelineView from '@/components/timeline/TimelineView';
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 
-export default function DashboardPage() {
+export default function ActualDashboardPage() {
   return (
     <div className="space-y-6 h-full flex flex-col">
       <h1 className="font-headline text-3xl font-semibold text-primary">Your Career Dashboard</h1>

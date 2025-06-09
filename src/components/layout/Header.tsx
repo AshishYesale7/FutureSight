@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -17,10 +18,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import React from 'react'; // Added React import
+import { useTheme } from '@/hooks/use-theme'; // Import useTheme
 
 const navItems = [
-  { href: '/', label: 'Dashboard', icon: Menu }, // Icon will be overridden by actual icon
+  { href: '/', label: 'Dashboard', icon: Menu }, 
   { href: '/career-goals', label: 'Career Goals', icon: Menu },
   { href: '/skills', label: 'Skills', icon: Menu },
   { href: '/career-vision', label: 'Career Vision', icon: Menu },
@@ -32,7 +33,7 @@ const navItems = [
 export default function Header() {
   const { user } = useAuth();
   const router = useRouter();
-  // const [isDarkMode, setIsDarkMode] = React.useState(false); // Add theme state if implementing theme toggle
+  const { theme, toggleTheme } = useTheme(); // Use the theme hook
 
   const handleSignOut = async () => {
     try {
@@ -43,12 +44,6 @@ export default function Header() {
     }
   };
   
-  // const toggleTheme = () => {
-  //   setIsDarkMode(!isDarkMode);
-  //   document.documentElement.classList.toggle('dark');
-  // };
-
-
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-md px-6 md:hidden">
       <Sheet>
@@ -58,7 +53,7 @@ export default function Header() {
             <span className="sr-only">Toggle navigation menu</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="bg-sidebar text-sidebar-foreground w-64 p-0">
+        <SheetContent side="left" className="w-64 p-0 frosted-glass text-sidebar-foreground bg-sidebar"> {/* Apply frosted-glass and ensure text color works */}
           <div className="flex h-16 items-center justify-center border-b border-sidebar-border px-6">
             <Link href="/" className="flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-sidebar-primary"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
@@ -72,16 +67,15 @@ export default function Header() {
                 href={item.href}
                 className="flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               >
-                {/* Placeholder for actual icons if needed in mobile sheet */}
                 {item.label}
               </Link>
             ))}
           </nav>
            <div className="mt-auto border-t border-sidebar-border p-4">
-            {/* <Button variant="ghost" onClick={toggleTheme} className="w-full justify-start gap-3 mb-2">
-              {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-              <span>{isDarkMode ? "Light Mode" : "Dark Mode"}</span>
-            </Button> */}
+            <Button variant="ghost" onClick={toggleTheme} className="w-full justify-start gap-3 mb-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              <span>{theme === 'dark' ? "Light Mode" : "Dark Mode"}</span>
+            </Button>
            </div>
         </SheetContent>
       </Sheet>
