@@ -69,7 +69,7 @@ export default function SignUpForm() {
     <Card className="frosted-glass p-6 md:p-8">
       <div className="flex justify-center mb-6">
         <Image
-          src="https://placehold.co/100x100.png"
+          src="https://t4.ftcdn.net/jpg/10/33/68/61/360_F_1033686185_RvraYXkGXH40OtR1nhmmQaIIbQQqHN5m.jpg"
           alt="Logo"
           width={100}
           height={100}
