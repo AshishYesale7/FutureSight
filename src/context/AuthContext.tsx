@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { ReactNode } from 'react';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth } from '@/lib/firebase';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 interface AuthContextType {
@@ -19,23 +19,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // If auth is not available (e.g., during build or missing config), set loading to false
+    const auth = getFirebaseAuth();
+    
+    // If auth is not available, throw an error
     if (!auth) {
+      console.error('Firebase auth is not initialized');
       setLoading(false);
-      // Check if we're in demo mode (user has "logged in" via demo)
-      // Only access localStorage in the browser
-      if (typeof window !== 'undefined') {
-        const demoUser = localStorage.getItem('demo-user');
-        if (demoUser) {
-          // Create a mock user object for demo mode
-          setUser({
-            uid: 'demo-user-id',
-            email: 'demo@example.com',
-            displayName: 'Demo User',
-            emailVerified: true,
-          } as User);
-        }
-      }
       return;
     }
 

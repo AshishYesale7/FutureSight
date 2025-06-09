@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -45,28 +45,15 @@ export default function SignInForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
+      // Get Firebase auth instance safely
+      const firebaseAuth = getFirebaseAuth();
+      
       // Check if Firebase auth is available
-      if (!auth) {
-        // Demo mode - simulate successful login for demo purposes
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('demo-user', 'true');
-        }
-        toast({ 
-          title: 'Demo Mode', 
-          description: 'Firebase not configured. Using demo mode - any email/password works!' 
-        });
-        // Simulate a delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        // Trigger a page reload to update the auth context
-        if (typeof window !== 'undefined') {
-          window.location.href = '/';
-        } else {
-          router.push('/');
-        }
-        return;
+      if (!firebaseAuth) {
+        throw new Error('Firebase authentication is not initialized. Please check your configuration.');
       }
 
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      await signInWithEmailAndPassword(firebaseAuth, values.email, values.password);
       toast({ title: 'Success', description: 'Signed in successfully.' });
       router.push('/');
     } catch (error: any) {
