@@ -51,6 +51,19 @@ export default function SignUpForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
+      // Check if Firebase auth is available
+      if (!auth) {
+        // Demo mode - simulate successful signup for demo purposes
+        toast({ 
+          title: 'Demo Mode', 
+          description: 'Firebase not configured. Account created in demo mode!' 
+        });
+        // Simulate a delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        router.push('/auth/signin');
+        return;
+      }
+
       await createUserWithEmailAndPassword(auth, values.email, values.password);
       toast({ title: 'Success', description: 'Account created successfully. Please sign in.' });
       router.push('/auth/signin');

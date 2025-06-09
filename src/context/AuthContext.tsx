@@ -22,6 +22,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // If auth is not available (e.g., during build or missing config), set loading to false
     if (!auth) {
       setLoading(false);
+      // Check if we're in demo mode (user has "logged in" via demo)
+      // Only access localStorage in the browser
+      if (typeof window !== 'undefined') {
+        const demoUser = localStorage.getItem('demo-user');
+        if (demoUser) {
+          // Create a mock user object for demo mode
+          setUser({
+            uid: 'demo-user-id',
+            email: 'demo@example.com',
+            displayName: 'Demo User',
+            emailVerified: true,
+          } as User);
+        }
+      }
       return;
     }
 

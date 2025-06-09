@@ -50,6 +50,14 @@ export default function SidebarNav() {
 
   const handleSignOut = async () => {
     try {
+      // Check if we're in demo mode
+      if (!auth || localStorage.getItem('demo-user')) {
+        // Demo mode logout
+        localStorage.removeItem('demo-user');
+        window.location.href = '/auth/signin';
+        return;
+      }
+      
       await signOut(auth);
       router.push('/auth/signin');
     } catch (error) {
