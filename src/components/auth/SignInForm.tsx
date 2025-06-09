@@ -1,11 +1,13 @@
+
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Corrected import
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -13,18 +15,17 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Eye, EyeOff } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  password: z.string().min(1, { message: 'Password cannot be empty.' }), // Changed min to 1 as per image style
 });
 
 export default function SignInForm() {
@@ -59,26 +60,33 @@ export default function SignInForm() {
   }
 
   return (
-    <Card className="frosted-glass">
-      <CardHeader>
-        <CardTitle className="font-headline text-3xl text-center text-primary">Welcome Back to FutureSight</CardTitle>
-        <CardDescription className="text-center text-foreground/80">
-          Sign in to continue planning your future.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Card className="frosted-glass p-6 md:p-8">
+      <div className="flex justify-center mb-6">
+        <Image
+          src="https://placehold.co/100x100.png"
+          alt="Logo"
+          width={100}
+          height={100}
+          className="rounded-full"
+          data-ai-hint="colorful logo"
+        />
+      </div>
+      <CardContent className="p-0">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="you@example.com" {...field} />
+                    <Input 
+                      placeholder="Email" 
+                      {...field} 
+                      className="bg-transparent border-0 border-b-2 border-input rounded-none px-1 py-2 focus:ring-0 focus:border-primary placeholder-muted-foreground/80 text-center"
+                    />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-center" />
                 </FormItem>
               )}
             />
@@ -87,31 +95,40 @@ export default function SignInForm() {
               name="password"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Password</FormLabel>
                   <FormControl>
                      <div className="relative">
-                      <Input type={showPassword ? "text" : "password"} placeholder="••••••••" {...field} />
+                      <Input 
+                        type={showPassword ? "text" : "password"} 
+                        placeholder="Password" 
+                        {...field} 
+                        className="bg-transparent border-0 border-b-2 border-input rounded-none px-1 py-2 focus:ring-0 focus:border-primary placeholder-muted-foreground/80 text-center"
+                      />
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                        className="absolute right-0 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </Button>
                     </div>
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-center" />
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground" disabled={loading}>
-              {loading ? 'Signing In...' : 'Sign In'}
+            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12 text-lg" disabled={loading}>
+              {loading ? 'SIGNING IN...' : 'SIGN IN'}
             </Button>
           </form>
         </Form>
-        <p className="mt-6 text-center text-sm text-foreground/80">
+        <div className="mt-6 text-center">
+          <Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+            Forgot Password?
+          </Link>
+        </div>
+        <p className="mt-8 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{' '}
           <Link href="/auth/signup" className="font-medium text-primary hover:underline">
             Sign up
