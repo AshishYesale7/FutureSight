@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -30,6 +31,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useTheme } from '@/hooks/use-theme'; // Import useTheme
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -44,7 +46,7 @@ export default function SidebarNav() {
   const pathname = usePathname();
   const { user } = useAuth();
   const router = useRouter();
-  // const [isDarkMode, setIsDarkMode] = React.useState(false); // Add theme state if implementing theme toggle
+  const { theme, toggleTheme } = useTheme(); // Use the theme hook
 
   const handleSignOut = async () => {
     try {
@@ -55,14 +57,8 @@ export default function SidebarNav() {
     }
   };
   
-  // const toggleTheme = () => {
-  //   setIsDarkMode(!isDarkMode);
-  //   document.documentElement.classList.toggle('dark');
-  // };
-
-
   return (
-    <div className="flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground fixed left-0 top-0">
+    <div className="hidden md:flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground fixed left-0 top-0 frosted-glass">
       <div className="flex h-16 items-center justify-center border-b border-sidebar-border px-6">
         <Link href="/" className="flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-sidebar-primary"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
@@ -87,13 +83,13 @@ export default function SidebarNav() {
         ))}
       </nav>
       <div className="mt-auto border-t border-sidebar-border p-4">
-        {/* <Button variant="ghost" onClick={toggleTheme} className="w-full justify-start gap-3 mb-2">
-          {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          <span>{isDarkMode ? "Light Mode" : "Dark Mode"}</span>
-        </Button> */}
+        <Button variant="ghost" onClick={toggleTheme} className="w-full justify-start gap-3 mb-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+          {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          <span>{theme === 'dark' ? "Light Mode" : "Dark Mode"}</span>
+        </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start gap-3">
+            <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || user?.email || 'User'} />
                 <AvatarFallback>
