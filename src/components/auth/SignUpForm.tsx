@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Eye, EyeOff } from 'lucide-react';
 
@@ -51,7 +51,15 @@ export default function SignUpForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, values.email, values.password);
+      // Get Firebase auth instance safely
+      const firebaseAuth = getFirebaseAuth();
+      
+      // Check if Firebase auth is available
+      if (!firebaseAuth) {
+        throw new Error('Firebase authentication is not initialized. Please check your configuration.');
+      }
+
+      await createUserWithEmailAndPassword(firebaseAuth, values.email, values.password);
       toast({ title: 'Success', description: 'Account created successfully. Please sign in.' });
       router.push('/auth/signin');
     } catch (error: any) {

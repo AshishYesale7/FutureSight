@@ -7,7 +7,7 @@ import { Menu, UserCircle, LogOut, Settings, Sun, Moon } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { signOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { getFirebaseAuth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -37,7 +37,10 @@ export default function Header() {
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth);
+      const firebaseAuth = getFirebaseAuth();
+      if (firebaseAuth) {
+        await signOut(firebaseAuth);
+      }
       router.push('/auth/signin');
     } catch (error) {
       console.error('Error signing out:', error);

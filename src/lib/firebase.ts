@@ -2,18 +2,37 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
+// Firebase configuration with your actual values
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyArau7AmleRNnzWE080F3QF8YGmMWtn_Kg",
+  authDomain: "futuresight-cz4hh.firebaseapp.com",
+  projectId: "futuresight-cz4hh",
+  storageBucket: "futuresight-cz4hh.firebasestorage.app",
+  messagingSenderId: "748902423337",
+  appId: "1:748902423337:web:bd3e769c9190d1c1c9f538"
 };
 
-// Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-const db = getFirestore(app);
+let app: any = null;
+let auth: any = null;
+let db: any = null;
+
+// Initialize Firebase only in the browser
+if (typeof window !== 'undefined') {
+  try {
+    app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+    auth = getAuth(app);
+    db = getFirestore(app);
+    console.log('Firebase initialized successfully with project:', firebaseConfig.projectId);
+  } catch (error) {
+    console.error('Firebase initialization failed:', error);
+    throw error; // Don't silently fail
+  }
+}
+
+// Helper functions to safely get Firebase instances
+export const getFirebaseAuth = () => auth;
+export const getFirebaseApp = () => app;
+export const getFirebaseDb = () => db;
+export const isFirebaseConfigured = () => true; // Always configured now
 
 export { app, auth, db };

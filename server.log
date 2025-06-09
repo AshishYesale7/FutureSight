@@ -1,0 +1,29 @@
+
+> nextn@0.1.0 dev
+> next dev --turbopack -p 9002
+
+   ▲ Next.js 15.3.3 (Turbopack)
+   - Local:        http://localhost:9002
+   - Network:      http://10.2.34.13:9002
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 1034ms
+ ○ Compiling / ...
+ ✓ Compiled / in 4.6s
+ GET / 200 in 5124ms
+ ○ Compiling /auth/signin ...
+ ✓ Compiled /auth/signin in 2.1s
+ GET /auth/signin 200 in 2173ms
+ GET /auth/signin 200 in 71ms
+ ○ Compiling /auth/signup ...
+ ✓ Compiled /auth/signup in 1816ms
+ GET /auth/signup 200 in 1860ms
+ GET /auth/signin 200 in 49ms
+ GET / 200 in 53ms
+ GET /auth/signin 200 in 52ms
+ GET /auth/signin 200 in 46ms
+ GET /auth/signup 200 in 72ms
+ GET /auth/signin 200 in 36ms
+ GET / 200 in 44ms
+[?25h
