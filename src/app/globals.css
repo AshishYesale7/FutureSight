@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -107,5 +108,5 @@ body {
 
 /* Custom utility for frosted glass effect */
 .frosted-glass {
-  @apply bg-card/50 backdrop-blur-md border border-border/30 shadow-lg;
+  @apply bg-card/20 backdrop-blur-md border border-border/15 shadow-lg;
 }
