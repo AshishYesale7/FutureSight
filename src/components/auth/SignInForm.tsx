@@ -118,7 +118,7 @@ export default function SignInForm() {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full bg-accent hover:bg-accent/90 text-accent-foreground h-12 text-lg" disabled={loading}>
+            <Button type="submit" className="w-full bg-accent/70 hover:bg-accent/80 text-accent-foreground h-12 text-lg rounded-full border border-accent-foreground/30" disabled={loading}>
               {loading ? 'SIGNING IN...' : 'SIGN IN'}
             </Button>
           </form>
