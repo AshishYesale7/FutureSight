@@ -16,3 +16,14 @@
  ✓ Compiled /auth/signin in 2.1s
  GET /auth/signin 200 in 2173ms
  GET /auth/signin 200 in 71ms
+ ○ Compiling /auth/signup ...
+ ✓ Compiled /auth/signup in 1816ms
+ GET /auth/signup 200 in 1860ms
+ GET /auth/signin 200 in 49ms
+ GET / 200 in 53ms
+ GET /auth/signin 200 in 52ms
+ GET /auth/signin 200 in 46ms
+ GET /auth/signup 200 in 72ms
+ GET /auth/signin 200 in 36ms
+ GET / 200 in 44ms
+[?25h

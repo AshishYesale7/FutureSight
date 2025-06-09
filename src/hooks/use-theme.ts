@@ -16,11 +16,11 @@ const getPreferredTheme = (): Theme => {
   if (typeof window !== 'undefined' && window.matchMedia) {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
-  return 'light'; // Default if window or matchMedia is not available
+  return 'dark'; // Default to dark theme
 };
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>('light'); // Default to light SSR
+  const [theme, setThemeState] = useState<Theme>('dark'); // Default to dark theme
 
   useEffect(() => {
     // This effect runs only on the client after hydration
@@ -29,8 +29,14 @@ export function useTheme() {
     const initialTheme = storedTheme || preferredTheme;
     
     setThemeState(initialTheme);
-    document.documentElement.classList.remove('light', 'dark'); // Clear any server-set class
-    document.documentElement.classList.add(initialTheme);
+    
+    // Ensure the theme is applied to the document
+    document.documentElement.className = initialTheme;
+    
+    // Store the theme if it wasn't already stored
+    if (!storedTheme && typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('theme', initialTheme);
+    }
   }, []);
 
   const setTheme = useCallback((newTheme: Theme) => {
@@ -38,8 +44,7 @@ export function useTheme() {
     if (typeof window !== 'undefined' && window.localStorage) {
       localStorage.setItem('theme', newTheme);
     }
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(newTheme);
+    document.documentElement.className = newTheme;
   }, []);
 
   const toggleTheme = useCallback(() => {
