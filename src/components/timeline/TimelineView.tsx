@@ -3,12 +3,12 @@
 
 import type { TimelineEvent } from '@/types';
 import { mockTimelineEvents } from '@/data/mock';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
-import { format, isToday, addMonths, subMonths, parseISO, compareAsc, startOfDay } from 'date-fns';
+import { format, isToday, addMonths, subMonths, parseISO, compareAsc, startOfDay, getYear, getMonth } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
@@ -24,8 +24,7 @@ const getEventTypeStyle = (type: TimelineEvent['type']) => {
   }
 };
 
-const getEventTypeDotStyle = (type: TimelineEvent['type'], isCurrent: boolean) => {
-  if (isCurrent) return 'bg-accent ring-2 ring-accent/70';
+const getEventTypeDotColor = (type: TimelineEvent['type']) => {
   switch (type) {
     case 'exam': return 'bg-red-500';
     case 'deadline': return 'bg-yellow-500';
@@ -53,37 +52,40 @@ export default function TimelineView() {
       .sort((a, b) => compareAsc(a.date, b.date))
   );
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentVisibleDate, setCurrentVisibleDate] = useState(new Date()); // For month navigation
 
   const handleEventClick = (event: TimelineEvent) => {
     setSelectedEvent(event);
   };
 
-  const nextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
-  const prevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
+  const nextMonth = () => setCurrentVisibleDate(addMonths(currentVisibleDate, 1));
+  const prevMonth = () => setCurrentVisibleDate(subMonths(currentVisibleDate, 1));
 
-  // Group events by date, then sort these groups
-  const groupedByDate = allEvents.reduce((acc, event) => {
-    const dateStr = format(event.date, 'yyyy-MM-dd');
-    if (!acc[dateStr]) {
-      acc[dateStr] = { date: event.date, events: [] };
-    }
-    acc[dateStr].events.push(event);
-    return acc;
-  }, {} as Record<string, GroupedEvent>);
+  const filteredAndGroupedEvents = useMemo(() => {
+    const year = getYear(currentVisibleDate);
+    const month = getMonth(currentVisibleDate);
 
-  const monthlyGroupedEvents = Object.values(groupedByDate)
-    .filter(group => 
-      group.date.getFullYear() === currentMonth.getFullYear() &&
-      group.date.getMonth() === currentMonth.getMonth()
-    )
-    .sort((a, b) => compareAsc(a.date, b.date));
+    return allEvents
+      .filter(event => getYear(event.date) === year && getMonth(event.date) === month)
+      .reduce((acc, event) => {
+        const dateStr = format(event.date, 'yyyy-MM-dd');
+        if (!acc[dateStr]) {
+          acc[dateStr] = { date: event.date, events: [] };
+        }
+        acc[dateStr].events.push(event);
+        return acc;
+      }, {} as Record<string, GroupedEvent>);
+  }, [allEvents, currentVisibleDate]);
+
+  const sortedEventGroups = useMemo(() => {
+    return Object.values(filteredAndGroupedEvents).sort((a,b) => compareAsc(a.date, b.date));
+  }, [filteredAndGroupedEvents]);
 
   return (
-    <Card className="frosted-glass w-full h-[calc(100vh-12rem)] flex flex-col shadow-xl"> {/* Adjusted height */}
+    <Card className="frosted-glass w-full h-[calc(100vh-12rem)] flex flex-col shadow-xl overflow-hidden">
       <CardHeader className="flex flex-row items-center justify-between p-4 border-b border-border/30">
         <CardTitle className="font-headline text-2xl text-primary">
-          {format(currentMonth, 'MMMM yyyy')}
+          {format(currentVisibleDate, 'MMMM yyyy')}
         </CardTitle>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={prevMonth} aria-label="Previous month">
@@ -94,32 +96,31 @@ export default function TimelineView() {
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="p-0 flex-1 overflow-hidden">
+      <CardContent className="p-0 flex-1">
         <ScrollArea className="w-full h-full" type="auto">
-          <div className="relative p-6 space-y-0"> {/* Adjusted space-y for closer packing */}
-            {/* Central Spine */}
-            {monthlyGroupedEvents.length > 0 && (
-              <div className="absolute left-[4.5rem] top-6 bottom-6 w-0.5 bg-border/50 z-0"></div>
+          <div className="relative p-6">
+            {/* Central Spine - always present if there are events */}
+            {sortedEventGroups.length > 0 && (
+              <div className="absolute left-8 top-6 bottom-6 w-0.5 bg-border/50 z-0 transform -translate-x-1/2"></div>
             )}
 
-            {monthlyGroupedEvents.map(({ date, events }, groupIndex) => (
-              <div key={format(date, 'yyyy-MM-dd')} className="relative flex items-start py-4"> {/* Added py-4 for spacing between date groups */}
-                {/* Date Marker and Dot Area - Fixed Width */}
-                <div className="sticky top-0 z-10 flex-shrink-0 w-32 pr-4 text-right"> {/* Approx 4.5rem + padding */}
-                  <div className="absolute left-[4.5rem] top-1/2 -translate-y-1/2 -translate-x-1/2">
-                    <div className={cn(
-                      "w-5 h-5 rounded-full border-2 border-background shadow-md flex items-center justify-center",
-                      getEventTypeDotStyle(events[0].type, isToday(date))
+            {sortedEventGroups.map(({ date, events }, groupIndex) => (
+              <div key={format(date, 'yyyy-MM-dd')} className="relative flex items-start mb-8 last:mb-0">
+                {/* Date Marker and Dot */}
+                <div className="sticky top-4 z-10 flex-shrink-0 w-16 flex flex-col items-center mr-4">
+                  <div className={cn(
+                      "w-6 h-6 rounded-full border-2 border-background shadow-md flex items-center justify-center mb-1",
+                      isToday(date) ? 'bg-accent ring-2 ring-accent/70' : getEventTypeDotColor(events[0].type)
                     )}>
-                      {isToday(date) && <div className="w-2 h-2 bg-white rounded-full"></div>}
-                    </div>
+                    {isToday(date) && <div className="w-2.5 h-2.5 bg-white rounded-full"></div>}
                   </div>
-                  <div className="font-bold text-primary text-lg">{format(date, 'dd')}</div>
-                  <div className="text-sm text-muted-foreground">{format(date, 'EEEE')}</div>
+                  <div className="font-bold text-primary text-lg leading-tight">{format(date, 'dd')}</div>
+                  <div className="text-xs text-muted-foreground leading-tight">{format(date, 'MMM')}</div>
+                   {isToday(date) && <Badge variant="default" className="mt-1 text-xs px-1.5 py-0.5 bg-accent text-accent-foreground">Today</Badge>}
                 </div>
 
                 {/* Event Cards Area */}
-                <div className="ml-8 flex-grow space-y-3 pl-4"> {/* Added pl-4 to space from spine */}
+                <div className="flex-grow pt-1 space-y-3">
                   {events.map((event) => (
                     <Dialog key={event.id} open={selectedEvent?.id === event.id} onOpenChange={(isOpen) => !isOpen && setSelectedEvent(null)}>
                       <DialogTrigger asChild>
@@ -186,9 +187,9 @@ export default function TimelineView() {
                 </div>
               </div>
             ))}
-            {monthlyGroupedEvents.length === 0 && (
+            {sortedEventGroups.length === 0 && (
               <div className="text-center text-muted-foreground py-10">
-                No events for {format(currentMonth, 'MMMM yyyy')}.
+                No events for {format(currentVisibleDate, 'MMMM yyyy')}.
               </div>
             )}
           </div>
