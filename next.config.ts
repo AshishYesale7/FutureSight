@@ -12,7 +12,7 @@ const repoName = process.env.GITHUB_REPOSITORY
 const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
 
 const nextConfig: NextConfig = {
-  // output: 'export', // Crucial for static site generation - REMOVED to allow middleware
+  // output: 'export', // Crucial for static site generation - This line was previously commented out or removed to allow middleware
 
   // Only set basePath and assetPrefix when building for GitHub Pages
   ...(isGithubActions && {
