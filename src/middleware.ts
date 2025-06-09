@@ -1,3 +1,4 @@
+
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
@@ -13,19 +14,21 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // If trying to access protected page while not logged in, redirect to signin
-  if (!sessionToken && PROTECTED_ROUTES.some(route => pathname.startsWith(route) && pathname !== '/')) {
-     if (pathname === '/' && !AUTH_ROUTES.includes(pathname)) { // Allow access to / as a public page if needed, or redirect
-        // For this app, '/' is protected too.
-         return NextResponse.redirect(new URL('/auth/signin', request.url));
-     } else if (PROTECTED_ROUTES.includes(pathname)) {
-        return NextResponse.redirect(new URL('/auth/signin', request.url));
-     }
-  }
-   // Special handling for the root path if it's protected
-  if (pathname === '/' && !sessionToken) {
-    return NextResponse.redirect(new URL('/auth/signin', request.url));
-  }
+  // Client-side auth checks will handle protection for now.
+  // Middleware redirection based on !sessionToken for protected routes is temporarily disabled
+  // to avoid conflicts with client-side Firebase Auth state.
+
+  // if (!sessionToken && PROTECTED_ROUTES.some(route => pathname.startsWith(route) && pathname !== '/')) {
+  //    if (pathname === '/' && !AUTH_ROUTES.includes(pathname)) { 
+  //        return NextResponse.redirect(new URL('/auth/signin', request.url));
+  //    } else if (PROTECTED_ROUTES.includes(pathname)) {
+  //       return NextResponse.redirect(new URL('/auth/signin', request.url));
+  //    }
+  // }
+  //  // Special handling for the root path if it's protected
+  // if (pathname === '/' && !sessionToken) {
+  //   return NextResponse.redirect(new URL('/auth/signin', request.url));
+  // }
 
 
   return NextResponse.next();

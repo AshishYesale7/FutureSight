@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import AppLayout from '@/app/(app)/layout'; // Import the AppLayout
-import DashboardContent from '@/app/(app)/page'; // Import the Dashboard content
+import ActualDashboardPage from '@/app/(app)/page'; // Correctly import the renamed dashboard content
 
 export default function RootPage() {
   const router = useRouter();
@@ -30,14 +30,13 @@ export default function RootPage() {
   if (user) {
     return (
       <AppLayout>
-        <DashboardContent />
+        <ActualDashboardPage />
       </AppLayout>
     );
   }
 
   // If not loading and no user (should have been caught by useEffect, but as a fallback)
   // or if in a transient state before useEffect kicks in, show loading or null.
-  // This state should ideally not be reached if useEffect works as expected.
   return (
     <div className="flex items-center justify-center min-h-screen bg-background">
       <LoadingSpinner size="lg" />
