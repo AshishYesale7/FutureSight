@@ -5,32 +5,11 @@ import { NextResponse } from 'next/server';
 const AUTH_ROUTES = ['/auth/signin', '/auth/signup'];
 const PROTECTED_ROUTES = ['/', '/career-goals', '/skills', '/career-vision', '/news', '/resources']; // Add all your app routes here
 
+// Middleware is disabled for static export compatibility with GitHub Pages
+// All authentication logic is handled client-side
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const sessionToken = request.cookies.get('firebaseIdToken'); // Example, adjust based on your auth setup
-
-  // If trying to access auth page while logged in, redirect to home
-  if (sessionToken && AUTH_ROUTES.includes(pathname)) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  // Client-side auth checks will handle protection for now.
-  // Middleware redirection based on !sessionToken for protected routes is temporarily disabled
-  // to avoid conflicts with client-side Firebase Auth state.
-
-  // if (!sessionToken && PROTECTED_ROUTES.some(route => pathname.startsWith(route) && pathname !== '/')) {
-  //    if (pathname === '/' && !AUTH_ROUTES.includes(pathname)) { 
-  //        return NextResponse.redirect(new URL('/auth/signin', request.url));
-  //    } else if (PROTECTED_ROUTES.includes(pathname)) {
-  //       return NextResponse.redirect(new URL('/auth/signin', request.url));
-  //    }
-  // }
-  //  // Special handling for the root path if it's protected
-  // if (pathname === '/' && !sessionToken) {
-  //   return NextResponse.redirect(new URL('/auth/signin', request.url));
-  // }
-
-
+  // For static export, we skip all middleware logic
+  // Authentication is handled entirely on the client side
   return NextResponse.next();
 }
 
