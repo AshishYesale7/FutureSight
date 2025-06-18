@@ -9,90 +9,98 @@ body {
 
 @layer base {
   :root {
-    --background: 210 40% 98%; /* Lighter, cooler white */
-    --foreground: 215 30% 15%; /* Darker for more contrast */
+    --background: 210 33% 92%; /* PRD: Light grayish-blue #D0DCE5 */
+    --foreground: 210 25% 15%; /* Darker slate for text */
 
-    --card: 210 50% 100%; /* Pure white for cards to make frost pop */
-    --card-foreground: 215 30% 15%; /* Strong contrast on semi-transparent card */
+    --card: 210 40% 97%; /* Slightly lighter than background, for frosted glass on #D0DCE5 */
+    --card-foreground: 210 25% 15%; /* Match foreground */
 
-    --popover: 210 50% 100%; 
-    --popover-foreground: 215 30% 15%;
+    --popover: 210 40% 97%;
+    --popover-foreground: 210 25% 15%;
 
-    --primary: 200 80% 50%; /* Vibrant Sky Blue */
-    --primary-foreground: 0 0% 100%; /* Pure white for max contrast */
+    --primary: 210 25% 40%; /* PRD: Deep slate blue #4A6580 */
+    --primary-foreground: 210 20% 96%; /* Very light (off-white) for contrast on deep slate blue */
 
-    --secondary: 210 30% 92%; /* Lighter gray-blue */
-    --secondary-foreground: 215 30% 20%; /* Darker text for secondary */
+    --secondary: 210 25% 55%; /* Lighter slate blue */
+    --secondary-foreground: 210 20% 96%; /* Light text for contrast on mid-slate blue */
 
-    --muted: 210 30% 88%; /* Light Muted */
-    --muted-foreground: 215 25% 45%; /* Muted text, clear */
+    --muted: 210 30% 85%;   /* Lighter gray-blue, for less emphasis */
+    --muted-foreground: 210 25% 35%; /* Softer dark slate for muted text */
 
-    --accent: 250 70% 60%; /* Electric Violet */
-    --accent-foreground: 0 0% 100%; /* Pure white for max contrast */
+    --accent: 47 15% 56%;  /* PRD: Muted gold #A2997A */
+    --accent-foreground: 0 0% 100%; /* White text on muted gold for clarity */
 
-    --destructive: 0 72% 51%; /* Brighter red */
-    --destructive-foreground: 0 0% 100%; /* Pure white */
+    --destructive: 0 72% 51%; /* Standard ShadCN red */
+    --destructive-foreground: 0 0% 100%; /* Standard ShadCN white */
 
-    --border: 210 20% 88%; /* Softer border */
-    --input: 210 30% 95%; /* Input background, distinct */
-    --ring: 200 80% 60%; /* Primary color for rings, slightly lighter */
+    --border: 210 25% 75%; /* A slightly darker border than muted, slate-toned */
+    --input: 210 30% 88%;  /* Input background, slightly distinct from main bg, still light */
+    --ring: 210 25% 40%;   /* Ring color based on primary */
 
-    --radius: 1rem; /* Increased for more pronounced rounding */
+    --radius: 0.75rem; /* Slightly less rounded */
 
-    --chart-1: 200 80% 55%;
-    --chart-2: 250 70% 65%;
-    --chart-3: 200 75% 70%;
-    --chart-4: 250 65% 75%;
-    --chart-5: 200 70% 50%;
+    --chart-1: 210 25% 50%; 
+    --chart-2: 47 20% 65%;  
+    --chart-3: 210 25% 70%; 
+    --chart-4: 47 25% 45%;  
+    --chart-5: 180 30% 50%; 
 
-    /* Sidebar colors */
+    /* Sidebar colors (light theme) */
     --sidebar-background: hsl(var(--card)); 
-    --sidebar-foreground: 215 30% 20%; /* Darker text for readability on light frosted sidebar */
+    --sidebar-foreground: 210 25% 25%; 
     --sidebar-primary: hsl(var(--accent)); 
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 30% 90%; /* Lighter hover for sidebar items */
-    --sidebar-accent-foreground: 215 30% 15%; 
-    --sidebar-border: 210 20% 80%; 
+    --sidebar-accent: 210 30% 90%; 
+    --sidebar-accent-foreground: 210 25% 15%; 
+    --sidebar-border: 210 25% 80%; 
     --sidebar-ring: hsl(var(--accent));
   }
 
   .dark {
-    --background: 220 25% 10%; /* Deep, dark blue */
-    --foreground: 210 30% 92%; /* Brighter for more contrast */
+    /* Dark Theme (based on PRD colors, adapted for dark mode) */
+    --background: 210 20% 12%; /* Very dark slate blue */
+    --foreground: 210 25% 88%; /* Light gray-blue text */
 
-    --card: 220 25% 15%; /* Slightly lighter than bg for dark frosted effect */
-    --card-foreground: 210 30% 92%; /* Strong contrast on semi-transparent card */
+    --card: 210 20% 18%; /* Dark slate, slightly lighter than bg for frosted effect */
+    --card-foreground: 210 25% 88%; /* Match foreground */
 
-    --popover: 220 25% 15%; 
-    --popover-foreground: 210 30% 92%;
+    --popover: 210 20% 18%;
+    --popover-foreground: 210 25% 88%;
 
-    --primary: 200 70% 65%; /* Softer Sky Blue for dark mode */
-    --primary-foreground: 220 25% 5%; /* Very dark text for max contrast */
+    --primary: 210 25% 55%; /* Lighter deep slate blue for dark mode */
+    --primary-foreground: 210 15% 8%; /* Very dark text for contrast on lighter primary */
 
-    --secondary: 220 25% 20%; /* Darker secondary */
-    --secondary-foreground: 210 30% 88%; /* Lighter text for secondary */
+    --secondary: 210 20% 30%; /* Darker muted slate blue */
+    --secondary-foreground: 210 25% 80%; /* Lighter text for secondary */
 
-    --muted: 220 25% 25%; /* Dark Muted */
-    --muted-foreground: 210 25% 75%; /* Clearer muted text */
+    --muted: 210 20% 25%;   /* Dark Muted slate */
+    --muted-foreground: 210 25% 65%; /* Muted text, clearer */
 
-    --accent: 250 60% 70%; /* Muted Violet for dark mode */
-    --accent-foreground: 220 25% 5%; /* Very dark text for max contrast */
+    --accent: 47 20% 60%;  /* Lighter muted gold for dark mode */
+    --accent-foreground: 47 30% 10%; /* Dark text for contrast on lighter gold */
     
     --destructive: 0 65% 55%; /* Slightly desaturated red for dark mode */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 25% 20%; /* Subtle border for dark theme */
-    --input: 220 25% 12%; /* Input background, distinct */
-    --ring: 200 70% 70%; /* Primary color for rings, slightly lighter */
+    --border: 210 20% 25%; /* Subtle border for dark theme */
+    --input: 210 20% 15%;  /* Input background, distinct from dark card */
+    --ring: 210 25% 55%;   /* Ring color based on dark primary */
     
-    /* Sidebar colors */
+    /* Chart colors for dark mode */
+    --chart-1: 210 25% 60%;
+    --chart-2: 47 25% 70%;
+    --chart-3: 210 30% 75%;
+    --chart-4: 47 30% 50%;
+    --chart-5: 180 35% 60%;
+    
+    /* Sidebar colors (dark theme) */
     --sidebar-background: hsl(var(--card)); 
-    --sidebar-foreground: 210 30% 90%; /* Lighter text for readability */
+    --sidebar-foreground: 210 25% 85%; 
     --sidebar-primary: hsl(var(--accent)); 
-    --sidebar-primary-foreground: 220 25% 5%; 
-    --sidebar-accent: 220 25% 20%; 
-    --sidebar-accent-foreground: 210 30% 92%; 
-    --sidebar-border: 220 25% 18%; 
+    --sidebar-primary-foreground: 47 30% 10%; 
+    --sidebar-accent: 210 20% 22%; 
+    --sidebar-accent-foreground: 210 25% 90%; 
+    --sidebar-border: 210 20% 20%; 
     --sidebar-ring: hsl(var(--accent));
   }
 }
@@ -112,4 +120,3 @@ body {
 .frosted-glass {
   @apply bg-card/20 backdrop-blur-md border border-border/15 shadow-lg;
 }
-
