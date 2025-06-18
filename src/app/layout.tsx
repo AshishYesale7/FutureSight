@@ -15,9 +15,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // The useTheme hook will handle adding/removing 'dark' class on client side
+  // The useTheme hook will handle adding/removing 'dark' or 'light' class on client side
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>{/* suppressHydrationWarning for class on html */}
+    <html lang="en" suppressHydrationWarning> {/* Removed className="dark" */}
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -34,4 +34,3 @@ export default function RootLayout({
     </html>
   );
 }
-
