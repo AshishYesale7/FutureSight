@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -9,7 +8,7 @@ const THEME_STORAGE_KEY = 'theme';
 // Function to get the initial theme (runs only on client)
 const getInitialTheme = (): Theme => {
   if (typeof window === 'undefined') {
-    return 'light'; // Default for server (won't be applied visually until client hydration)
+    return 'light'; // Default for server
   }
   const storedTheme = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
   if (storedTheme && (storedTheme === 'light' || storedTheme === 'dark')) {
@@ -20,21 +19,17 @@ const getInitialTheme = (): Theme => {
 };
 
 export function useTheme() {
-  // Initialize state with a function to ensure it's only called on the client
-  const [theme, setThemeState] = useState<Theme>(() => getInitialTheme());
+  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
 
-  // Effect to apply the theme and update localStorage whenever `theme` state changes.
-  // This runs on initial client render and after every theme change.
+  // Effect to update localStorage whenever `theme` state changes.
+  // It no longer manipulates document.documentElement directly.
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      document.documentElement.classList.remove('light', 'dark');
-      document.documentElement.classList.add(theme);
       localStorage.setItem(THEME_STORAGE_KEY, theme);
     }
   }, [theme]);
 
-  // Effect to listen for system theme changes (e.g., OS toggles dark/light mode)
-  // and update the theme if it's not already pinned by user in localStorage.
+  // Effect to listen for system theme changes if no preference is stored.
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -61,8 +56,5 @@ export function useTheme() {
     setThemeState((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
   }, []);
 
-  // The theme state is now initialized correctly on the client.
-  // For SSR, it might initially render with the default 'light' and then switch.
-  // `suppressHydrationWarning` on <html> helps manage this.
-  return { theme, setTheme, toggleTheme };
+  return { theme, setTheme, toggleTheme }; // 'theme' is the user's preferred theme
 }
