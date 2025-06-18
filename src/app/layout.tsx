@@ -17,7 +17,7 @@ export default function RootLayout({
 }>) {
   // The useTheme hook will handle adding/removing 'dark' or 'light' class on client side
   return (
-    <html lang="en" suppressHydrationWarning> {/* Removed className="dark" */}
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
