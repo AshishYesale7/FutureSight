@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { AlertCircle, Bot, Calendar, Inbox, ExternalLink, Lightbulb } from 'lucide-react';
+import { AlertCircle, Bot, Calendar, Inbox, ExternalLink } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
 import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents } from '@/data/mock';
@@ -15,18 +15,57 @@ import type { TimelineEvent } from '@/types';
 import { format, parseISO, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
+const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
+
 export default function ActualDashboardPage() {
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
-  const [aiInsights, setAiInsights] = useState<ActionableInsight[]>([]);
+  const [aiInsights, setAiInsights] = useState<ActionableInsight[]>([]); // Stores raw AI insights for reference display
   const [insightsError, setInsightsError] = useState<string | null>(null);
-  const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(() => 
-    mockTimelineEvents.map(event => ({
+  const { toast } = useToast();
+
+  const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(() => {
+    if (typeof window === 'undefined') { // SSR guard
+      return mockTimelineEvents.map(event => ({
+        ...event,
+        date: startOfDay(typeof event.date === 'string' ? parseISO(event.date) : event.date),
+        isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
+      }));
+    }
+    try {
+      const storedEventsString = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (storedEventsString) {
+        const parsedEvents: (Omit<TimelineEvent, 'icon' | 'date'> & { date: string })[] = JSON.parse(storedEventsString);
+        return parsedEvents.map(event => ({
+          ...event,
+          date: startOfDay(parseISO(event.date)),
+          // icon is derived dynamically in TimelineView or from original mock mapping
+          // isDeletable is restored from what was saved
+        } as TimelineEvent)); // Cast as TimelineEvent, icon will be handled
+      }
+    } catch (error) {
+      console.error("Error reading timeline events from localStorage:", error);
+    }
+    // Fallback to mock data if nothing in localStorage or error
+    return mockTimelineEvents.map(event => ({
       ...event,
       date: startOfDay(typeof event.date === 'string' ? parseISO(event.date) : event.date),
-      isDeletable: false, // Mock events are not deletable by default
-    }))
-  );
-  const { toast } = useToast();
+      isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
+    }));
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const serializableEvents = displayedTimelineEvents.map(event => {
+        const { icon, ...rest } = event; // Destructure to remove icon component
+        return {
+          ...rest,
+          date: event.date.toISOString(), // Store date as ISO string
+        };
+      });
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serializableEvents));
+    }
+  }, [displayedTimelineEvents]);
+
 
   const transformInsightToEvent = (insight: ActionableInsight): TimelineEvent => {
     let eventDate;
@@ -38,14 +77,14 @@ export default function ActualDashboardPage() {
     }
 
     return {
-      id: `ai-${insight.id}`, // Prefix to denote AI origin and help uniqueness
+      id: `ai-${insight.id}`,
       date: eventDate,
       title: insight.title,
       type: 'ai_suggestion',
       notes: insight.summary,
       links: insight.originalLink ? [{ title: `View Original ${insight.source === 'gmail' ? 'Email' : 'Event'}`, url: insight.originalLink }] : [],
       status: 'pending',
-      icon: insight.source === 'google_calendar' ? Calendar : insight.source === 'gmail' ? Inbox : Bot,
+      icon: Bot, // Icon for AI suggestions
       isDeletable: true,
     };
   };
@@ -53,6 +92,8 @@ export default function ActualDashboardPage() {
   const handleFetchAndProcessGoogleData = async () => {
     setIsLoadingInsights(true);
     setInsightsError(null);
+    let newTimelineEventsFromAI: TimelineEvent[] = [];
+    let trulyNewEventsForToastCount = 0;
 
     try {
       const input: ProcessGoogleDataInput = {
@@ -62,36 +103,20 @@ export default function ActualDashboardPage() {
       const result = await processGoogleData(input);
 
       if (result.insights && result.insights.length > 0) {
-        const newTimelineEventsFromAI = result.insights.map(transformInsightToEvent);
-        
-        // Determine uniqueness for toast message based on CURRENT displayedTimelineEvents state
-        // This must be done BEFORE setDisplayedTimelineEvents schedules its update.
-        const currentEventIds = new Set(displayedTimelineEvents.map(e => e.id));
-        const trulyNewEventsForToast = newTimelineEventsFromAI.filter(newEvent => !currentEventIds.has(newEvent.id));
+        newTimelineEventsFromAI = result.insights.map(transformInsightToEvent);
+        setAiInsights(result.insights); // Update raw insights for display
 
-        // Schedule state updates
+        // This updater function for setDisplayedTimelineEvents must be pure
         setDisplayedTimelineEvents(prevEvents => {
-          const existingEventIdsInUpdater = new Set(prevEvents.map(e => e.id));
-          const uniqueNewEventsToAdd = newTimelineEventsFromAI.filter(newEvent => !existingEventIdsInUpdater.has(newEvent.id));
-          // This updater function should NOT call toast. It only calculates the next state.
+          const currentEventIds = new Set(prevEvents.map(e => e.id));
+          const uniqueNewEventsToAdd = newTimelineEventsFromAI.filter(newEvent => !currentEventIds.has(newEvent.id));
+          trulyNewEventsForToastCount = uniqueNewEventsToAdd.length; // Capture count for toast later
           return [...prevEvents, ...uniqueNewEventsToAdd];
         });
-        setAiInsights(result.insights); 
 
-        // Call toast AFTER state updates have been scheduled.
-        if (newTimelineEventsFromAI.length > 0) { // Check if AI processed any insights at all
-            if (trulyNewEventsForToast.length === 0) {
-                toast({ title: "AI Insights", description: "Insights processed, but no new unique items to add to the timeline." });
-            } else {
-                 toast({ title: "AI Insights", description: `${trulyNewEventsForToast.length} new item(s) added to your timeline.` });
-            }
-        }
-        // If newTimelineEventsFromAI.length was 0 (but result.insights was not empty, though this case is unlikely given the check),
-        // it would be handled by the outer 'else' for result.insights being empty.
-
-      } else { // result.insights is null or empty
-        toast({ title: "AI Insights", description: "No specific actionable insights found in the provided data to add to the timeline." });
-        setAiInsights([]);
+      } else {
+        setAiInsights([]); // No new raw insights
+         trulyNewEventsForToastCount = -1; // Special value to indicate no insights found
       }
     } catch (error: any) {
       console.error('Error processing Google data:', error);
@@ -99,7 +124,24 @@ export default function ActualDashboardPage() {
       toast({ title: "Error", description: "Failed to get AI insights from Google data.", variant: "destructive" });
     } finally {
       setIsLoadingInsights(false);
+      // Show toast messages *after* state updates have been scheduled
+      if (insightsError) {
+        // Error toast already shown in catch
+      } else if (trulyNewEventsForToastCount === -1) {
+         toast({ title: "AI Insights", description: "No specific actionable insights found in the provided data." });
+      } else if (newTimelineEventsFromAI.length > 0) {
+        if (trulyNewEventsForToastCount === 0) {
+          toast({ title: "AI Insights", description: "Insights processed, but no new unique items to add to the timeline." });
+        } else {
+          toast({ title: "AI Insights", description: `${trulyNewEventsForToastCount} new item(s) added to your timeline.` });
+        }
+      }
     }
+  };
+
+  const handleDeleteTimelineEvent = (eventId: string) => {
+    setDisplayedTimelineEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
+    // Toast for deletion is handled in TimelineView
   };
   
   const formatDateSafe = (dateString: string) => {
@@ -119,8 +161,8 @@ export default function ActualDashboardPage() {
         </p>
       </div>
       
-      <div className="flex-1 min-h-0">
-        <TimelineView events={displayedTimelineEvents} />
+      <div className="flex-1 min-h-0"> {/* This allows TimelineView to take up space and scroll */}
+        <TimelineView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
       </div>
       
       <TodaysPlanCard />
@@ -210,3 +252,4 @@ export default function ActualDashboardPage() {
     </div>
   );
 }
+
