@@ -49,7 +49,7 @@ const ActionableInsightSchema = z.object({
   date: z.string().datetime().describe("The primary date/time for this item (ISO 8601 format). For emails, use internalDate; for events, use startDateTime."),
   summary: z.string().describe("A brief AI-generated summary of the item, or key details from the event/email."),
   source: z.enum(['google_calendar', 'gmail']).describe("Indicates whether the insight originated from Google Calendar or Gmail."),
-  originalLink: z.string().url().optional().describe("A direct link to the original Google Calendar event or Gmail message, if available.")
+  originalLink: z.string().optional().describe("A direct link to the original Google Calendar event or Gmail message, if available. This should be a valid URL string.")
 });
 export type ActionableInsight = z.infer<typeof ActionableInsightSchema>;
 
@@ -111,7 +111,7 @@ Instructions:
 5.  Create a brief 'summary' for each insight. For emails, summarize the key point from the subject and snippet. For calendar events, use the event description or summarize its purpose.
 6.  Set the 'source' field to either 'google_calendar' or 'gmail'.
 7.  Construct the 'id' for each insight by prefixing the original ID with 'cal:' for calendar events (e.g., 'cal:{{{id}}}') or 'mail:' for Gmail messages (e.g., 'mail:{{{id}}}').
-8.  Include the 'originalLink' if available.
+8.  If an 'originalLink' is available in the source data (htmlLink for calendar, link for gmail), include it. Ensure it's a valid URL.
 9.  If an email appears to be a newsletter, promotional content, or not directly actionable, you may choose to omit it or provide a very brief, low-priority insight. Focus on what helps the user manage their time and tasks.
 10. Structure your output according to the 'ActionableInsightSchema'.
 
@@ -136,3 +136,4 @@ const processGoogleDataFlow = ai.defineFlow(
     return output;
   }
 );
+
