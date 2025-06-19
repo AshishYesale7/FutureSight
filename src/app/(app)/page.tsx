@@ -1,9 +1,10 @@
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import EventCalendarView from '@/components/timeline/EventCalendarView';
 import SlidingTimelineView from '@/components/timeline/SlidingTimelineView';
 import TimelineListView from '@/components/timeline/TimelineListView';
+import DayTimetableView from '@/components/timeline/DayTimetableView'; // New Import
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -14,7 +15,7 @@ import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
 import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents } from '@/data/mock';
 import type { TimelineEvent } from '@/types';
-import { format, parseISO, addMonths, subMonths, startOfMonth } from 'date-fns';
+import { format, parseISO, addMonths, subMonths, startOfMonth, isSameDay, startOfDay as dfnsStartOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
@@ -24,7 +25,9 @@ const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 const parseDatePreservingTime = (dateInput: string | Date): Date => {
   if (typeof dateInput === 'string') {
     try {
-      return parseISO(dateInput); 
+      const parsed = parseISO(dateInput);
+      if (isNaN(parsed.valueOf())) throw new Error('Invalid date string after parseISO');
+      return parsed;
     } catch (e) {
       console.warn(`Invalid date string for parseISO: ${dateInput}. Defaulting to current date.`);
       return new Date();
@@ -45,6 +48,7 @@ export default function ActualDashboardPage() {
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [activeDisplayMonth, setActiveDisplayMonth] = useState<Date>(startOfMonth(new Date()));
+  const [selectedDateForDayView, setSelectedDateForDayView] = useState<Date | null>(null); // New state
 
   const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(() => {
     if (typeof window === 'undefined') {
@@ -62,7 +66,7 @@ export default function ActualDashboardPage() {
           ...event,
           date: parseDatePreservingTime(event.date), 
            isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
-        } as TimelineEvent));
+        } as TimelineEvent)).filter(e => e.date instanceof Date && !isNaN(e.date.valueOf()));
       }
     } catch (error) {
       console.error("Error reading timeline events from localStorage:", error);
@@ -71,7 +75,7 @@ export default function ActualDashboardPage() {
       ...event,
       date: parseDatePreservingTime(event.date), 
       isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
-    }));
+    })).filter(e => e.date instanceof Date && !isNaN(e.date.valueOf()));
   });
 
   useEffect(() => {
@@ -80,7 +84,7 @@ export default function ActualDashboardPage() {
         const { icon, ...rest } = event; 
         return {
           ...rest,
-          date: event.date.toISOString(), 
+          date: (event.date instanceof Date && !isNaN(event.date.valueOf())) ? event.date.toISOString() : new Date().toISOString(), 
         };
       });
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serializableEvents));
@@ -88,13 +92,14 @@ export default function ActualDashboardPage() {
   }, [displayedTimelineEvents]);
 
 
-  const transformInsightToEvent = (insight: ActionableInsight): TimelineEvent => {
+  const transformInsightToEvent = (insight: ActionableInsight): TimelineEvent | null => {
     let eventDate;
     try {
-      eventDate = parseISO(insight.date); 
+      eventDate = parseISO(insight.date);
+      if (isNaN(eventDate.valueOf())) throw new Error('Invalid insight date');
     } catch (e) {
-      console.warn(`Invalid date format for insight ${insight.id}: ${insight.date}. Defaulting to today.`);
-      eventDate = new Date();
+      console.warn(`Invalid date format for insight ${insight.id}: ${insight.date}. Skipping insight.`);
+      return null; // Skip this insight
     }
 
     return {
@@ -127,7 +132,8 @@ export default function ActualDashboardPage() {
       const result = await processGoogleData(input);
 
       if (result.insights && result.insights.length > 0) {
-        newTimelineEventsFromAI = result.insights.map(transformInsightToEvent);
+        const transformedEvents = result.insights.map(transformInsightToEvent).filter(event => event !== null) as TimelineEvent[];
+        newTimelineEventsFromAI = transformedEvents;
         setAiInsights(result.insights); 
 
         setDisplayedTimelineEvents(prevEvents => {
@@ -167,11 +173,23 @@ export default function ActualDashboardPage() {
 
   const handleDeleteTimelineEvent = (eventId: string) => {
     setDisplayedTimelineEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
+    // If deleting an event that was part of the day view, check if day view needs to close
+    if (selectedDateForDayView) {
+        const remainingEventsOnDay = displayedTimelineEvents.filter(event => 
+            event.id !== eventId && 
+            event.date instanceof Date && !isNaN(event.date.valueOf()) &&
+            isSameDay(dfnsStartOfDay(event.date), dfnsStartOfDay(selectedDateForDayView))
+        );
+        if (remainingEventsOnDay.length === 0) {
+            setSelectedDateForDayView(null); // Close day view if no events left
+        }
+    }
   };
   
   const formatDateSafeWithTime = (dateString: string) => {
     try {
       const dateObj = parseISO(dateString); 
+      if (isNaN(dateObj.valueOf())) return "Invalid Date";
       const isMidnightTime = dateObj.getHours() === 0 && dateObj.getMinutes() === 0 && dateObj.getSeconds() === 0 && dateObj.getMilliseconds() === 0;
       return format(dateObj, isMidnightTime ? 'MMM d, yyyy' : 'MMM d, yyyy, h:mm a');
     } catch (e) {
@@ -179,9 +197,36 @@ export default function ActualDashboardPage() {
     }
   };
 
-  const handleMonthNavigation = (direction: 'prev' | 'next') => {
+  const handleMonthNavigationForSharedViews = (direction: 'prev' | 'next') => {
     setActiveDisplayMonth(current => direction === 'prev' ? subMonths(current, 1) : addMonths(current, 1));
   };
+
+  const handleDayClickFromCalendar = (day: Date, hasEvents: boolean) => {
+    if (hasEvents) {
+      setSelectedDateForDayView(day);
+    } else {
+      setSelectedDateForDayView(null);
+      toast({ title: "No Events", description: `No events scheduled for ${format(day, 'MMMM d, yyyy')}.` });
+    }
+  };
+
+  const closeDayTimetableView = () => {
+    setSelectedDateForDayView(null);
+  };
+
+  const eventsForDayView = useMemo(() => {
+    if (!selectedDateForDayView) return [];
+    return displayedTimelineEvents.filter(event => 
+        event.date instanceof Date && !isNaN(event.date.valueOf()) &&
+        isSameDay(dfnsStartOfDay(event.date), dfnsStartOfDay(selectedDateForDayView))
+    );
+  }, [displayedTimelineEvents, selectedDateForDayView]);
+
+  const handleViewModeChange = (newMode: 'calendar' | 'list') => {
+    setViewMode(newMode);
+    setSelectedDateForDayView(null); // Reset day view when switching main tabs
+  };
+
 
   return (
     <div className="space-y-8 h-full flex flex-col">
@@ -194,26 +239,37 @@ export default function ActualDashboardPage() {
       
       <Tabs 
         value={viewMode} 
-        onValueChange={(value) => setViewMode(value as 'calendar' | 'list')} 
+        onValueChange={(value) => handleViewModeChange(value as 'calendar' | 'list')} 
         className="w-full flex flex-col flex-1 min-h-0"
       >
         <TabsList className="grid w-full grid-cols-2 max-w-xs mb-4 self-start">
           <TabsTrigger value="calendar"><CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar View</TabsTrigger>
           <TabsTrigger value="list"><List className="mr-2 h-4 w-4" /> List View</TabsTrigger>
         </TabsList>
-        <TabsContent value="calendar" className="space-y-6 overflow-y-auto flex-1">
+
+        <TabsContent value="calendar" className="space-y-6 overflow-y-auto flex-1 flex flex-col min-h-0">
           <EventCalendarView 
             events={displayedTimelineEvents} 
-            onDeleteEvent={handleDeleteTimelineEvent}
             month={activeDisplayMonth}
-            onMonthChange={setActiveDisplayMonth}
+            onMonthChange={setActiveDisplayMonth} // For direct month change in calendar itself
+            onDayClick={handleDayClickFromCalendar} // New prop
+            // onDeleteEvent is not directly used by EventCalendarView anymore for its own modal
           />
-          <SlidingTimelineView 
-            events={displayedTimelineEvents} 
-            onDeleteEvent={handleDeleteTimelineEvent}
-            currentDisplayMonth={activeDisplayMonth}
-            onNavigateMonth={handleMonthNavigation}
-          />
+          {selectedDateForDayView ? (
+            <DayTimetableView
+              date={selectedDateForDayView}
+              events={eventsForDayView}
+              onClose={closeDayTimetableView}
+              onDeleteEvent={handleDeleteTimelineEvent}
+            />
+          ) : (
+            <SlidingTimelineView 
+              events={displayedTimelineEvents} 
+              onDeleteEvent={handleDeleteTimelineEvent}
+              currentDisplayMonth={activeDisplayMonth}
+              onNavigateMonth={handleMonthNavigationForSharedViews} // Renamed for clarity
+            />
+          )}
         </TabsContent>
         <TabsContent value="list" className="flex-1 min-h-0">
           <TimelineListView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
@@ -307,4 +363,3 @@ export default function ActualDashboardPage() {
     </div>
   );
 }
-
