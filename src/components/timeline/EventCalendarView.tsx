@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { CalendarDays, Bot, Trash2, Clock, ExternalLink as LinkIcon } from 'lucide-react';
 import { format, isSameDay, parseISO, startOfDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle as RadixDialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle as RadixDialogTitle, DialogDescription as RadixDialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Calendar } from "@/components/ui/calendar";
@@ -40,10 +40,11 @@ const isMidnight = (date: Date): boolean => {
 interface EventCalendarViewProps {
   events: TimelineEvent[];
   onDeleteEvent?: (eventId: string) => void;
+  month: Date; // Controlled by parent
+  onMonthChange: (newMonth: Date) => void; // Callback to parent
 }
 
-export default function EventCalendarView({ events: allEventsFromProps, onDeleteEvent }: EventCalendarViewProps) {
-  const [currentCalendarMonth, setCurrentCalendarMonth] = useState<Date>(new Date());
+export default function EventCalendarView({ events: allEventsFromProps, onDeleteEvent, month, onMonthChange }: EventCalendarViewProps) {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
@@ -115,8 +116,8 @@ export default function EventCalendarView({ events: allEventsFromProps, onDelete
           mode="single"
           selected={selectedDate || undefined}
           onSelect={(day) => handleDayClick(day)}
-          month={currentCalendarMonth}
-          onMonthChange={setCurrentCalendarMonth}
+          month={month} // Use prop
+          onMonthChange={onMonthChange} // Use prop
           className="rounded-md w-full p-0 [&_button]:text-base [&_button:has(span_.absolute)]:overflow-visible"
           classNames={{
             day_selected: "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary/90",
@@ -135,7 +136,7 @@ export default function EventCalendarView({ events: allEventsFromProps, onDelete
                 Events for {format(selectedDate, 'EEEE, MMMM d, yyyy')}
               </RadixDialogTitle>
               {eventsForSelectedDay.length === 0 && (
-                <DialogDescription className="pt-2">No events scheduled for this day.</DialogDescription>
+                <RadixDialogDescription className="pt-2">No events scheduled for this day.</RadixDialogDescription>
               )}
             </DialogHeader>
             {eventsForSelectedDay.length > 0 && (

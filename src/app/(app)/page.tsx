@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import EventCalendarView from '@/components/timeline/EventCalendarView';
 import SlidingTimelineView from '@/components/timeline/SlidingTimelineView';
-import TimelineListView from '@/components/timeline/TimelineListView'; // Added for the restored list view
+import TimelineListView from '@/components/timeline/TimelineListView';
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -14,7 +14,7 @@ import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
 import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents } from '@/data/mock';
 import type { TimelineEvent } from '@/types';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, addMonths, subMonths, startOfMonth } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
@@ -44,6 +44,7 @@ export default function ActualDashboardPage() {
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [activeDisplayMonth, setActiveDisplayMonth] = useState<Date>(startOfMonth(new Date()));
 
   const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(() => {
     if (typeof window === 'undefined') {
@@ -178,6 +179,10 @@ export default function ActualDashboardPage() {
     }
   };
 
+  const handleMonthNavigation = (direction: 'prev' | 'next') => {
+    setActiveDisplayMonth(current => direction === 'prev' ? subMonths(current, 1) : addMonths(current, 1));
+  };
+
   return (
     <div className="space-y-8 h-full flex flex-col">
       <div>
@@ -197,8 +202,18 @@ export default function ActualDashboardPage() {
           <TabsTrigger value="list"><List className="mr-2 h-4 w-4" /> List View</TabsTrigger>
         </TabsList>
         <TabsContent value="calendar" className="space-y-6 overflow-y-auto flex-1">
-          <EventCalendarView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
-          <SlidingTimelineView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
+          <EventCalendarView 
+            events={displayedTimelineEvents} 
+            onDeleteEvent={handleDeleteTimelineEvent}
+            month={activeDisplayMonth}
+            onMonthChange={setActiveDisplayMonth}
+          />
+          <SlidingTimelineView 
+            events={displayedTimelineEvents} 
+            onDeleteEvent={handleDeleteTimelineEvent}
+            currentDisplayMonth={activeDisplayMonth}
+            onNavigateMonth={handleMonthNavigation}
+          />
         </TabsContent>
         <TabsContent value="list" className="flex-1 min-h-0">
           <TimelineListView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />

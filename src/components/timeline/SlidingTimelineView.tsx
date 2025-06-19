@@ -2,10 +2,10 @@
 'use client';
 
 import type { TimelineEvent } from '@/types';
-import { useState, useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, Bot, Trash2, ChevronLeft, ChevronRight, Clock, ExternalLink as LinkIcon } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, addMonths, subMonths, isSameMonth, isToday } from 'date-fns';
+import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, isToday } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -60,11 +60,17 @@ const isMidnight = (date: Date): boolean => {
 interface SlidingTimelineViewProps {
   events: TimelineEvent[];
   onDeleteEvent?: (eventId: string) => void;
+  currentDisplayMonth: Date; // Controlled by parent
+  onNavigateMonth: (direction: 'prev' | 'next') => void; // Callback to parent
 }
 
-export default function SlidingTimelineView({ events: allEventsFromProps, onDeleteEvent }: SlidingTimelineViewProps) {
+export default function SlidingTimelineView({ 
+  events: allEventsFromProps, 
+  onDeleteEvent,
+  currentDisplayMonth,
+  onNavigateMonth
+}: SlidingTimelineViewProps) {
   const { toast } = useToast();
-  const [currentDisplayMonth, setCurrentDisplayMonth] = useState<Date>(startOfMonth(new Date()));
 
   const processedEvents = useMemo(() => {
     return allEventsFromProps
@@ -77,14 +83,6 @@ export default function SlidingTimelineView({ events: allEventsFromProps, onDele
     const monthEnd = endOfMonth(currentDisplayMonth);
     return processedEvents.filter(event => isWithinInterval(event.date, { start: monthStart, end: monthEnd }));
   }, [processedEvents, currentDisplayMonth]);
-
-  const handlePreviousMonth = () => {
-    setCurrentDisplayMonth(prev => subMonths(prev, 1));
-  };
-
-  const handleNextMonth = () => {
-    setCurrentDisplayMonth(prev => addMonths(prev, 1));
-  };
   
   const handleDeleteEvent = (eventId: string, eventTitle: string) => {
     if (onDeleteEvent) {
@@ -97,13 +95,13 @@ export default function SlidingTimelineView({ events: allEventsFromProps, onDele
     <Card className="frosted-glass w-full shadow-xl flex flex-col h-full">
       <CardHeader className="p-4 border-b border-border/30">
         <div className="flex justify-between items-center">
-          <Button variant="ghost" size="icon" onClick={handlePreviousMonth} aria-label="Previous month">
+          <Button variant="ghost" size="icon" onClick={() => onNavigateMonth('prev')} aria-label="Previous month">
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <CardTitle className="font-headline text-xl text-primary text-center">
             {format(currentDisplayMonth, 'MMMM yyyy')}
           </CardTitle>
-          <Button variant="ghost" size="icon" onClick={handleNextMonth} aria-label="Next month">
+          <Button variant="ghost" size="icon" onClick={() => onNavigateMonth('next')} aria-label="Next month">
             <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
