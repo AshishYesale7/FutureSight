@@ -1,3 +1,4 @@
+
 export interface TimelineEvent {
   id: string;
   date: Date;
@@ -48,4 +49,31 @@ export interface ResourceLink {
 export interface TodaysPlan {
   schedule: { time: string; activity: string }[];
   microGoals: string[];
+}
+
+// Types for Google Data Processing Flow
+export interface RawCalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  startDateTime: string; // ISO 8601 format
+  endDateTime: string; // ISO 8601 format
+  htmlLink?: string;
+}
+
+export interface RawGmailMessage {
+  id: string;
+  subject: string;
+  snippet: string;
+  internalDate: string; // epoch milliseconds string
+  link?: string;
+}
+
+export interface ActionableInsight {
+  id: string; // e.g., 'cal:original_event_id' or 'mail:original_message_id'
+  title: string;
+  date: string; // ISO 8601 format
+  summary: string;
+  source: 'google_calendar' | 'gmail';
+  originalLink?: string;
 }
