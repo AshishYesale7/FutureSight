@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import EventCalendarView from '@/components/timeline/EventCalendarView';
-import TimelineListView from '@/components/timeline/TimelineListView';
+import SlidingTimelineView from '@/components/timeline/SlidingTimelineView'; // Changed import
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -199,7 +199,7 @@ export default function ActualDashboardPage() {
           <EventCalendarView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
         </TabsContent>
         <TabsContent value="list" className="flex-1 min-h-0">
-          <TimelineListView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
+          <SlidingTimelineView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
         </TabsContent>
       </Tabs>
       
@@ -290,4 +290,3 @@ export default function ActualDashboardPage() {
     </div>
   );
 }
-

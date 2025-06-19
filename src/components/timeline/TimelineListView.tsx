@@ -1,3 +1,6 @@
+// This file's functionality has been replaced by SlidingTimelineView.tsx
+// It can be safely deleted.
+// Keeping it here temporarily as requested by the user previously for reference.
 
 'use client';
 

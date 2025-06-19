@@ -1,0 +1,214 @@
+
+'use client';
+
+import type { TimelineEvent } from '@/types';
+import { useState, useMemo, type ReactNode } from 'react';
+import { Button } from '@/components/ui/button';
+import { CalendarDays, Bot, Trash2, ChevronLeft, ChevronRight, Clock, ExternalLink as LinkIcon } from 'lucide-react';
+import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, addMonths, subMonths, isSameMonth, isToday } from 'date-fns';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+const getEventDotColor = (type: TimelineEvent['type']): string => {
+  switch (type) {
+    case 'exam': return 'bg-red-500';
+    case 'deadline': return 'bg-yellow-500';
+    case 'goal': return 'bg-green-500';
+    case 'project': return 'bg-blue-500';
+    case 'application': return 'bg-purple-500';
+    case 'ai_suggestion': return 'bg-teal-500';
+    default: return 'bg-gray-500';
+  }
+};
+
+const getEventTypeStyle = (type: TimelineEvent['type']) => { // For badges
+  switch (type) {
+    case 'exam': return 'bg-red-500/80 border-red-700 text-white';
+    case 'deadline': return 'bg-yellow-500/80 border-yellow-700 text-yellow-900';
+    case 'goal': return 'bg-green-500/80 border-green-700 text-white';
+    case 'project': return 'bg-blue-500/80 border-blue-700 text-white';
+    case 'application': return 'bg-purple-500/80 border-purple-700 text-white';
+    case 'ai_suggestion': return 'bg-teal-500/80 border-teal-700 text-white';
+    default: return 'bg-gray-500/80 border-gray-700 text-white';
+  }
+};
+
+const getEventTypeIcon = (event: TimelineEvent): ReactNode => {
+  if (event.type === 'ai_suggestion') return <Bot className="mr-2 h-4 w-4 text-accent flex-shrink-0" />;
+  const Icon = event.icon || CalendarDays;
+  return <Icon className="mr-2 h-4 w-4 text-accent flex-shrink-0" />;
+};
+
+const isMidnight = (date: Date): boolean => {
+  return date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0 && date.getMilliseconds() === 0;
+};
+
+interface SlidingTimelineViewProps {
+  events: TimelineEvent[];
+  onDeleteEvent?: (eventId: string) => void;
+}
+
+export default function SlidingTimelineView({ events: allEventsFromProps, onDeleteEvent }: SlidingTimelineViewProps) {
+  const { toast } = useToast();
+  const [currentDisplayMonth, setCurrentDisplayMonth] = useState<Date>(startOfMonth(new Date()));
+
+  const processedEvents = useMemo(() => {
+    return allEventsFromProps
+      .map(e => ({ ...e, date: e.date instanceof Date && !isNaN(e.date.valueOf()) ? e.date : parseISO(e.date as unknown as string) }))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [allEventsFromProps]);
+
+  const eventsForCurrentMonth = useMemo(() => {
+    const monthStart = startOfMonth(currentDisplayMonth);
+    const monthEnd = endOfMonth(currentDisplayMonth);
+    return processedEvents.filter(event => isWithinInterval(event.date, { start: monthStart, end: monthEnd }));
+  }, [processedEvents, currentDisplayMonth]);
+
+  const handlePreviousMonth = () => {
+    setCurrentDisplayMonth(prev => subMonths(prev, 1));
+  };
+
+  const handleNextMonth = () => {
+    setCurrentDisplayMonth(prev => addMonths(prev, 1));
+  };
+  
+  const handleDeleteEvent = (eventId: string, eventTitle: string) => {
+    if (onDeleteEvent) {
+      onDeleteEvent(eventId);
+      toast({ title: "Event Deleted", description: `"${eventTitle}" has been removed.` });
+    }
+  };
+
+  return (
+    <Card className="frosted-glass w-full shadow-xl flex flex-col h-full">
+      <CardHeader className="p-4 border-b border-border/30">
+        <div className="flex justify-between items-center">
+          <Button variant="ghost" size="icon" onClick={handlePreviousMonth} aria-label="Previous month">
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <CardTitle className="font-headline text-xl text-primary text-center">
+            {format(currentDisplayMonth, 'MMMM yyyy')}
+          </CardTitle>
+          <Button variant="ghost" size="icon" onClick={handleNextMonth} aria-label="Next month">
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0 flex-1 min-h-0">
+        {eventsForCurrentMonth.length === 0 ? (
+          <div className="flex items-center justify-center h-full p-6">
+            <p className="text-foreground/70">No events for {format(currentDisplayMonth, 'MMMM yyyy')}.</p>
+          </div>
+        ) : (
+          <ScrollArea className="h-full p-4 pr-2">
+            <div className="relative pl-5"> {/* Padding left for the timeline track and dots */}
+              {/* Timeline Track */}
+              <div className="absolute left-[9px] top-0 bottom-0 w-0.5 bg-border/70 z-0" />
+
+              <div className="space-y-6">
+                {eventsForCurrentMonth.map((event) => (
+                  <div key={event.id} className="flex items-start relative">
+                    {/* Dot and Date */}
+                    <div className="absolute -left-[19px] top-1 flex flex-col items-center z-10">
+                      <div className={cn("w-3.5 h-3.5 rounded-full border-2 border-background", getEventDotColor(event.type))} />
+                       <div className="mt-1 text-center">
+                        <p className="text-xs font-semibold text-primary">{format(event.date, 'dd')}</p>
+                        <p className="text-xs text-muted-foreground -mt-0.5">{format(event.date, 'MMM')}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Event Card Details */}
+                    <div className="ml-6 flex-1"> {/* Margin left to align with dot's right */}
+                       <Card className="bg-card/60 shadow-md hover:shadow-lg transition-shadow duration-200">
+                        <CardHeader className="p-3 pb-2">
+                          <div className="flex justify-between items-start gap-2">
+                            <h4 className="font-semibold text-md text-primary flex items-center">
+                              {getEventTypeIcon(event)}
+                              {event.title}
+                            </h4>
+                            {event.isDeletable && onDeleteEvent && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                    <Trash2 className="h-4 w-4" />
+                                    <span className="sr-only">Delete event</span>
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent className="frosted-glass">
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete "{event.title}".
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      className="bg-destructive hover:bg-destructive/90"
+                                      onClick={() => handleDeleteEvent(event.id, event.title)}
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
+                           <div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5">
+                            <Badge variant="outline" className={cn("capitalize text-xs py-0 px-1.5 h-auto", getEventTypeStyle(event.type))}>
+                              {event.type.replace(/_/g, ' ')}
+                            </Badge>
+                            {!isMidnight(event.date) && (
+                              <span className="flex items-center">
+                                <Clock className="h-3.5 w-3.5 mr-1" />
+                                {format(event.date, 'h:mm a')}
+                              </span>
+                            )}
+                          </div>
+                        </CardHeader>
+                        <CardContent className="p-3 pt-1 text-sm">
+                          {event.notes && <p className="text-foreground/80 mb-2 line-clamp-3">{event.notes}</p>}
+                          {event.status && (
+                            <p className="text-xs mb-1">Status: <Badge variant={event.status === 'completed' ? 'default' : 'secondary'} className={cn("capitalize", event.status === 'completed' ? 'bg-green-500 text-white' : '')}>{event.status}</Badge></p>
+                          )}
+                          {event.links && event.links.length > 0 && (
+                            <div>
+                              <h5 className="text-xs font-medium text-primary mb-0.5">Related Links:</h5>
+                              <ul className="space-y-0.5">
+                                {event.links.map(link => (
+                                  <li key={link.url} className="text-xs">
+                                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline flex items-center gap-1">
+                                      <LinkIcon size={12}/> {link.title}
+                                    </a>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </ScrollArea>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
