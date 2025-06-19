@@ -3,13 +3,13 @@ import type { LucideIcon } from 'lucide-react';
 
 export interface TimelineEvent {
   id: string;
-  date: Date;
+  date: Date; // This Date object will now store precise time
   title: string;
   type: 'exam' | 'deadline' | 'goal' | 'project' | 'application' | 'custom' | 'ai_suggestion';
   notes?: string;
   links?: { title: string; url: string }[];
   status?: 'pending' | 'in-progress' | 'completed' | 'missed';
-  icon?: LucideIcon | React.ElementType; 
+  icon?: LucideIcon | React.ElementType;
   isDeletable?: boolean;
 }
 
@@ -59,8 +59,8 @@ export interface RawCalendarEvent {
   id: string;
   summary: string;
   description?: string;
-  startDateTime: string; // ISO 8601 format
-  endDateTime: string; // ISO 8601 format
+  startDateTime: string; // ISO 8601 format, should include time
+  endDateTime: string; // ISO 8601 format, should include time
   htmlLink?: string;
 }
 
@@ -75,7 +75,7 @@ export interface RawGmailMessage {
 export interface ActionableInsight {
   id: string; // e.g., 'cal:original_event_id' or 'mail:original_message_id'
   title: string;
-  date: string; // ISO 8601 format
+  date: string; // ISO 8601 format, should include time
   summary: string;
   source: 'google_calendar' | 'gmail';
   originalLink?: string;
