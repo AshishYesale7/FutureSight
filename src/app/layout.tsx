@@ -1,3 +1,4 @@
+
 'use client';
 
 // Removed: import type { Metadata } from 'next';
@@ -17,7 +18,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { theme: userPreferredTheme } = useTheme();
+  const { theme: userPreferredTheme } = useTheme(); // This is the theme for the dashboard
   const pathname = usePathname();
   const isAuthPage = pathname.startsWith('/auth/');
 
@@ -33,7 +34,7 @@ export default function RootLayout({
   }, [pathname, userPreferredTheme, isAuthPage]);
 
   return (
-    <html lang="en" suppressHydrationWarning> {/* className will be set by useEffect */}
+    <html lang="en" suppressHydrationWarning>
       <head>
         <title>FutureSight</title>
         <meta name="description" content="Track your career progress and exam preparation." />
