@@ -153,12 +153,18 @@ export default function TimelineView() {
                               {getEventTypeIcon(selectedEvent)}
                               {selectedEvent.title}
                             </DialogTitle>
-                            <DialogDescription className="space-y-1">
-                              <div>{format(selectedEvent.date, 'EEEE, MMMM d, yyyy')}</div>
+                            {/*
+                              The DialogHeader is a flex-col with space-y-1.5.
+                              Each child here (p, div) will be spaced accordingly.
+                            */}
+                            <p className="text-sm text-muted-foreground">
+                              {format(selectedEvent.date, 'EEEE, MMMM d, yyyy')}
+                            </p>
+                            <div> {/* Wrapper for badge to allow proper spacing by DialogHeader and ensure it's a block if needed */}
                               <Badge variant="outline" className={cn(getEventTypeStyle(selectedEvent.type))}>
                                 {selectedEvent.type}
                               </Badge>
-                            </DialogDescription>
+                            </div>
                           </DialogHeader>
                           <div className="mt-4 space-y-3 text-sm">
                             {selectedEvent.notes && <p className="text-foreground/90">{selectedEvent.notes}</p>}
