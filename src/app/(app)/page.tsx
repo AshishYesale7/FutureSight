@@ -16,7 +16,7 @@ import type { TimelineEvent } from '@/types';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from '@/lib/utils'; // Added import
+import { cn } from '@/lib/utils';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 
@@ -114,6 +114,8 @@ export default function ActualDashboardPage() {
     let newTimelineEventsFromAI: TimelineEvent[] = [];
     let trulyNewEventsForToastCount = 0;
     let processingErrorOccurred = false;
+    let toastTitle = "AI Insights";
+    let toastDescription = "";
 
     try {
       const input: ProcessGoogleDataInput = {
@@ -139,20 +141,24 @@ export default function ActualDashboardPage() {
       }
     } catch (error: any) {
       console.error('Error processing Google data:', error);
-      setInsightsError(error.message || 'Failed to fetch or process AI insights.');
+      const errorMessage = error.message || 'Failed to fetch or process AI insights.';
+      setInsightsError(errorMessage);
       processingErrorOccurred = true;
+      toastTitle = "Error";
+      toastDescription = errorMessage;
     } 
     
     setIsLoadingInsights(false);
+
     if (processingErrorOccurred) {
-        toast({ title: "Error", description: insightsError || "Failed to get AI insights from Google data.", variant: "destructive" });
+        toast({ title: toastTitle, description: toastDescription, variant: "destructive" });
     } else if (trulyNewEventsForToastCount === -1) {
-        toast({ title: "AI Insights", description: "No specific actionable insights found in the provided data." });
+        toast({ title: toastTitle, description: "No specific actionable insights found in the provided data." });
     } else if (newTimelineEventsFromAI.length > 0) {
       if (trulyNewEventsForToastCount === 0) {
-        toast({ title: "AI Insights", description: "Insights processed, but no new unique items to add to the timeline." });
+        toast({ title: toastTitle, description: "Insights processed, but no new unique items to add to the timeline." });
       } else {
-        toast({ title: "AI Insights", description: `${trulyNewEventsForToastCount} new item(s) added to your timeline.` });
+        toast({ title: toastTitle, description: `${trulyNewEventsForToastCount} new item(s) added to your timeline.` });
       }
     }
   };
@@ -180,15 +186,19 @@ export default function ActualDashboardPage() {
         </p>
       </div>
       
-      <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'calendar' | 'list')} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-xs mb-4">
+      <Tabs 
+        value={viewMode} 
+        onValueChange={(value) => setViewMode(value as 'calendar' | 'list')} 
+        className="w-full flex flex-col flex-1 min-h-0"
+      >
+        <TabsList className="grid w-full grid-cols-2 max-w-xs mb-4 self-start">
           <TabsTrigger value="calendar"><CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar View</TabsTrigger>
           <TabsTrigger value="list"><List className="mr-2 h-4 w-4" /> List View</TabsTrigger>
         </TabsList>
-        <TabsContent value="calendar" className="flex-grow min-h-0 md:flex-grow-0 md:min-h-fit">
+        <TabsContent value="calendar" className="flex-1 min-h-0">
           <EventCalendarView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
         </TabsContent>
-        <TabsContent value="list" className="flex-grow min-h-0 md:flex-grow-0 md:min-h-fit max-h-[70vh]">
+        <TabsContent value="list" className="flex-1 min-h-0">
           <TimelineListView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
         </TabsContent>
       </Tabs>
@@ -280,3 +290,4 @@ export default function ActualDashboardPage() {
     </div>
   );
 }
+
