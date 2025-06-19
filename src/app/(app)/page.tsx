@@ -16,6 +16,7 @@ import type { TimelineEvent } from '@/types';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from '@/lib/utils'; // Added import
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 
