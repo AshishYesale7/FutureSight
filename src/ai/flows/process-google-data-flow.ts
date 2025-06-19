@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI agent for processing Google Calendar events and Gmail messages
@@ -22,7 +21,6 @@ const RawCalendarEventSchema = z.object({
   endDateTime: z.string().datetime().describe("End date and time of the event (ISO 8601 format)."),
   htmlLink: z.string().url().optional().describe("Link to the event in Google Calendar.")
 });
-// No export for RawCalendarEventSchema
 
 const RawGmailMessageSchema = z.object({
   id: z.string().describe("Original ID of the Gmail message."),
@@ -31,7 +29,6 @@ const RawGmailMessageSchema = z.object({
   internalDate: z.string().describe("The internal SAPI date of the message as epoch milliseconds string."), // Gmail API often returns this as string of epoch ms
   link: z.string().url().optional().describe("A link to open the email in Gmail.")
 });
-// No export for RawGmailMessageSchema
 
 const ProcessGoogleDataInputSchema = z.object({
   calendarEvents: z.array(RawCalendarEventSchema)
@@ -45,9 +42,9 @@ export type ProcessGoogleDataInput = z.infer<typeof ProcessGoogleDataInputSchema
 
 const ActionableInsightSchema = z.object({
   id: z.string().describe("A unique ID for this insight (e.g., 'cal:original_event_id' or 'mail:original_message_id')."),
-  title: z.string().describe("A concise title for the actionable item, event, or summarized email."),
-  date: z.string().datetime().describe("The primary date/time for this item (ISO 8601 format). For emails, use internalDate; for events, use startDateTime."),
-  summary: z.string().describe("A brief AI-generated summary of the item, or key details from the event/email."),
+  title: z.string().describe("A concise title for the actionable item, event, or summarized email. If there's a specific time associated (e.g., 'Meeting at 10:00 AM'), include it here."),
+  date: z.string().datetime().describe("The primary date/time for this item (ISO 8601 format). For calendar events, use the full startDateTime. For Gmail messages, convert their internalDate (epoch milliseconds) to a full ISO 8601 datetime string."),
+  summary: z.string().describe("A brief AI-generated summary of the item, or key details from the event/email. If a specific time is crucial (e.g. 'Deadline: Today 5:00 PM') and not in the title, mention it here."),
   source: z.enum(['google_calendar', 'gmail']).describe("Indicates whether the insight originated from Google Calendar or Gmail."),
   originalLink: z.string().optional().describe("A direct link to the original Google Calendar event or Gmail message, if available. This should be a valid URL string.")
 });
@@ -82,8 +79,8 @@ Google Calendar Events:
 - Event ID: {{{id}}}
   Title: {{{summary}}}
   Description: {{{description}}}
-  Starts: {{{startDateTime}}}
-  Ends: {{{endDateTime}}}
+  Starts (ISO 8601): {{{startDateTime}}}
+  Ends (ISO 8601): {{{endDateTime}}}
   Link: {{{htmlLink}}}
 {{/each}}
 {{else}}
@@ -106,9 +103,11 @@ No Gmail messages provided.
 Instructions:
 1.  Review all provided calendar events and Gmail messages.
 2.  For each item, determine if it represents an important event, task, deadline, or contains actionable information relevant for the user to track.
-3.  Generate a concise 'title' for each insight.
-4.  Use the 'startDateTime' for calendar events. For Gmail messages, convert their 'internalDate' (which is in epoch milliseconds) to an ISO 8601 datetime string for the 'date' field of the insight.
-5.  Create a brief 'summary' for each insight. For emails, summarize the key point from the subject and snippet. For calendar events, use the event description or summarize its purpose.
+3.  Generate a concise 'title' for each insight. If there's a specific time associated with the item (e.g., "Meeting at 10:00 AM", "Webinar starts 3 PM"), try to include this time information naturally within the title.
+4.  For the 'date' field of the insight:
+    a.  For calendar events, use the full ISO 8601 string from the 'startDateTime' field of the event. This must include the time.
+    b.  For Gmail messages, convert their 'internalDate' (which is in epoch milliseconds) to a full ISO 8601 datetime string. This must include the time.
+5.  Create a brief 'summary' for each insight. For emails, summarize the key point from the subject and snippet. For calendar events, use the event description or summarize its purpose. If a specific time is crucial (e.g., "Deadline: Today 5:00 PM") and not adequately covered in the title, mention it in the summary.
 6.  Set the 'source' field to either 'google_calendar' or 'gmail'.
 7.  Construct the 'id' for each insight by prefixing the original ID with 'cal:' for calendar events (e.g., 'cal:{{{id}}}') or 'mail:' for Gmail messages (e.g., 'mail:{{{id}}}').
 8.  If an 'originalLink' is available in the source data (htmlLink for calendar, link for gmail), include it. Ensure it's a valid URL.
