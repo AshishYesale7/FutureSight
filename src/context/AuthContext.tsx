@@ -16,17 +16,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Firebase auth state is initially loading
+  const [mounted, setMounted] = useState(false); // Tracks if the component has mounted on the client
 
   useEffect(() => {
+    setMounted(true); // Component has mounted
+
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      setLoading(false);
+      setLoading(false); // Firebase auth state has been determined
     });
     return () => unsubscribe();
   }, []);
 
-  if (loading) {
+  // Before component is mounted on client, or while Firebase auth is loading, show spinner.
+  // This ensures server and initial client render are consistent.
+  if (!mounted || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <LoadingSpinner size="lg" />
@@ -34,8 +39,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
   }
 
+  // If mounted and Firebase auth is resolved, render the context provider and children
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading: false }}> {/* Ensure loading is false here once resolved */}
       {children}
     </AuthContext.Provider>
   );
