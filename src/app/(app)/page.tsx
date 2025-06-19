@@ -1,29 +1,60 @@
 
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import TimelineView from '@/components/timeline/TimelineView';
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { AlertCircle, Bot, Calendar, Inbox, ExternalLink } from 'lucide-react';
+import { AlertCircle, Bot, Calendar, Inbox, ExternalLink, Lightbulb } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
-import { mockRawCalendarEvents, mockRawGmailMessages } from '@/data/mock';
-import { format, parseISO } from 'date-fns';
+import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents } from '@/data/mock';
+import type { TimelineEvent } from '@/types';
+import { format, parseISO, startOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ActualDashboardPage() {
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [aiInsights, setAiInsights] = useState<ActionableInsight[]>([]);
   const [insightsError, setInsightsError] = useState<string | null>(null);
+  const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(() => 
+    mockTimelineEvents.map(event => ({
+      ...event,
+      date: startOfDay(typeof event.date === 'string' ? parseISO(event.date) : event.date),
+      isDeletable: false, // Mock events are not deletable by default
+    }))
+  );
   const { toast } = useToast();
+
+  const transformInsightToEvent = (insight: ActionableInsight): TimelineEvent => {
+    let eventDate;
+    try {
+      eventDate = startOfDay(parseISO(insight.date));
+    } catch (e) {
+      console.warn(`Invalid date format for insight ${insight.id}: ${insight.date}. Defaulting to today.`);
+      eventDate = startOfDay(new Date());
+    }
+
+    return {
+      id: `ai-${insight.id}`, // Prefix to denote AI origin and help uniqueness
+      date: eventDate,
+      title: insight.title,
+      type: 'ai_suggestion',
+      notes: insight.summary,
+      links: insight.originalLink ? [{ title: `View Original ${insight.source === 'gmail' ? 'Email' : 'Event'}`, url: insight.originalLink }] : [],
+      status: 'pending',
+      icon: insight.source === 'google_calendar' ? Calendar : insight.source === 'gmail' ? Inbox : Bot,
+      isDeletable: true,
+    };
+  };
 
   const handleFetchAndProcessGoogleData = async () => {
     setIsLoadingInsights(true);
     setInsightsError(null);
-    setAiInsights([]);
+    // We don't clear aiInsights here, as it's just for temporary display of raw insights if needed
+    // The main source of truth for the timeline is displayedTimelineEvents
 
     try {
       const input: ProcessGoogleDataInput = {
@@ -31,12 +62,24 @@ export default function ActualDashboardPage() {
         gmailMessages: mockRawGmailMessages,
       };
       const result = await processGoogleData(input);
+
       if (result.insights && result.insights.length > 0) {
-        // Sort insights by date, most recent first for display
-        const sortedInsights = result.insights.sort((a, b) => compareDates(b.date, a.date));
-        setAiInsights(sortedInsights);
+        const newTimelineEventsFromAI = result.insights.map(transformInsightToEvent);
+        
+        setDisplayedTimelineEvents(prevEvents => {
+          const existingEventIds = new Set(prevEvents.map(e => e.id));
+          const uniqueNewEvents = newTimelineEventsFromAI.filter(newEvent => !existingEventIds.has(newEvent.id));
+          if (uniqueNewEvents.length === 0 && newTimelineEventsFromAI.length > 0) {
+            toast({ title: "AI Insights", description: "Insights processed, but no new unique items to add to the timeline." });
+          } else if (uniqueNewEvents.length > 0) {
+             toast({ title: "AI Insights", description: `${uniqueNewEvents.length} new item(s) added to your timeline.` });
+          }
+          return [...prevEvents, ...uniqueNewEvents];
+        });
+        setAiInsights(result.insights); // Keep for potential raw display if desired
       } else {
-        toast({ title: "AI Insights", description: "No specific actionable insights found in the provided data." });
+        toast({ title: "AI Insights", description: "No specific actionable insights found in the provided data to add to the timeline." });
+        setAiInsights([]);
       }
     } catch (error: any) {
       console.error('Error processing Google data:', error);
@@ -46,22 +89,7 @@ export default function ActualDashboardPage() {
       setIsLoadingInsights(false);
     }
   };
-
-  // Helper to compare dates, safely handling potential invalid date strings
-  const compareDates = (dateStrA: string, dateStrB: string): number => {
-    try {
-      const dateA = parseISO(dateStrA);
-      const dateB = parseISO(dateStrB);
-      if (isNaN(dateA.getTime()) && isNaN(dateB.getTime())) return 0;
-      if (isNaN(dateA.getTime())) return 1; // Invalid dates go to the end
-      if (isNaN(dateB.getTime())) return -1;
-      return dateB.getTime() - dateA.getTime();
-    } catch (e) {
-      // If parsing fails, treat as equal or push to end
-      return 0;
-    }
-  };
-
+  
   const formatDateSafe = (dateString: string) => {
     try {
       return format(parseISO(dateString), 'MMM d, yyyy');
@@ -81,7 +109,7 @@ export default function ActualDashboardPage() {
       </div>
       
       <div className="flex-1 min-h-0">
-        <TimelineView />
+        <TimelineView events={displayedTimelineEvents} />
       </div>
 
       <Card className="frosted-glass shadow-lg">
@@ -90,23 +118,23 @@ export default function ActualDashboardPage() {
             <Bot className="mr-2 h-5 w-5 text-accent" /> AI-Powered Google Sync
           </CardTitle>
           <CardDescription>
-            Get actionable insights from your Google Calendar and Gmail data. (Uses mock data for now)
+            Get actionable insights from your Google Calendar and Gmail data to update your timeline. (Uses mock data for now)
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button onClick={handleFetchAndProcessGoogleData} disabled={isLoadingInsights} className="bg-accent hover:bg-accent/90 text-accent-foreground">
             {isLoadingInsights ? (
               <>
-                <LoadingSpinner size="sm" className="mr-2" /> Processing Data...
+                <LoadingSpinner size="sm" className="mr-2" /> Processing & Updating Timeline...
               </>
             ) : (
-              'Process Google Data with AI'
+              'Sync Google Data to Timeline'
             )}
           </Button>
         </CardContent>
       </Card>
 
-      {isLoadingInsights && (
+      {isLoadingInsights && !aiInsights.length && !insightsError && ( // Show spinner only if no insights/errors yet
         <div className="flex justify-center items-center py-8">
           <LoadingSpinner size="lg" />
         </div>
@@ -127,8 +155,9 @@ export default function ActualDashboardPage() {
 
       {aiInsights.length > 0 && (
         <div className="space-y-4">
-          <h2 className="font-headline text-2xl font-semibold text-primary">AI Generated Insights</h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <h2 className="font-headline text-2xl font-semibold text-primary">Raw AI Generated Insights (for reference)</h2>
+          <CardDescription>These are the direct insights from the AI. Relevant items are added to your timeline above.</CardDescription>
+          <div className="grid gap-4 md:grid-cols-2 max-h-96 overflow-y-auto p-1">
             {aiInsights.map((insight) => (
               <Card key={insight.id} className="frosted-glass shadow-md flex flex-col">
                 <CardHeader>

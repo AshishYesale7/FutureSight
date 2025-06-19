@@ -1,13 +1,16 @@
 
+import type { LucideIcon } from 'lucide-react';
+
 export interface TimelineEvent {
   id: string;
   date: Date;
   title: string;
-  type: 'exam' | 'deadline' | 'goal' | 'project' | 'application' | 'custom';
+  type: 'exam' | 'deadline' | 'goal' | 'project' | 'application' | 'custom' | 'ai_suggestion';
   notes?: string;
   links?: { title: string; url: string }[];
   status?: 'pending' | 'in-progress' | 'completed' | 'missed';
-  icon?: React.ElementType; // For custom icons per event type
+  icon?: LucideIcon | React.ElementType; 
+  isDeletable?: boolean;
 }
 
 export interface CareerGoal {

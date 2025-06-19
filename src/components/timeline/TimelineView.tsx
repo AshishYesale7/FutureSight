@@ -2,13 +2,13 @@
 'use client';
 
 import type { TimelineEvent } from '@/types';
-import { mockTimelineEvents } from '@/data/mock';
+// Removed mockTimelineEvents import
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Bot } from 'lucide-react'; // Added Bot
 import { format, isToday, addMonths, subMonths, parseISO, compareAsc, startOfDay, getYear, getMonth } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'; // Removed DialogDescription from here
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
@@ -20,6 +20,7 @@ const getEventTypeStyle = (type: TimelineEvent['type']) => {
     case 'goal': return 'bg-green-500/80 border-green-700 text-white';
     case 'project': return 'bg-blue-500/80 border-blue-700 text-white';
     case 'application': return 'bg-purple-500/80 border-purple-700 text-white';
+    case 'ai_suggestion': return 'bg-teal-500/80 border-teal-700 text-white'; // New style for AI suggestions
     default: return 'bg-gray-500/80 border-gray-700 text-white';
   }
 };
@@ -31,11 +32,13 @@ const getEventTypeDotColor = (type: TimelineEvent['type']) => {
     case 'goal': return 'bg-green-500';
     case 'project': return 'bg-blue-500';
     case 'application': return 'bg-purple-500';
+    case 'ai_suggestion': return 'bg-teal-500'; // New dot color
     default: return 'bg-gray-500';
   }
 };
 
 const getEventTypeIcon = (event: TimelineEvent) => {
+  if (event.type === 'ai_suggestion') return <Bot className="mr-2 h-4 w-4 text-accent flex-shrink-0" />;
   const Icon = event.icon || CalendarDays;
   return <Icon className="mr-2 h-4 w-4 text-accent flex-shrink-0" />;
 };
@@ -45,14 +48,13 @@ interface GroupedEvent {
   events: TimelineEvent[];
 }
 
-export default function TimelineView() {
-  const [allEvents, setAllEvents] = useState<TimelineEvent[]>(
-    mockTimelineEvents
-      .map(e => ({ ...e, date: startOfDay(typeof e.date === 'string' ? parseISO(e.date) : e.date) }))
-      .sort((a, b) => compareAsc(a.date, b.date))
-  );
+interface TimelineViewProps {
+  events: TimelineEvent[];
+}
+
+export default function TimelineView({ events: allEventsFromProps }: TimelineViewProps) {
   const [selectedEvent, setSelectedEvent] = useState<TimelineEvent | null>(null);
-  const [currentVisibleDate, setCurrentVisibleDate] = useState(new Date()); // For month navigation
+  const [currentVisibleDate, setCurrentVisibleDate] = useState(new Date());
 
   const handleEventClick = (event: TimelineEvent) => {
     setSelectedEvent(event);
@@ -61,11 +63,18 @@ export default function TimelineView() {
   const nextMonth = () => setCurrentVisibleDate(addMonths(currentVisibleDate, 1));
   const prevMonth = () => setCurrentVisibleDate(subMonths(currentVisibleDate, 1));
 
+  // Ensure all incoming events have their date normalized to startOfDay and sorted
+  const processedEvents = useMemo(() => {
+    return allEventsFromProps
+      .map(e => ({ ...e, date: startOfDay(typeof e.date === 'string' ? parseISO(e.date) : e.date) }))
+      .sort((a, b) => compareAsc(a.date, b.date));
+  }, [allEventsFromProps]);
+
   const filteredAndGroupedEvents = useMemo(() => {
     const year = getYear(currentVisibleDate);
     const month = getMonth(currentVisibleDate);
 
-    return allEvents
+    return processedEvents // Use processedEvents
       .filter(event => getYear(event.date) === year && getMonth(event.date) === month)
       .reduce((acc, event) => {
         const dateStr = format(event.date, 'yyyy-MM-dd');
@@ -75,7 +84,7 @@ export default function TimelineView() {
         acc[dateStr].events.push(event);
         return acc;
       }, {} as Record<string, GroupedEvent>);
-  }, [allEvents, currentVisibleDate]);
+  }, [processedEvents, currentVisibleDate]);
 
   const sortedEventGroups = useMemo(() => {
     return Object.values(filteredAndGroupedEvents).sort((a,b) => compareAsc(a.date, b.date));
@@ -99,14 +108,12 @@ export default function TimelineView() {
       <CardContent className="p-0 flex-1">
         <ScrollArea className="w-full h-full" type="auto">
           <div className="relative p-6">
-            {/* Central Spine - always present if there are events */}
             {sortedEventGroups.length > 0 && (
               <div className="absolute left-8 top-6 bottom-6 w-0.5 bg-border/50 z-0 transform -translate-x-1/2"></div>
             )}
 
             {sortedEventGroups.map(({ date, events }, groupIndex) => (
               <div key={format(date, 'yyyy-MM-dd')} className="relative flex items-start mb-8 last:mb-0">
-                {/* Date Marker and Dot */}
                 <div className="sticky top-4 z-10 flex-shrink-0 w-16 flex flex-col items-center mr-4">
                   <div className={cn(
                       "w-6 h-6 rounded-full border-2 border-background shadow-md flex items-center justify-center mb-1",
@@ -119,7 +126,6 @@ export default function TimelineView() {
                    {isToday(date) && <Badge variant="default" className="mt-1 text-xs px-1.5 py-0.5 bg-accent text-accent-foreground">Today</Badge>}
                 </div>
 
-                {/* Event Cards Area */}
                 <div className="flex-grow pt-1 space-y-3">
                   {events.map((event) => (
                     <Dialog key={event.id} open={selectedEvent?.id === event.id} onOpenChange={(isOpen) => !isOpen && setSelectedEvent(null)}>
@@ -134,8 +140,8 @@ export default function TimelineView() {
                                 {getEventTypeIcon(event)}
                                 {event.title}
                               </CardTitle>
-                              <Badge variant="outline" className={cn("text-xs", getEventTypeStyle(event.type))}>
-                                {event.type}
+                              <Badge variant="outline" className={cn("text-xs capitalize", getEventTypeStyle(event.type))}>
+                                {event.type.replace('_', ' ')} 
                               </Badge>
                             </div>
                           </CardHeader>
@@ -148,28 +154,29 @@ export default function TimelineView() {
                       </DialogTrigger>
                       {selectedEvent?.id === event.id && (
                         <DialogContent className="frosted-glass sm:max-w-md">
-                          <DialogHeader>
+                          <DialogHeader className="space-y-2">
                             <DialogTitle className="font-headline text-primary flex items-center gap-2">
                               {getEventTypeIcon(selectedEvent)}
                               {selectedEvent.title}
                             </DialogTitle>
-                            {/*
-                              The DialogHeader is a flex-col with space-y-1.5.
-                              Each child here (p, div) will be spaced accordingly.
-                            */}
                             <p className="text-sm text-muted-foreground">
                               {format(selectedEvent.date, 'EEEE, MMMM d, yyyy')}
                             </p>
-                            <div> {/* Wrapper for badge to allow proper spacing by DialogHeader and ensure it's a block if needed */}
-                              <Badge variant="outline" className={cn(getEventTypeStyle(selectedEvent.type))}>
-                                {selectedEvent.type}
-                              </Badge>
+                            <div className="flex justify-between items-center">
+                                <Badge variant="outline" className={cn("text-xs capitalize", getEventTypeStyle(selectedEvent.type))}>
+                                  {selectedEvent.type.replace('_', ' ')}
+                                </Badge>
+                                {selectedEvent.isDeletable && (
+                                  <Button variant="outline" size="sm" className="text-xs border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                                    Delete {/* Placeholder for delete functionality */}
+                                  </Button>
+                                )}
                             </div>
                           </DialogHeader>
                           <div className="mt-4 space-y-3 text-sm">
                             {selectedEvent.notes && <p className="text-foreground/90">{selectedEvent.notes}</p>}
                             {selectedEvent.status && (
-                              <p>Status: <Badge variant={selectedEvent.status === 'completed' ? 'default' : 'secondary'} className={selectedEvent.status === 'completed' ? 'bg-green-500 text-white' : ''}>{selectedEvent.status}</Badge></p>
+                              <p>Status: <Badge variant={selectedEvent.status === 'completed' ? 'default' : 'secondary'} className={cn("capitalize",selectedEvent.status === 'completed' ? 'bg-green-500 text-white' : '')}>{selectedEvent.status}</Badge></p>
                             )}
                             {selectedEvent.links && selectedEvent.links.length > 0 && (
                               <div>
