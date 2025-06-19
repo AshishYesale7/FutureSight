@@ -1,25 +1,28 @@
+
 'use client';
 import { useState, useEffect } from 'react';
-import TimelineView from '@/components/timeline/TimelineView';
+import EventCalendarView from '@/components/timeline/EventCalendarView';
+import TimelineListView from '@/components/timeline/TimelineListView';
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { AlertCircle, Bot, Calendar, Inbox, ExternalLink } from 'lucide-react';
+import { AlertCircle, Bot, Calendar, Inbox, ExternalLink, List, CalendarDays as CalendarIconLucide } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
 import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents } from '@/data/mock';
 import type { TimelineEvent } from '@/types';
 import { format, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 
 const parseDatePreservingTime = (dateInput: string | Date): Date => {
   if (typeof dateInput === 'string') {
     try {
-      return parseISO(dateInput); // parseISO correctly handles ISO strings with or without time
+      return parseISO(dateInput); 
     } catch (e) {
       console.warn(`Invalid date string for parseISO: ${dateInput}. Defaulting to current date.`);
       return new Date();
@@ -38,6 +41,7 @@ export default function ActualDashboardPage() {
   const [aiInsights, setAiInsights] = useState<ActionableInsight[]>([]);
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const { toast } = useToast();
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
 
   const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(() => {
     if (typeof window === 'undefined') {
@@ -53,7 +57,7 @@ export default function ActualDashboardPage() {
         const parsedEvents: (Omit<TimelineEvent, 'icon' | 'date'> & { date: string })[] = JSON.parse(storedEventsString);
         return parsedEvents.map(event => ({
           ...event,
-          date: parseDatePreservingTime(event.date), // Will preserve time if ISO string had it
+          date: parseDatePreservingTime(event.date), 
            isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
         } as TimelineEvent));
       }
@@ -62,7 +66,7 @@ export default function ActualDashboardPage() {
     }
     return mockTimelineEvents.map(event => ({
       ...event,
-      date: parseDatePreservingTime(event.date), // Will preserve time for mocks if defined
+      date: parseDatePreservingTime(event.date), 
       isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
     }));
   });
@@ -70,10 +74,10 @@ export default function ActualDashboardPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const serializableEvents = displayedTimelineEvents.map(event => {
-        const { icon, ...rest } = event; // icon is not serializable
+        const { icon, ...rest } = event; 
         return {
           ...rest,
-          date: event.date.toISOString(), // Store as ISO string, preserving time
+          date: event.date.toISOString(), 
         };
       });
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serializableEvents));
@@ -84,7 +88,6 @@ export default function ActualDashboardPage() {
   const transformInsightToEvent = (insight: ActionableInsight): TimelineEvent => {
     let eventDate;
     try {
-      // AI flow now ensures insight.date is a full ISO string with time
       eventDate = parseISO(insight.date); 
     } catch (e) {
       console.warn(`Invalid date format for insight ${insight.id}: ${insight.date}. Defaulting to today.`);
@@ -93,13 +96,13 @@ export default function ActualDashboardPage() {
 
     return {
       id: `ai-${insight.id}`,
-      date: eventDate, // This Date object will have the time
+      date: eventDate, 
       title: insight.title,
       type: 'ai_suggestion',
       notes: insight.summary,
       links: insight.originalLink ? [{ title: `View Original ${insight.source === 'gmail' ? 'Email' : 'Event'}`, url: insight.originalLink }] : [],
       status: 'pending',
-      icon: Bot, // Icon is dynamically assigned in TimelineView if needed, or just use type
+      icon: Bot, 
       isDeletable: true,
     };
   };
@@ -113,16 +116,15 @@ export default function ActualDashboardPage() {
 
     try {
       const input: ProcessGoogleDataInput = {
-        calendarEvents: mockRawCalendarEvents, // Using mocks
-        gmailMessages: mockRawGmailMessages,   // Using mocks
+        calendarEvents: mockRawCalendarEvents, 
+        gmailMessages: mockRawGmailMessages,   
       };
       const result = await processGoogleData(input);
 
       if (result.insights && result.insights.length > 0) {
         newTimelineEventsFromAI = result.insights.map(transformInsightToEvent);
-        setAiInsights(result.insights); // Store raw insights for display
+        setAiInsights(result.insights); 
 
-        // Add new, unique AI-generated events to the timeline
         setDisplayedTimelineEvents(prevEvents => {
           const currentEventIds = new Set(prevEvents.map(e => e.id));
           const uniqueNewEventsToAdd = newTimelineEventsFromAI.filter(newEvent => !currentEventIds.has(newEvent.id));
@@ -132,38 +134,35 @@ export default function ActualDashboardPage() {
 
       } else {
         setAiInsights([]);
-        trulyNewEventsForToastCount = -1; // Indicates AI found no new insights
+        trulyNewEventsForToastCount = -1; 
       }
     } catch (error: any) {
       console.error('Error processing Google data:', error);
       setInsightsError(error.message || 'Failed to fetch or process AI insights.');
       processingErrorOccurred = true;
-    } finally {
-      setIsLoadingInsights(false);
-      // Sequence toast calls after state updates
-      if (processingErrorOccurred) {
-         toast({ title: "Error", description: insightsError || "Failed to get AI insights from Google data.", variant: "destructive" });
-      } else if (trulyNewEventsForToastCount === -1) {
-         toast({ title: "AI Insights", description: "No specific actionable insights found in the provided data." });
-      } else if (newTimelineEventsFromAI.length > 0) {
-        if (trulyNewEventsForToastCount === 0) {
-          toast({ title: "AI Insights", description: "Insights processed, but no new unique items to add to the timeline." });
-        } else {
-          toast({ title: "AI Insights", description: `${trulyNewEventsForToastCount} new item(s) added to your timeline.` });
-        }
+    } 
+    
+    setIsLoadingInsights(false);
+    if (processingErrorOccurred) {
+        toast({ title: "Error", description: insightsError || "Failed to get AI insights from Google data.", variant: "destructive" });
+    } else if (trulyNewEventsForToastCount === -1) {
+        toast({ title: "AI Insights", description: "No specific actionable insights found in the provided data." });
+    } else if (newTimelineEventsFromAI.length > 0) {
+      if (trulyNewEventsForToastCount === 0) {
+        toast({ title: "AI Insights", description: "Insights processed, but no new unique items to add to the timeline." });
+      } else {
+        toast({ title: "AI Insights", description: `${trulyNewEventsForToastCount} new item(s) added to your timeline.` });
       }
     }
   };
 
   const handleDeleteTimelineEvent = (eventId: string) => {
     setDisplayedTimelineEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
-    // Toast is handled by TimelineView/modal now for immediate feedback
   };
   
-  // Helper to format date and time for the raw insights display section
   const formatDateSafeWithTime = (dateString: string) => {
     try {
-      const dateObj = parseISO(dateString); // Assumes dateString is a valid ISO string
+      const dateObj = parseISO(dateString); 
       const isMidnightTime = dateObj.getHours() === 0 && dateObj.getMinutes() === 0 && dateObj.getSeconds() === 0 && dateObj.getMilliseconds() === 0;
       return format(dateObj, isMidnightTime ? 'MMM d, yyyy' : 'MMM d, yyyy, h:mm a');
     } catch (e) {
@@ -180,12 +179,20 @@ export default function ActualDashboardPage() {
         </p>
       </div>
       
-      {/* TimelineView will now be a calendar */}
-      <div className="flex-grow min-h-0 md:flex-grow-0 md:min-h-fit"> {/* Adjust flex behavior */}
-        <TimelineView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
-      </div>
+      <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as 'calendar' | 'list')} className="w-full">
+        <TabsList className="grid w-full grid-cols-2 max-w-xs mb-4">
+          <TabsTrigger value="calendar"><CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar View</TabsTrigger>
+          <TabsTrigger value="list"><List className="mr-2 h-4 w-4" /> List View</TabsTrigger>
+        </TabsList>
+        <TabsContent value="calendar" className="flex-grow min-h-0 md:flex-grow-0 md:min-h-fit">
+          <EventCalendarView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
+        </TabsContent>
+        <TabsContent value="list" className="flex-grow min-h-0 md:flex-grow-0 md:min-h-fit max-h-[70vh]">
+          <TimelineListView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
+        </TabsContent>
+      </Tabs>
       
-      <TodaysPlanCard /> {/* This is a dialog, so its position in JSX is less critical for layout */}
+      <TodaysPlanCard />
 
       <Card className="frosted-glass shadow-lg">
         <CardHeader>
@@ -231,7 +238,7 @@ export default function ActualDashboardPage() {
       {aiInsights.length > 0 && (
         <div className="space-y-4">
           <h2 className="font-headline text-2xl font-semibold text-primary">Raw AI Generated Insights (for reference)</h2>
-          <CardDescription>These are the direct insights from the AI. Relevant items are added to your calendar above.</CardDescription>
+          <CardDescription>These are the direct insights from the AI. Relevant items are added to your views above.</CardDescription>
           <div className="grid gap-4 md:grid-cols-2 max-h-96 overflow-y-auto p-1">
             {aiInsights.map((insight) => (
               <Card key={insight.id} className="frosted-glass shadow-md flex flex-col">
@@ -244,7 +251,7 @@ export default function ActualDashboardPage() {
                       }
                       {insight.title}
                     </CardTitle>
-                    <Badge variant="outline" className={insight.source === 'google_calendar' ? 'border-blue-500 text-blue-600' : 'border-green-500 text-green-600'}>
+                    <Badge variant="outline" className={cn(insight.source === 'google_calendar' ? 'border-blue-500 text-blue-600' : 'border-green-500 text-green-600')}>
                       {insight.source === 'google_calendar' ? 'Calendar' : 'Gmail'}
                     </Badge>
                   </div>
