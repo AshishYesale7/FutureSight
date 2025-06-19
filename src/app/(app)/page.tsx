@@ -79,6 +79,10 @@ export default function ActualDashboardPage() {
           Visualize your milestones, track your progress, and plan your journey to success.
         </p>
       </div>
+      
+      <div className="flex-1 min-h-0">
+        <TimelineView />
+      </div>
 
       <Card className="frosted-glass shadow-lg">
         <CardHeader>
@@ -162,9 +166,6 @@ export default function ActualDashboardPage() {
         </div>
       )}
       
-      <div className="flex-1 min-h-0">
-        <TimelineView />
-      </div>
       <TodaysPlanCard />
     </div>
   );
