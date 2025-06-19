@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import EventCalendarView from '@/components/timeline/EventCalendarView';
 import SlidingTimelineView from '@/components/timeline/SlidingTimelineView';
 import TimelineListView from '@/components/timeline/TimelineListView';
@@ -26,18 +26,22 @@ const parseDatePreservingTime = (dateInput: string | Date): Date => {
   if (typeof dateInput === 'string') {
     try {
       const parsed = parseISO(dateInput);
-      if (isNaN(parsed.valueOf())) throw new Error('Invalid date string after parseISO');
+      // Check if parsing resulted in an invalid date
+      if (isNaN(parsed.valueOf())) {
+        console.warn(`Invalid date string for parseISO after parsing: ${dateInput}. Defaulting to current date.`);
+        return new Date(); // Default or handle error as appropriate
+      }
       return parsed;
     } catch (e) {
-      console.warn(`Invalid date string for parseISO: ${dateInput}. Defaulting to current date.`);
-      return new Date();
+      console.warn(`Error parsing date string with parseISO: ${dateInput}. Defaulting to current date. Error: ${e}`);
+      return new Date(); // Default or handle error as appropriate
     }
   }
   if (dateInput instanceof Date && !isNaN(dateInput.valueOf())) {
     return dateInput;
   }
-  console.warn(`Invalid date input: ${dateInput}. Defaulting to current date.`);
-  return new Date();
+  console.warn(`Invalid date input type or value: ${dateInput}. Defaulting to current date.`);
+  return new Date(); // Default or handle error as appropriate
 };
 
 
@@ -48,7 +52,7 @@ export default function ActualDashboardPage() {
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [activeDisplayMonth, setActiveDisplayMonth] = useState<Date>(startOfMonth(new Date()));
-  const [selectedDateForDayView, setSelectedDateForDayView] = useState<Date | null>(null); // New state
+  const [selectedDateForDayView, setSelectedDateForDayView] = useState<Date | null>(null);
 
   const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(() => {
     if (typeof window === 'undefined') {
@@ -62,20 +66,34 @@ export default function ActualDashboardPage() {
       const storedEventsString = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (storedEventsString) {
         const parsedEvents: (Omit<TimelineEvent, 'icon' | 'date'> & { date: string })[] = JSON.parse(storedEventsString);
-        return parsedEvents.map(event => ({
-          ...event,
-          date: parseDatePreservingTime(event.date), 
-           isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
-        } as TimelineEvent)).filter(e => e.date instanceof Date && !isNaN(e.date.valueOf()));
+        return parsedEvents.map(event => {
+          const parsedDate = parseDatePreservingTime(event.date);
+          if (isNaN(parsedDate.valueOf())) {
+            console.warn(`Skipping event with invalid date from localStorage: ${event.id}, date: ${event.date}`);
+            return null; 
+          }
+          return {
+            ...event,
+            date: parsedDate,
+            isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
+          } as TimelineEvent;
+        }).filter(event => event !== null) as TimelineEvent[];
       }
     } catch (error) {
       console.error("Error reading timeline events from localStorage:", error);
     }
-    return mockTimelineEvents.map(event => ({
-      ...event,
-      date: parseDatePreservingTime(event.date), 
-      isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
-    })).filter(e => e.date instanceof Date && !isNaN(e.date.valueOf()));
+    return mockTimelineEvents.map(event => {
+      const parsedDate = parseDatePreservingTime(event.date);
+      if (isNaN(parsedDate.valueOf())) {
+         console.warn(`Skipping mock event with invalid date: ${event.id}, date: ${event.date}`);
+         return null;
+      }
+      return {
+        ...event,
+        date: parsedDate,
+        isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
+      };
+    }).filter(event => event !== null) as TimelineEvent[];
   });
 
   useEffect(() => {
@@ -96,10 +114,13 @@ export default function ActualDashboardPage() {
     let eventDate;
     try {
       eventDate = parseISO(insight.date);
-      if (isNaN(eventDate.valueOf())) throw new Error('Invalid insight date');
+      if (isNaN(eventDate.valueOf())) {
+        console.warn(`Invalid date format for insight ${insight.id}: ${insight.date}. Skipping insight.`);
+        return null; 
+      }
     } catch (e) {
-      console.warn(`Invalid date format for insight ${insight.id}: ${insight.date}. Skipping insight.`);
-      return null; // Skip this insight
+      console.warn(`Error parsing date for insight ${insight.id}: ${insight.date}. Skipping insight. Error: ${e}`);
+      return null; 
     }
 
     return {
@@ -173,7 +194,6 @@ export default function ActualDashboardPage() {
 
   const handleDeleteTimelineEvent = (eventId: string) => {
     setDisplayedTimelineEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
-    // If deleting an event that was part of the day view, check if day view needs to close
     if (selectedDateForDayView) {
         const remainingEventsOnDay = displayedTimelineEvents.filter(event => 
             event.id !== eventId && 
@@ -181,7 +201,7 @@ export default function ActualDashboardPage() {
             isSameDay(dfnsStartOfDay(event.date), dfnsStartOfDay(selectedDateForDayView))
         );
         if (remainingEventsOnDay.length === 0) {
-            setSelectedDateForDayView(null); // Close day view if no events left
+            setSelectedDateForDayView(null); 
         }
     }
   };
@@ -224,7 +244,7 @@ export default function ActualDashboardPage() {
 
   const handleViewModeChange = (newMode: 'calendar' | 'list') => {
     setViewMode(newMode);
-    setSelectedDateForDayView(null); // Reset day view when switching main tabs
+    setSelectedDateForDayView(null); 
   };
 
 
@@ -251,9 +271,8 @@ export default function ActualDashboardPage() {
           <EventCalendarView 
             events={displayedTimelineEvents} 
             month={activeDisplayMonth}
-            onMonthChange={setActiveDisplayMonth} // For direct month change in calendar itself
-            onDayClick={handleDayClickFromCalendar} // New prop
-            // onDeleteEvent is not directly used by EventCalendarView anymore for its own modal
+            onMonthChange={setActiveDisplayMonth}
+            onDayClick={handleDayClickFromCalendar}
           />
           {selectedDateForDayView ? (
             <DayTimetableView
@@ -267,7 +286,7 @@ export default function ActualDashboardPage() {
               events={displayedTimelineEvents} 
               onDeleteEvent={handleDeleteTimelineEvent}
               currentDisplayMonth={activeDisplayMonth}
-              onNavigateMonth={handleMonthNavigationForSharedViews} // Renamed for clarity
+              onNavigateMonth={handleMonthNavigationForSharedViews}
             />
           )}
         </TabsContent>
