@@ -53,8 +53,6 @@ export default function ActualDashboardPage() {
   const handleFetchAndProcessGoogleData = async () => {
     setIsLoadingInsights(true);
     setInsightsError(null);
-    // We don't clear aiInsights here, as it's just for temporary display of raw insights if needed
-    // The main source of truth for the timeline is displayedTimelineEvents
 
     try {
       const input: ProcessGoogleDataInput = {
@@ -66,18 +64,32 @@ export default function ActualDashboardPage() {
       if (result.insights && result.insights.length > 0) {
         const newTimelineEventsFromAI = result.insights.map(transformInsightToEvent);
         
+        // Determine uniqueness for toast message based on CURRENT displayedTimelineEvents state
+        // This must be done BEFORE setDisplayedTimelineEvents schedules its update.
+        const currentEventIds = new Set(displayedTimelineEvents.map(e => e.id));
+        const trulyNewEventsForToast = newTimelineEventsFromAI.filter(newEvent => !currentEventIds.has(newEvent.id));
+
+        // Schedule state updates
         setDisplayedTimelineEvents(prevEvents => {
-          const existingEventIds = new Set(prevEvents.map(e => e.id));
-          const uniqueNewEvents = newTimelineEventsFromAI.filter(newEvent => !existingEventIds.has(newEvent.id));
-          if (uniqueNewEvents.length === 0 && newTimelineEventsFromAI.length > 0) {
-            toast({ title: "AI Insights", description: "Insights processed, but no new unique items to add to the timeline." });
-          } else if (uniqueNewEvents.length > 0) {
-             toast({ title: "AI Insights", description: `${uniqueNewEvents.length} new item(s) added to your timeline.` });
-          }
-          return [...prevEvents, ...uniqueNewEvents];
+          const existingEventIdsInUpdater = new Set(prevEvents.map(e => e.id));
+          const uniqueNewEventsToAdd = newTimelineEventsFromAI.filter(newEvent => !existingEventIdsInUpdater.has(newEvent.id));
+          // This updater function should NOT call toast. It only calculates the next state.
+          return [...prevEvents, ...uniqueNewEventsToAdd];
         });
-        setAiInsights(result.insights); // Keep for potential raw display if desired
-      } else {
+        setAiInsights(result.insights); 
+
+        // Call toast AFTER state updates have been scheduled.
+        if (newTimelineEventsFromAI.length > 0) { // Check if AI processed any insights at all
+            if (trulyNewEventsForToast.length === 0) {
+                toast({ title: "AI Insights", description: "Insights processed, but no new unique items to add to the timeline." });
+            } else {
+                 toast({ title: "AI Insights", description: `${trulyNewEventsForToast.length} new item(s) added to your timeline.` });
+            }
+        }
+        // If newTimelineEventsFromAI.length was 0 (but result.insights was not empty, though this case is unlikely given the check),
+        // it would be handled by the outer 'else' for result.insights being empty.
+
+      } else { // result.insights is null or empty
         toast({ title: "AI Insights", description: "No specific actionable insights found in the provided data to add to the timeline." });
         setAiInsights([]);
       }
@@ -98,7 +110,6 @@ export default function ActualDashboardPage() {
     }
   };
 
-
   return (
     <div className="space-y-8 h-full flex flex-col">
       <div>
@@ -111,6 +122,8 @@ export default function ActualDashboardPage() {
       <div className="flex-1 min-h-0">
         <TimelineView events={displayedTimelineEvents} />
       </div>
+      
+      <TodaysPlanCard />
 
       <Card className="frosted-glass shadow-lg">
         <CardHeader>
@@ -134,7 +147,7 @@ export default function ActualDashboardPage() {
         </CardContent>
       </Card>
 
-      {isLoadingInsights && !aiInsights.length && !insightsError && ( // Show spinner only if no insights/errors yet
+      {isLoadingInsights && !aiInsights.length && !insightsError && ( 
         <div className="flex justify-center items-center py-8">
           <LoadingSpinner size="lg" />
         </div>
@@ -194,8 +207,6 @@ export default function ActualDashboardPage() {
           </div>
         </div>
       )}
-      
-      <TodaysPlanCard />
     </div>
   );
 }
