@@ -1,6 +1,3 @@
-// This file's functionality has been replaced by SlidingTimelineView.tsx
-// It can be safely deleted.
-// Keeping it here temporarily as requested by the user previously for reference.
 
 'use client';
 
@@ -85,7 +82,7 @@ export default function TimelineListView({ events: allEventsFromProps, onDeleteE
 
   if (processedEvents.length === 0) {
     return (
-      <Card className="frosted-glass w-full shadow-xl p-6 text-center">
+      <Card className="frosted-glass w-full shadow-xl p-6 text-center h-full flex flex-col justify-center items-center">
         <CardTitle className="font-headline text-xl text-primary">No Events</CardTitle>
         <p className="text-foreground/70 mt-2">Your timeline is currently empty. Add some events or sync with Google!</p>
       </Card>

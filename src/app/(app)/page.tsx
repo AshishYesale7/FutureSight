@@ -2,7 +2,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import EventCalendarView from '@/components/timeline/EventCalendarView';
-import SlidingTimelineView from '@/components/timeline/SlidingTimelineView'; // Changed import
+import SlidingTimelineView from '@/components/timeline/SlidingTimelineView';
+import TimelineListView from '@/components/timeline/TimelineListView'; // Added for the restored list view
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -195,11 +196,12 @@ export default function ActualDashboardPage() {
           <TabsTrigger value="calendar"><CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar View</TabsTrigger>
           <TabsTrigger value="list"><List className="mr-2 h-4 w-4" /> List View</TabsTrigger>
         </TabsList>
-        <TabsContent value="calendar" className="flex-1 min-h-0">
+        <TabsContent value="calendar" className="space-y-6 overflow-y-auto flex-1">
           <EventCalendarView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
+          <SlidingTimelineView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
         </TabsContent>
         <TabsContent value="list" className="flex-1 min-h-0">
-          <SlidingTimelineView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
+          <TimelineListView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
         </TabsContent>
       </Tabs>
       
@@ -290,3 +292,4 @@ export default function ActualDashboardPage() {
     </div>
   );
 }
+
