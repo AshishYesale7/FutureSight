@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import EventCalendarView from '@/components/timeline/EventCalendarView';
 import SlidingTimelineView from '@/components/timeline/SlidingTimelineView';
 import TimelineListView from '@/components/timeline/TimelineListView';
-import DayTimetableView from '@/components/timeline/DayTimetableView'; // New Import
+import DayTimetableView from '@/components/timeline/DayTimetableView'; 
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -22,26 +22,26 @@ import { cn } from '@/lib/utils';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 
-const parseDatePreservingTime = (dateInput: string | Date): Date => {
+const parseDatePreservingTime = (dateInput: string | Date | undefined): Date | undefined => {
+  if (!dateInput) return undefined;
   if (typeof dateInput === 'string') {
     try {
       const parsed = parseISO(dateInput);
-      // Check if parsing resulted in an invalid date
       if (isNaN(parsed.valueOf())) {
-        console.warn(`Invalid date string for parseISO after parsing: ${dateInput}. Defaulting to current date.`);
-        return new Date(); // Default or handle error as appropriate
+        console.warn(`Invalid date string for parseISO after parsing: ${dateInput}. Returning undefined.`);
+        return undefined;
       }
       return parsed;
     } catch (e) {
-      console.warn(`Error parsing date string with parseISO: ${dateInput}. Defaulting to current date. Error: ${e}`);
-      return new Date(); // Default or handle error as appropriate
+      console.warn(`Error parsing date string with parseISO: ${dateInput}. Returning undefined. Error: ${e}`);
+      return undefined;
     }
   }
   if (dateInput instanceof Date && !isNaN(dateInput.valueOf())) {
     return dateInput;
   }
-  console.warn(`Invalid date input type or value: ${dateInput}. Defaulting to current date.`);
-  return new Date(); // Default or handle error as appropriate
+  console.warn(`Invalid date input type or value: ${dateInput}. Returning undefined.`);
+  return undefined;
 };
 
 
@@ -58,23 +58,26 @@ export default function ActualDashboardPage() {
     if (typeof window === 'undefined') {
       return mockTimelineEvents.map(event => ({
         ...event,
-        date: parseDatePreservingTime(event.date),
+        date: parseDatePreservingTime(event.date) || new Date(), // Fallback to now if parsing fails
+        endDate: parseDatePreservingTime(event.endDate),
         isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
       }));
     }
     try {
       const storedEventsString = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (storedEventsString) {
-        const parsedEvents: (Omit<TimelineEvent, 'icon' | 'date'> & { date: string })[] = JSON.parse(storedEventsString);
+        const parsedEvents: (Omit<TimelineEvent, 'icon' | 'date' | 'endDate'> & { date: string, endDate?: string })[] = JSON.parse(storedEventsString);
         return parsedEvents.map(event => {
           const parsedDate = parseDatePreservingTime(event.date);
-          if (isNaN(parsedDate.valueOf())) {
+          const parsedEndDate = parseDatePreservingTime(event.endDate);
+          if (!parsedDate) {
             console.warn(`Skipping event with invalid date from localStorage: ${event.id}, date: ${event.date}`);
             return null; 
           }
           return {
             ...event,
             date: parsedDate,
+            endDate: parsedEndDate,
             isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
           } as TimelineEvent;
         }).filter(event => event !== null) as TimelineEvent[];
@@ -84,13 +87,15 @@ export default function ActualDashboardPage() {
     }
     return mockTimelineEvents.map(event => {
       const parsedDate = parseDatePreservingTime(event.date);
-      if (isNaN(parsedDate.valueOf())) {
+      const parsedEndDate = parseDatePreservingTime(event.endDate);
+      if (!parsedDate) {
          console.warn(`Skipping mock event with invalid date: ${event.id}, date: ${event.date}`);
          return null;
       }
       return {
         ...event,
         date: parsedDate,
+        endDate: parsedEndDate,
         isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
       };
     }).filter(event => event !== null) as TimelineEvent[];
@@ -103,6 +108,7 @@ export default function ActualDashboardPage() {
         return {
           ...rest,
           date: (event.date instanceof Date && !isNaN(event.date.valueOf())) ? event.date.toISOString() : new Date().toISOString(), 
+          endDate: (event.endDate instanceof Date && !isNaN(event.endDate.valueOf())) ? event.endDate.toISOString() : undefined,
         };
       });
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serializableEvents));
@@ -111,21 +117,17 @@ export default function ActualDashboardPage() {
 
 
   const transformInsightToEvent = (insight: ActionableInsight): TimelineEvent | null => {
-    let eventDate;
-    try {
-      eventDate = parseISO(insight.date);
-      if (isNaN(eventDate.valueOf())) {
-        console.warn(`Invalid date format for insight ${insight.id}: ${insight.date}. Skipping insight.`);
-        return null; 
-      }
-    } catch (e) {
-      console.warn(`Error parsing date for insight ${insight.id}: ${insight.date}. Skipping insight. Error: ${e}`);
-      return null; 
+    const eventDate = parseDatePreservingTime(insight.date);
+    if (!eventDate) {
+      console.warn(`Invalid date format for insight ${insight.id}: ${insight.date}. Skipping insight.`);
+      return null;
     }
+    const eventEndDate = parseDatePreservingTime(insight.endDate);
 
     return {
       id: `ai-${insight.id}`,
       date: eventDate, 
+      endDate: eventEndDate,
       title: insight.title,
       type: 'ai_suggestion',
       notes: insight.summary,
@@ -133,6 +135,7 @@ export default function ActualDashboardPage() {
       status: 'pending',
       icon: Bot, 
       isDeletable: true,
+      isAllDay: insight.isAllDay || false,
     };
   };
 
@@ -206,7 +209,8 @@ export default function ActualDashboardPage() {
     }
   };
   
-  const formatDateSafeWithTime = (dateString: string) => {
+  const formatDateSafeWithTime = (dateString: string | undefined) => {
+    if (!dateString) return "N/A";
     try {
       const dateObj = parseISO(dateString); 
       if (isNaN(dateObj.valueOf())) return "Invalid Date";
@@ -239,7 +243,7 @@ export default function ActualDashboardPage() {
     return displayedTimelineEvents.filter(event => 
         event.date instanceof Date && !isNaN(event.date.valueOf()) &&
         isSameDay(dfnsStartOfDay(event.date), dfnsStartOfDay(selectedDateForDayView))
-    );
+    ).sort((a,b) => a.date.getTime() - b.date.getTime()); // Ensure sorted by time for display
   }, [displayedTimelineEvents, selectedDateForDayView]);
 
   const handleViewModeChange = (newMode: 'calendar' | 'list') => {
@@ -359,7 +363,9 @@ export default function ActualDashboardPage() {
                     </Badge>
                   </div>
                   <CardDescription className="text-xs text-muted-foreground">
-                     {formatDateSafeWithTime(insight.date)}
+                     Start: {formatDateSafeWithTime(insight.date)}
+                     {insight.endDate && `, End: ${formatDateSafeWithTime(insight.endDate)}`}
+                     {insight.isAllDay && <span className="ml-2">(All day)</span>}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-grow">

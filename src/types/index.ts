@@ -3,7 +3,8 @@ import type { LucideIcon } from 'lucide-react';
 
 export interface TimelineEvent {
   id: string;
-  date: Date; // This Date object will now store precise time
+  date: Date; // Start date and time
+  endDate?: Date; // End date and time, optional
   title: string;
   type: 'exam' | 'deadline' | 'goal' | 'project' | 'application' | 'custom' | 'ai_suggestion';
   notes?: string;
@@ -11,6 +12,7 @@ export interface TimelineEvent {
   status?: 'pending' | 'in-progress' | 'completed' | 'missed';
   icon?: LucideIcon | React.ElementType;
   isDeletable?: boolean;
+  isAllDay?: boolean; // Flag for all-day events
 }
 
 export interface CareerGoal {
@@ -62,6 +64,8 @@ export interface RawCalendarEvent {
   startDateTime: string; // ISO 8601 format, should include time
   endDateTime: string; // ISO 8601 format, should include time
   htmlLink?: string;
+  // Google Calendar API uses a structure for dates that can indicate all-day
+  // For simplicity, we'll let the AI determine if it's an all-day event
 }
 
 export interface RawGmailMessage {
@@ -75,7 +79,9 @@ export interface RawGmailMessage {
 export interface ActionableInsight {
   id: string; // e.g., 'cal:original_event_id' or 'mail:original_message_id'
   title: string;
-  date: string; // ISO 8601 format, should include time
+  date: string; // ISO 8601 format, should include time (start time for events)
+  endDate?: string; // ISO 8601 format, end time for events, optional
+  isAllDay?: boolean; // Optional flag for all-day events
   summary: string;
   source: 'google_calendar' | 'gmail';
   originalLink?: string;
