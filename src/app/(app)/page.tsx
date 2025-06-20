@@ -4,14 +4,14 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import EventCalendarView from '@/components/timeline/EventCalendarView';
 import SlidingTimelineView from '@/components/timeline/SlidingTimelineView';
 import TimelineListView from '@/components/timeline/TimelineListView';
-import DayTimetableView from '@/components/timeline/DayTimetableView'; 
+import DayTimetableView from '@/components/timeline/DayTimetableView';
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import EditEventModal from '@/components/timeline/EditEventModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { AlertCircle, Bot, Calendar, Inbox, ExternalLink, List, CalendarDays as CalendarIconLucide, Edit3 } from 'lucide-react';
+import { AlertCircle, Bot, Calendar, Inbox, ExternalLink, List, CalendarDays as CalendarIconLucide, Edit3, PlusCircle } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
 import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents } from '@/data/mock';
@@ -57,14 +57,16 @@ export default function ActualDashboardPage() {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [eventBeingEdited, setEventBeingEdited] = useState<TimelineEvent | null>(null);
+  const [isAddingNewEvent, setIsAddingNewEvent] = useState(false);
 
   const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(() => {
     if (typeof window === 'undefined') {
       return mockTimelineEvents.map(event => ({
         ...event,
-        date: parseDatePreservingTime(event.date) || new Date(), 
+        date: parseDatePreservingTime(event.date) || new Date(),
         endDate: parseDatePreservingTime(event.endDate),
         isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
+        color: event.color,
       }));
     }
     try {
@@ -76,7 +78,7 @@ export default function ActualDashboardPage() {
           const parsedEndDate = parseDatePreservingTime(event.endDate);
           if (!parsedDate) {
             console.warn(`Skipping event with invalid date from localStorage: ${event.id}, date: ${event.date}`);
-            return null; 
+            return null;
           }
           return {
             ...event,
@@ -102,6 +104,7 @@ export default function ActualDashboardPage() {
         date: parsedDate,
         endDate: parsedEndDate,
         isDeletable: event.isDeletable === undefined ? (event.id.startsWith('ai-') ? true : false) : event.isDeletable,
+        color: event.color,
       };
     }).filter(event => event !== null) as TimelineEvent[];
   });
@@ -109,10 +112,10 @@ export default function ActualDashboardPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const serializableEvents = displayedTimelineEvents.map(event => {
-        const { icon, ...rest } = event; 
+        const { icon, ...rest } = event;
         return {
           ...rest,
-          date: (event.date instanceof Date && !isNaN(event.date.valueOf())) ? event.date.toISOString() : new Date().toISOString(), 
+          date: (event.date instanceof Date && !isNaN(event.date.valueOf())) ? event.date.toISOString() : new Date().toISOString(),
           endDate: (event.endDate instanceof Date && !isNaN(event.endDate.valueOf())) ? event.endDate.toISOString() : undefined,
           color: event.color,
         };
@@ -132,16 +135,17 @@ export default function ActualDashboardPage() {
 
     return {
       id: `ai-${insight.id}`,
-      date: eventDate, 
+      date: eventDate,
       endDate: eventEndDate,
       title: insight.title,
       type: 'ai_suggestion',
       notes: insight.summary,
       links: insight.originalLink ? [{ title: `View Original ${insight.source === 'gmail' ? 'Email' : 'Event'}`, url: insight.originalLink }] : [],
       status: 'pending',
-      icon: Bot, 
-      isDeletable: true, // AI events are deletable by default
+      icon: Bot,
+      isDeletable: true,
       isAllDay: insight.isAllDay || false,
+      color: undefined, // AI events don't have custom colors by default
     };
   };
 
@@ -156,15 +160,15 @@ export default function ActualDashboardPage() {
 
     try {
       const input: ProcessGoogleDataInput = {
-        calendarEvents: mockRawCalendarEvents, 
-        gmailMessages: mockRawGmailMessages,   
+        calendarEvents: mockRawCalendarEvents,
+        gmailMessages: mockRawGmailMessages,
       };
       const result = await processGoogleData(input);
 
       if (result.insights && result.insights.length > 0) {
         const transformedEvents = result.insights.map(transformInsightToEvent).filter(event => event !== null) as TimelineEvent[];
         newTimelineEventsFromAI = transformedEvents;
-        setAiInsights(result.insights); 
+        setAiInsights(result.insights);
 
         setDisplayedTimelineEvents(prevEvents => {
           const currentEventIds = new Set(prevEvents.map(e => e.id));
@@ -175,7 +179,7 @@ export default function ActualDashboardPage() {
 
       } else {
         setAiInsights([]);
-        trulyNewEventsForToastCount = -1; 
+        trulyNewEventsForToastCount = -1;
       }
     } catch (error: any) {
       console.error('Error processing Google data:', error);
@@ -184,8 +188,8 @@ export default function ActualDashboardPage() {
       processingErrorOccurred = true;
       toastTitle = "Error";
       toastDescription = errorMessage;
-    } 
-    
+    }
+
     setIsLoadingInsights(false);
 
     if (processingErrorOccurred) {
@@ -204,21 +208,21 @@ export default function ActualDashboardPage() {
   const handleDeleteTimelineEvent = (eventId: string) => {
     setDisplayedTimelineEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
     if (selectedDateForDayView) {
-        const remainingEventsOnDay = displayedTimelineEvents.filter(event => 
-            event.id !== eventId && 
+        const remainingEventsOnDay = displayedTimelineEvents.filter(event =>
+            event.id !== eventId &&
             event.date instanceof Date && !isNaN(event.date.valueOf()) &&
             isSameDay(dfnsStartOfDay(event.date), dfnsStartOfDay(selectedDateForDayView))
         );
         if (remainingEventsOnDay.length === 0) {
-            setSelectedDateForDayView(null); 
+            setSelectedDateForDayView(null);
         }
     }
   };
-  
+
   const formatDateSafeWithTime = (dateString: string | undefined) => {
     if (!dateString) return "N/A";
     try {
-      const dateObj = parseISO(dateString); 
+      const dateObj = parseISO(dateString);
       if (isNaN(dateObj.valueOf())) return "Invalid Date";
       const isMidnightTime = dateObj.getHours() === 0 && dateObj.getMinutes() === 0 && dateObj.getSeconds() === 0 && dateObj.getMilliseconds() === 0;
       return format(dateObj, isMidnightTime ? 'MMM d, yyyy' : 'MMM d, yyyy, h:mm a');
@@ -246,7 +250,7 @@ export default function ActualDashboardPage() {
 
   const eventsForDayView = useMemo(() => {
     if (!selectedDateForDayView) return [];
-    return displayedTimelineEvents.filter(event => 
+    return displayedTimelineEvents.filter(event =>
         event.date instanceof Date && !isNaN(event.date.valueOf()) &&
         isSameDay(dfnsStartOfDay(event.date), dfnsStartOfDay(selectedDateForDayView))
     ).sort((a,b) => a.date.getTime() - b.date.getTime());
@@ -254,26 +258,61 @@ export default function ActualDashboardPage() {
 
   const handleViewModeChange = (newMode: 'calendar' | 'list') => {
     setViewMode(newMode);
-    setSelectedDateForDayView(null); 
+    setSelectedDateForDayView(null);
   };
 
-  const handleOpenEditModal = useCallback((event: TimelineEvent) => {
-    setEventBeingEdited(event);
+  const handleOpenEditModal = useCallback((event?: TimelineEvent) => {
+    if (event) {
+      setIsAddingNewEvent(false);
+      setEventBeingEdited({
+        ...event,
+        // Ensure dates are Date objects if they are not already
+        date: event.date instanceof Date ? event.date : parseDatePreservingTime(event.date as unknown as string) || new Date(),
+        endDate: event.endDate ? (event.endDate instanceof Date ? event.endDate : parseDatePreservingTime(event.endDate as unknown as string)) : undefined,
+      });
+    } else {
+      // Adding a new event
+      setIsAddingNewEvent(true);
+      setEventBeingEdited({
+        id: `custom-${Date.now()}`, // Temporary ID for new event
+        title: '',
+        date: new Date(), // Default to now
+        endDate: undefined,
+        type: 'custom',
+        notes: '',
+        isAllDay: false,
+        isDeletable: true,
+        color: undefined,
+        status: 'pending',
+        icon: CalendarIconLucide, // Default icon
+      });
+    }
     setIsEditModalOpen(true);
   }, []);
 
   const handleCloseEditModal = useCallback(() => {
     setIsEditModalOpen(false);
     setEventBeingEdited(null);
+    setIsAddingNewEvent(false);
   }, []);
 
   const handleSaveEditedEvent = useCallback((updatedEvent: TimelineEvent) => {
-    setDisplayedTimelineEvents(prevEvents =>
-      prevEvents.map(event => (event.id === updatedEvent.id ? updatedEvent : event))
-    );
-    toast({ title: "Event Updated", description: `"${updatedEvent.title}" has been successfully updated.` });
+    setDisplayedTimelineEvents(prevEvents => {
+      const eventExists = prevEvents.some(event => event.id === updatedEvent.id);
+      if (eventExists) {
+        // Update existing event
+        return prevEvents.map(event => (event.id === updatedEvent.id ? updatedEvent : event));
+      } else {
+        // Add new event
+        return [...prevEvents, updatedEvent].sort((a, b) => a.date.getTime() - b.date.getTime());
+      }
+    });
+    toast({
+      title: isAddingNewEvent ? "Event Added" : "Event Updated",
+      description: `"${updatedEvent.title}" has been successfully ${isAddingNewEvent ? "added" : "updated"}.`
+    });
     handleCloseEditModal();
-  }, [handleCloseEditModal, toast]);
+  }, [handleCloseEditModal, toast, isAddingNewEvent]);
 
 
   return (
@@ -284,51 +323,57 @@ export default function ActualDashboardPage() {
           Visualize your milestones, track your progress, and plan your journey to success.
         </p>
       </div>
-      
-      <Tabs 
-        value={viewMode} 
-        onValueChange={(value) => handleViewModeChange(value as 'calendar' | 'list')} 
-        className="w-full flex flex-col flex-1 min-h-0"
-      >
-        <TabsList className="grid w-full grid-cols-2 max-w-xs mb-4 self-start">
-          <TabsTrigger value="calendar"><CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar View</TabsTrigger>
-          <TabsTrigger value="list"><List className="mr-2 h-4 w-4" /> List View</TabsTrigger>
-        </TabsList>
 
-        <TabsContent value="calendar" className="space-y-6 overflow-y-auto flex-1 flex flex-col min-h-0 mt-0">
-          <EventCalendarView 
-            events={displayedTimelineEvents} 
-            month={activeDisplayMonth}
-            onMonthChange={setActiveDisplayMonth}
-            onDayClick={handleDayClickFromCalendar}
-          />
-          {selectedDateForDayView ? (
-            <DayTimetableView
-              date={selectedDateForDayView}
-              events={eventsForDayView}
-              onClose={closeDayTimetableView}
-              onDeleteEvent={handleDeleteTimelineEvent}
-              onEditEvent={handleOpenEditModal}
-            />
-          ) : (
-            <SlidingTimelineView 
-              events={displayedTimelineEvents} 
-              onDeleteEvent={handleDeleteTimelineEvent}
-              onEditEvent={handleOpenEditModal}
-              currentDisplayMonth={activeDisplayMonth}
-              onNavigateMonth={handleMonthNavigationForSharedViews}
-            />
-          )}
-        </TabsContent>
-        <TabsContent value="list" className="flex-1 min-h-0 mt-0">
-          <TimelineListView 
-            events={displayedTimelineEvents} 
-            onDeleteEvent={handleDeleteTimelineEvent} 
+      <div className="flex justify-between items-center">
+        <Tabs
+          value={viewMode}
+          onValueChange={(value) => handleViewModeChange(value as 'calendar' | 'list')}
+          className="flex-grow"
+        >
+          <TabsList className="grid w-full grid-cols-2 max-w-xs">
+            <TabsTrigger value="calendar"><CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar View</TabsTrigger>
+            <TabsTrigger value="list"><List className="mr-2 h-4 w-4" /> List View</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Button onClick={() => handleOpenEditModal()} className="bg-accent hover:bg-accent/90 text-accent-foreground ml-4">
+          <PlusCircle className="mr-2 h-5 w-5" /> Add New Event
+        </Button>
+      </div>
+
+
+      <TabsContent value="calendar" className={cn("space-y-6 flex-1 flex flex-col min-h-0 mt-0", viewMode === 'calendar' ? 'block' : 'hidden')}>
+        <EventCalendarView
+          events={displayedTimelineEvents}
+          month={activeDisplayMonth}
+          onMonthChange={setActiveDisplayMonth}
+          onDayClick={handleDayClickFromCalendar}
+        />
+        {selectedDateForDayView ? (
+          <DayTimetableView
+            date={selectedDateForDayView}
+            events={eventsForDayView}
+            onClose={closeDayTimetableView}
+            onDeleteEvent={handleDeleteTimelineEvent}
             onEditEvent={handleOpenEditModal}
           />
-        </TabsContent>
-      </Tabs>
-      
+        ) : (
+          <SlidingTimelineView
+            events={displayedTimelineEvents}
+            onDeleteEvent={handleDeleteTimelineEvent}
+            onEditEvent={handleOpenEditModal}
+            currentDisplayMonth={activeDisplayMonth}
+            onNavigateMonth={handleMonthNavigationForSharedViews}
+          />
+        )}
+      </TabsContent>
+      <TabsContent value="list" className={cn("flex-1 min-h-0 mt-0", viewMode === 'list' ? 'block' : 'hidden')}>
+        <TimelineListView
+          events={displayedTimelineEvents}
+          onDeleteEvent={handleDeleteTimelineEvent}
+          onEditEvent={handleOpenEditModal}
+        />
+      </TabsContent>
+
       <TodaysPlanCard />
 
       <Card className="frosted-glass shadow-lg">
@@ -353,7 +398,7 @@ export default function ActualDashboardPage() {
         </CardContent>
       </Card>
 
-      {isLoadingInsights && !aiInsights.length && !insightsError && ( 
+      {isLoadingInsights && !aiInsights.length && !insightsError && (
         <div className="flex justify-center items-center py-8">
           <LoadingSpinner size="lg" />
         </div>
@@ -382,8 +427,8 @@ export default function ActualDashboardPage() {
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <CardTitle className="text-lg text-primary flex items-center">
-                      {insight.source === 'google_calendar' ? 
-                        <Calendar className="mr-2 h-5 w-5 text-accent flex-shrink-0" /> : 
+                      {insight.source === 'google_calendar' ?
+                        <Calendar className="mr-2 h-5 w-5 text-accent flex-shrink-0" /> :
                         <Inbox className="mr-2 h-5 w-5 text-accent flex-shrink-0" />
                       }
                       {insight.title}
@@ -423,6 +468,7 @@ export default function ActualDashboardPage() {
           }}
           eventToEdit={eventBeingEdited}
           onSubmit={handleSaveEditedEvent}
+          isAddingNewEvent={isAddingNewEvent}
         />
       )}
     </div>

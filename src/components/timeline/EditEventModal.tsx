@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { FC } from 'react';
@@ -9,13 +10,14 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import type { TimelineEvent } from '@/types';
-import EditEventForm from './EditEventForm'; // EditEventFormValues is not directly used here, but EditEventForm uses it.
+import EditEventForm from './EditEventForm';
 
 interface EditEventModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   eventToEdit: TimelineEvent | null;
-  onSubmit: (updatedEvent: TimelineEvent) => void; // This is the final submit handler from the parent
+  onSubmit: (updatedEvent: TimelineEvent) => void;
+  isAddingNewEvent?: boolean; // To help differentiate title
 }
 
 const EditEventModal: FC<EditEventModalProps> = ({
@@ -23,37 +25,41 @@ const EditEventModal: FC<EditEventModalProps> = ({
   onOpenChange,
   eventToEdit,
   onSubmit,
+  isAddingNewEvent,
 }) => {
   if (!eventToEdit) {
-    return null; // Don't render the dialog if there's no event to edit
+    return null;
   }
 
-  // This function is passed to EditEventForm.
-  // EditEventForm's onSubmit prop expects a function that takes the complete updated TimelineEvent.
   const handleFormSubmit = (updatedEventFromForm: TimelineEvent) => {
-    onSubmit(updatedEventFromForm); // Call the parent's submit handler (e.g., to update state and localStorage)
-    onOpenChange(false); // Close the modal after successful submission
+    onSubmit(updatedEventFromForm);
+    onOpenChange(false);
   };
 
   const handleCancel = () => {
-    onOpenChange(false); // Close the modal
+    onOpenChange(false);
   };
+
+  const dialogTitle = isAddingNewEvent ? "Add New Event" : "Edit Timeline Event";
+  const dialogDescription = isAddingNewEvent
+    ? "Fill in the details for your new event."
+    : "Make changes to your event details below. Click save when you're done.";
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg frosted-glass p-0">
         <DialogHeader className="p-6 pb-4">
-          <DialogTitle className="font-headline text-xl text-primary">Edit Timeline Event</DialogTitle>
+          <DialogTitle className="font-headline text-xl text-primary">{dialogTitle}</DialogTitle>
           <DialogDescription>
-            Make changes to your event details below. Click save when you&apos;re done.
+            {dialogDescription}
           </DialogDescription>
         </DialogHeader>
-        <div className="px-6 pb-6 pt-2"> {/* Add padding for the form itself */}
+        <div className="px-6 pb-6 pt-2">
           <EditEventForm
             eventToEdit={eventToEdit}
             onSubmit={handleFormSubmit}
             onCancel={handleCancel}
-            // className="pt-4" // Removed direct class, padding handled by wrapper div
           />
         </div>
       </DialogContent>
