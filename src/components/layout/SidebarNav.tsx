@@ -16,7 +16,7 @@ import {
   UserCircle,
   Moon,
   Sun,
-  Image as ImageIcon, // Added ImageIcon
+  Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from 'firebase/auth';
@@ -33,8 +33,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from '@/hooks/use-theme';
-import { useState } from 'react'; // Added useState
-import CustomizeBackgroundModal from './CustomizeBackgroundModal'; // Added import
+import { useState } from 'react'; 
+import CustomizeThemeModal from './CustomizeThemeModal';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -50,7 +50,7 @@ export default function SidebarNav() {
   const { user } = useAuth();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
-  const [isCustomizeBackgroundModalOpen, setIsCustomizeBackgroundModalOpen] = useState(false); // Added state
+  const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
 
   const handleSignOut = async () => {
     try {
@@ -107,9 +107,9 @@ export default function SidebarNav() {
             <DropdownMenuContent align="end" className="w-56 frosted-glass">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setIsCustomizeBackgroundModalOpen(true)}>
-                <ImageIcon className="mr-2 h-4 w-4" />
-                <span>Customize Background</span>
+              <DropdownMenuItem onClick={() => setIsCustomizeModalOpen(true)}>
+                <Palette className="mr-2 h-4 w-4" />
+                <span>Customize Theme</span>
               </DropdownMenuItem>
               <DropdownMenuItem disabled>
                 <Settings className="mr-2 h-4 w-4" />
@@ -124,9 +124,9 @@ export default function SidebarNav() {
           </DropdownMenu>
         </div>
       </div>
-      <CustomizeBackgroundModal
-        isOpen={isCustomizeBackgroundModalOpen}
-        onOpenChange={setIsCustomizeBackgroundModalOpen}
+      <CustomizeThemeModal
+        isOpen={isCustomizeModalOpen}
+        onOpenChange={setIsCustomizeModalOpen}
       />
     </>
   );

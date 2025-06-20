@@ -12,51 +12,51 @@ import type { ReactNode} from 'react';
 import { useEffect } from 'react';
 
 function AppThemeApplicator({ children }: { children: ReactNode }) {
-  const { theme: userPreferredTheme, backgroundImage, backgroundColor, isMounted } = useTheme();
+  const { theme: userPreferredTheme, backgroundImage, backgroundColor, customTheme, isMounted } = useTheme();
   const pathname = usePathname();
   const isAuthPage = pathname.startsWith('/auth/');
 
   useEffect(() => {
     if (isMounted) {
       const root = document.documentElement;
-      root.classList.remove('light', 'dark');
-
-      if (isAuthPage) {
-        root.classList.add('dark');
-      } else {
-        root.classList.add(userPreferredTheme);
-      }
       
-      // Apply background color first, so image can go on top
+      // 1. Set Light/Dark mode class
+      root.classList.remove('light', 'dark');
+      root.classList.add(isAuthPage ? 'dark' : userPreferredTheme);
+      
+      // 2. Apply custom theme colors as CSS variables
+      if (customTheme) {
+        Object.entries(customTheme).forEach(([key, value]) => {
+          root.style.setProperty(key, value);
+        });
+      } else {
+        // Clear custom theme variables when not in use
+        const themeKeys = ['--background', '--foreground', '--card', '--primary', '--accent']; // Add all your theme keys here
+        themeKeys.forEach(key => root.style.removeProperty(key));
+      }
+
+      // 3. Apply background color first
       document.body.style.backgroundColor = backgroundColor || '';
 
-      // Apply background image to body
+      // 4. Apply background image, which will sit on top of the color
       if (backgroundImage) {
         document.body.style.backgroundImage = `url("${backgroundImage}")`;
         document.body.style.backgroundSize = 'cover';
         document.body.style.backgroundPosition = 'center';
         document.body.style.backgroundRepeat = 'no-repeat';
-        document.body.style.backgroundAttachment = 'fixed'; // Makes it fixed during scroll
+        document.body.style.backgroundAttachment = 'fixed';
       } else {
         document.body.style.backgroundImage = '';
-        document.body.style.backgroundSize = '';
-        document.body.style.backgroundPosition = '';
-        document.body.style.backgroundRepeat = '';
-        document.body.style.backgroundAttachment = '';
       }
     }
-  }, [pathname, userPreferredTheme, isAuthPage, backgroundImage, backgroundColor, isMounted]);
+  }, [pathname, userPreferredTheme, isAuthPage, backgroundImage, backgroundColor, customTheme, isMounted]);
 
   // Clean up body styles on unmount or if background is removed
   useEffect(() => {
     return () => {
-      if (isMounted) { // Check isMounted for cleanup as well
+      if (isMounted) {
         document.body.style.backgroundImage = '';
         document.body.style.backgroundColor = '';
-        document.body.style.backgroundSize = '';
-        document.body.style.backgroundPosition = '';
-        document.body.style.backgroundRepeat = '';
-        document.body.style.backgroundAttachment = '';
       }
     };
   }, [isMounted]);

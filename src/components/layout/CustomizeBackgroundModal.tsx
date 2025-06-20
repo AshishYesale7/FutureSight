@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, type ChangeEvent } from 'react';
+import { useState, type ChangeEvent, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,10 +16,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTheme } from '@/hooks/use-theme';
 import { useToast } from '@/hooks/use-toast';
-import { ImageUp, Link, Trash2, Palette, Slash } from 'lucide-react';
+import { ImageUp, Link, Trash2, Palette, Slash, Paintbrush, Text, Sparkles, Sidebar } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { ColorPickerPopover } from '../ui/ColorPickerPopover';
 
-interface CustomizeBackgroundModalProps {
+interface CustomizeThemeModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }
@@ -32,12 +34,42 @@ const BACKGROUND_COLORS = [
     { name: 'Charcoal', value: 'hsl(240 5% 12%)' },
 ];
 
-export default function CustomizeBackgroundModal({ isOpen, onOpenChange }: CustomizeBackgroundModalProps) {
-  const { setBackgroundImage, setBackgroundColor, backgroundColor: currentBackgroundColor } = useTheme();
+const themeColorConfig = [
+  { id: 'background', label: 'Background', icon: Paintbrush, cssVar: '--background' },
+  { id: 'foreground', label: 'Foreground Text', icon: Text, cssVar: '--foreground' },
+  { id: 'card', label: 'Card Background', icon: Paintbrush, cssVar: '--card' },
+  { id: 'primary', label: 'Primary (Headings)', icon: Sparkles, cssVar: '--primary' },
+  { id: 'accent', label: 'Accent (Buttons)', icon: Sparkles, cssVar: '--accent' },
+];
+
+export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeThemeModalProps) {
+  const { 
+    setBackgroundImage, 
+    setBackgroundColor, 
+    backgroundColor: currentBackgroundColor,
+    customTheme,
+    setCustomTheme,
+    resetCustomizations,
+    theme: currentThemeMode,
+    isMounted
+  } = useTheme();
+  
   const { toast } = useToast();
   const [imageUrl, setImageUrl] = useState('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [initialThemeValues, setInitialThemeValues] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (isOpen && isMounted) {
+      const rootStyle = getComputedStyle(document.documentElement);
+      const initialValues: Record<string, string> = {};
+      themeColorConfig.forEach(config => {
+        initialValues[config.cssVar] = rootStyle.getPropertyValue(config.cssVar).trim();
+      });
+      setInitialThemeValues(initialValues);
+    }
+  }, [isOpen, isMounted, currentThemeMode]);
 
   const handleUrlApply = () => {
     if (!imageUrl.trim()) {
@@ -45,7 +77,6 @@ export default function CustomizeBackgroundModal({ isOpen, onOpenChange }: Custo
       return;
     }
     try {
-      // Basic URL validation
       new URL(imageUrl);
       setBackgroundImage(imageUrl);
       toast({ title: 'Success', description: 'Background image updated from URL.' });
@@ -59,115 +90,130 @@ export default function CustomizeBackgroundModal({ isOpen, onOpenChange }: Custo
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
         toast({ title: 'Error', description: 'File size exceeds 5MB limit.', variant: 'destructive' });
-        setUploadedFile(null);
-        setPreviewUrl(null);
-        event.target.value = ''; // Clear the input
         return;
       }
       setUploadedFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
+      reader.onloadend = () => setPreviewUrl(reader.result as string);
       reader.readAsDataURL(file);
-    } else {
-      setUploadedFile(null);
-      setPreviewUrl(null);
     }
   };
 
   const handleFileUploadApply = () => {
     if (previewUrl) {
       setBackgroundImage(previewUrl);
-      toast({ title: 'Success', description: 'Background image uploaded and applied.' });
+      toast({ title: 'Success', description: 'Background image uploaded.' });
       onOpenChange(false);
       resetForm();
-    } else {
-      toast({ title: 'Error', description: 'No file selected or preview available.', variant: 'destructive' });
     }
   };
 
-  const handleResetBackground = () => {
-    setBackgroundImage(null);
-    setBackgroundColor(null);
-    toast({ title: 'Success', description: 'Background reset to default.' });
+  const handleReset = () => {
+    resetCustomizations();
+    toast({ title: 'Success', description: 'All customizations have been reset to default.' });
     onOpenChange(false);
     resetForm();
+  };
+
+  const handleColorChange = (cssVar: string, color: string) => {
+    setCustomTheme({
+      ...customTheme,
+      [cssVar]: color,
+    });
+  };
+
+  const getCurrentColor = (cssVar: string) => {
+    if (customTheme && customTheme[cssVar]) {
+      return customTheme[cssVar];
+    }
+    return initialThemeValues[cssVar] || '#000000';
   };
 
   const resetForm = () => {
     setImageUrl('');
     setUploadedFile(null);
     setPreviewUrl(null);
-    // Find the file input and reset its value if it exists
     const fileInput = document.getElementById('background-file-upload') as HTMLInputElement | null;
-    if (fileInput) {
-      fileInput.value = '';
-    }
+    if (fileInput) fileInput.value = '';
   };
   
   const handleModalOpenChange = (open: boolean) => {
-    if (!open) {
-      resetForm(); // Reset form when modal is closed
-    }
+    if (!open) resetForm();
     onOpenChange(open);
   };
 
-
   return (
     <Dialog open={isOpen} onOpenChange={handleModalOpenChange}>
-      <DialogContent className="sm:max-w-md frosted-glass p-0">
+      <DialogContent className="sm:max-w-2xl frosted-glass p-0">
         <DialogHeader className="p-6 pb-4 border-b border-border/30">
-          <DialogTitle className="font-headline text-xl text-primary">Customize Background</DialogTitle>
+          <DialogTitle className="font-headline text-xl text-primary">Customize Theme</DialogTitle>
           <DialogDescription>
-            Set a custom background image or color. Your changes are saved automatically.
+            Personalize your app's appearance. Changes are saved automatically.
           </DialogDescription>
         </DialogHeader>
+
         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-          <div className="space-y-2">
-            <Label htmlFor="imageUrl" className="flex items-center">
-              <Link className="mr-2 h-4 w-4" /> Image URL
+          {/* Theme Color Customization */}
+          <div className="space-y-4">
+             <Label className="font-semibold text-lg flex items-center text-primary">
+                <Palette className="mr-2 h-5 w-5" /> Theme Colors
             </Label>
-            <div className="flex space-x-2">
-              <Input
-                id="imageUrl"
-                type="url"
-                placeholder="https://example.com/image.jpg"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-              />
-              <Button onClick={handleUrlApply} variant="outline" className="shrink-0">Apply URL</Button>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+              {themeColorConfig.map(config => (
+                <div key={config.id} className="flex items-center justify-between">
+                  <Label htmlFor={`color-${config.id}`} className="flex items-center gap-2 text-sm">
+                    <config.icon className="h-4 w-4 text-muted-foreground" />
+                    {config.label}
+                  </Label>
+                  <ColorPickerPopover 
+                    id={`color-${config.id}`}
+                    value={getCurrentColor(config.cssVar)} 
+                    onChange={(color) => handleColorChange(config.cssVar, color)} 
+                  />
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="background-file-upload" className="flex items-center">
-              <ImageUp className="mr-2 h-4 w-4" /> Upload Image (Max 5MB)
+          <Separator />
+          
+          {/* Background Customization */}
+          <div className="space-y-4">
+            <Label className="font-semibold text-lg flex items-center text-primary">
+              <ImageUp className="mr-2 h-5 w-5" /> Background Image
             </Label>
-            <Input
-              id="background-file-upload"
-              type="file"
-              accept="image/png, image/jpeg, image/gif, image/webp"
-              onChange={handleFileChange}
-              className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
-            />
-          </div>
-
-          {previewUrl && (
             <div className="space-y-2">
-              <Label>Preview:</Label>
-              <img src={previewUrl} alt="Background Preview" className="rounded-md max-h-40 w-auto object-contain border border-border" />
-              <Button onClick={handleFileUploadApply} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                Apply Uploaded Image
-              </Button>
+              <Label htmlFor="imageUrl" className="text-sm flex items-center">
+                <Link className="mr-2 h-4 w-4" /> Image URL
+              </Label>
+              <div className="flex space-x-2">
+                <Input id="imageUrl" type="url" placeholder="https://example.com/image.jpg" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+                <Button onClick={handleUrlApply} variant="outline" className="shrink-0">Apply URL</Button>
+              </div>
             </div>
-          )}
+            <div className="space-y-2">
+              <Label htmlFor="background-file-upload" className="text-sm flex items-center">
+                <ImageUp className="mr-2 h-4 w-4" /> Upload Image (Max 5MB)
+              </Label>
+              <Input id="background-file-upload" type="file" accept="image/*" onChange={handleFileChange} />
+            </div>
+            {previewUrl && (
+              <div className="space-y-2">
+                <Label>Preview:</Label>
+                <img src={previewUrl} alt="Background Preview" className="rounded-md max-h-40 w-auto object-contain border border-border" />
+                <Button onClick={handleFileUploadApply} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">Apply Uploaded Image</Button>
+              </div>
+            )}
+          </div>
 
-          <div className="space-y-3">
-            <Label className="flex items-center">
-                <Palette className="mr-2 h-4 w-4" /> Background Color
+          <Separator />
+
+          {/* Solid Color Background */}
+           <div className="space-y-3">
+            <Label className="font-semibold text-lg flex items-center text-primary">
+                <Paintbrush className="mr-2 h-5 w-5" /> Solid Background Color
             </Label>
             <div className="flex flex-wrap gap-3 pt-1">
                 {BACKGROUND_COLORS.map((colorOption) => (
@@ -192,9 +238,10 @@ export default function CustomizeBackgroundModal({ isOpen, onOpenChange }: Custo
             </div>
           </div>
         </div>
+
         <DialogFooter className="p-6 pt-4 border-t border-border/30 flex-col sm:flex-row gap-2">
-           <Button onClick={handleResetBackground} variant="destructive" className="w-full sm:w-auto mr-auto">
-            <Trash2 className="mr-2 h-4 w-4" /> Reset Background
+           <Button onClick={handleReset} variant="destructive" className="w-full sm:w-auto mr-auto">
+            <Trash2 className="mr-2 h-4 w-4" /> Reset All Customizations
           </Button>
           <DialogClose asChild>
             <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={resetForm}>
