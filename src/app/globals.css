@@ -7,56 +7,57 @@ body {
 }
 
 @layer base {
+  /* "Light Theme" - Redefined to be the purple/pink dark theme from the image */
   :root {
-    --background: 210 33% 92%; /* PRD: Light grayish-blue #D0DCE5 */
-    --foreground: 210 25% 18%; /* Adjusted for better general text contrast in light mode */
+    --background: 265 35% 8%; /* Very dark, deep purple */
+    --foreground: 260 50% 92%; /* Light lavender-white text for high contrast */
 
-    --card: 210 40% 96%; /* Card base for light mode, slightly less stark white */
-    --card-foreground: 210 25% 15%; /* Dark text for cards */
+    --card: 265 30% 13%; /* Dark purple, slightly lighter than bg for cards */
+    --card-foreground: 260 50% 92%; /* Match foreground text color */
 
-    --popover: 210 40% 97%;
-    --popover-foreground: 210 25% 15%;
+    --popover: 265 35% 10%; /* Popover, even darker for depth */
+    --popover-foreground: 260 50% 92%;
 
-    --primary: 210 25% 40%; /* PRD: Deep slate blue #4A6580 */
-    --primary-foreground: 0 0% 100%; /* Adjusted to pure white for max contrast */
+    --primary: 258 100% 85%; /* A bright, vibrant lavender for headings/links */
+    --primary-foreground: 258 100% 10%; /* Dark text for contrast on primary elements */
 
-    --secondary: 210 25% 55%; /* Lighter slate blue */
-    --secondary-foreground: 210 20% 96%; /* Light text for contrast on mid-slate blue */
+    --secondary: 265 25% 25%; /* Muted purple for secondary elements */
+    --secondary-foreground: 260 50% 85%; /* Light text for on secondary */
 
-    --muted: 210 30% 85%;   /* Lighter gray-blue, for less emphasis */
-    --muted-foreground: 210 25% 35%; /* Softer dark slate for muted text */
+    --muted: 265 20% 20%; /* Muted state */
+    --muted-foreground: 260 30% 60%; /* Softer text for muted content */
 
-    --accent: 47 15% 56%;  /* PRD: Muted gold #A2997A */
-    --accent-foreground: 0 0% 100%; /* White text on muted gold for clarity */
+    --accent: 320 90% 65%;  /* Vibrant magenta/pink from image for CTAs */
+    --accent-foreground: 320 90% 10%; /* Dark text for contrast on accent */
 
-    --destructive: 0 72% 51%; /* Standard ShadCN red */
-    --destructive-foreground: 0 0% 100%; /* Standard ShadCN white */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 210 25% 75%; /* A slightly darker border than muted, slate-toned */
-    --input: 210 30% 88%;  /* Input background, slightly distinct from main bg, still light */
-    --ring: 210 25% 40%;   /* Ring color based on primary */
+    --border: 265 25% 22%; /* Subtle border color */
+    --input: 265 25% 18%;  /* Input background */
+    --ring: 320 90% 70%;   /* Ring color based on accent */
 
-    --radius: 0.75rem; /* Slightly less rounded */
+    --radius: 0.75rem;
 
-    --chart-1: 210 25% 50%; 
-    --chart-2: 47 20% 65%;  
-    --chart-3: 210 25% 70%; 
-    --chart-4: 47 25% 45%;  
-    --chart-5: 180 30% 50%; 
+    --chart-1: 258 90% 70%; 
+    --chart-2: 320 80% 60%;  
+    --chart-3: 258 70% 80%; 
+    --chart-4: 320 100% 80%;  
+    --chart-5: 280 80% 75%; 
 
-    /* Sidebar colors (light theme) */
-    --sidebar-background: hsl(var(--card)); 
-    --sidebar-foreground: 210 25% 25%; 
+    /* Sidebar colors for the purple "light theme" */
+    --sidebar-background: 265 35% 11%;
+    --sidebar-foreground: hsl(var(--foreground)); 
     --sidebar-primary: hsl(var(--accent)); 
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 30% 90%; 
-    --sidebar-accent-foreground: 210 25% 15%; 
-    --sidebar-border: 210 25% 80%; 
+    --sidebar-primary-foreground: hsl(var(--accent-foreground));
+    --sidebar-accent: 265 30% 18%;
+    --sidebar-accent-foreground: hsl(var(--foreground)); 
+    --sidebar-border: 265 30% 20%; 
     --sidebar-ring: hsl(var(--accent));
   }
 
+  /* "Dark Theme" - The original deep slate blue theme */
   .dark {
-    /* Dark Theme (based on PRD colors, adapted for dark mode) */
     --background: 210 20% 12%; /* Very dark slate blue */
     --foreground: 210 25% 88%; /* Light gray-blue text */
 
@@ -117,18 +118,17 @@ body {
 
 /* Custom utility for frosted glass effect */
 .frosted-glass {
-  /* The backdrop-blur is what creates the "frost" on the content behind it */
   @apply backdrop-blur-lg shadow-lg border;
 }
-:root .frosted-glass { /* Light theme frosted glass styling */
-  /* A semi-transparent white background gives the "glass" its own color */
-  background-color: hsl(210 60% 98% / 0.5); /* Very light, semi-transparent cool white */
-  /* A slightly darker, semi-transparent border helps with the "engraved" effect */
-  border-color: hsl(210 25% 85% / 0.7);
+
+/* Glass effect for the purple "light theme" */
+:root .frosted-glass { 
+  background-color: hsl(var(--card) / 0.45);
+  border-color: hsl(280 40% 45% / 0.4);
 }
-.dark .frosted-glass { /* Dark theme frosted glass styling */
-  /* A semi-transparent dark slate background for the "glass" */
-  background-color: hsl(var(--card) / 0.55); /* Uses the dark theme's --card color but semi-transparent */
-  /* A slightly lighter, semi-transparent border */
+
+/* Glass effect for the slate blue "dark theme" */
+.dark .frosted-glass { 
+  background-color: hsl(var(--card) / 0.55);
   border-color: hsl(210 20% 30% / 0.8);
 }
