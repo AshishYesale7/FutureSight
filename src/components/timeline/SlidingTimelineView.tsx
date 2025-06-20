@@ -4,8 +4,8 @@
 import type { TimelineEvent } from '@/types';
 import { useMemo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, Bot, Trash2, ChevronLeft, ChevronRight, Clock, ExternalLink as LinkIcon, Edit3 } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, isToday } from 'date-fns';
+import { CalendarDays, Bot, Trash2, ChevronLeft, ChevronRight, Clock, ExternalLink as LinkIcon, Edit3, Info } from 'lucide-react';
+import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, isToday as dfnsIsToday, formatDistanceToNowStrict, isFuture, isPast } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -47,6 +47,20 @@ const getEventTypeStyle = (type: TimelineEvent['type']) => { // For badges
   }
 };
 
+const getStatusBadgeVariant = (status?: TimelineEvent['status']): { variant: "default" | "secondary" | "destructive" | "outline", className?: string } => {
+  switch (status) {
+    case 'completed':
+      return { variant: 'default', className: 'bg-green-500/80 border-green-700 text-white hover:bg-green-600/80' };
+    case 'in-progress':
+      return { variant: 'default', className: 'bg-blue-500/80 border-blue-700 text-white hover:bg-blue-600/80' };
+    case 'missed':
+      return { variant: 'destructive', className: 'bg-red-500/80 border-red-700 text-white hover:bg-red-600/80' };
+    case 'pending':
+    default:
+      return { variant: 'secondary', className: 'bg-yellow-500/80 border-yellow-700 text-yellow-900 hover:bg-yellow-600/80' };
+  }
+};
+
 const getEventTypeIcon = (event: TimelineEvent): ReactNode => {
   if (event.type === 'ai_suggestion') return <Bot className="mr-2 h-4 w-4 text-accent flex-shrink-0" />;
   const Icon = event.icon || CalendarDays;
@@ -54,7 +68,16 @@ const getEventTypeIcon = (event: TimelineEvent): ReactNode => {
 };
 
 const isMidnight = (date: Date): boolean => {
+  if (!(date instanceof Date) || isNaN(date.valueOf())) return true;
   return date.getHours() === 0 && date.getMinutes() === 0 && date.getSeconds() === 0 && date.getMilliseconds() === 0;
+};
+
+const getCountdownText = (eventDate: Date): string => {
+  const now = new Date();
+  if (dfnsIsToday(eventDate)) return "Today";
+  if (isFuture(eventDate)) return formatDistanceToNowStrict(eventDate, { addSuffix: true });
+  if (isPast(eventDate)) return formatDistanceToNowStrict(eventDate, { addSuffix: true });
+  return "";
 };
 
 interface SlidingTimelineViewProps {
@@ -77,13 +100,20 @@ export default function SlidingTimelineView({
   const processedEvents = useMemo(() => {
     return allEventsFromProps
       .map(e => ({ ...e, date: e.date instanceof Date && !isNaN(e.date.valueOf()) ? e.date : parseISO(e.date as unknown as string) }))
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
+      .sort((a, b) => {
+        if (!(a.date instanceof Date) || isNaN(a.date.valueOf())) return 1;
+        if (!(b.date instanceof Date) || isNaN(b.date.valueOf())) return -1;
+        return a.date.getTime() - b.date.getTime();
+      });
   }, [allEventsFromProps]);
 
   const eventsForCurrentMonth = useMemo(() => {
     const monthStart = startOfMonth(currentDisplayMonth);
     const monthEnd = endOfMonth(currentDisplayMonth);
-    return processedEvents.filter(event => isWithinInterval(event.date, { start: monthStart, end: monthEnd }));
+    return processedEvents.filter(event => {
+      if (!(event.date instanceof Date) || isNaN(event.date.valueOf())) return false;
+      return isWithinInterval(event.date, { start: monthStart, end: monthEnd })
+    });
   }, [processedEvents, currentDisplayMonth]);
   
   const handleDeleteEvent = (eventId: string, eventTitle: string) => {
@@ -119,7 +149,12 @@ export default function SlidingTimelineView({
               <div className="absolute left-[9px] top-0 bottom-0 w-0.5 bg-border/70 z-0" />
 
               <div className="space-y-6">
-                {eventsForCurrentMonth.map((event) => (
+                {eventsForCurrentMonth.map((event) => {
+                  if (!(event.date instanceof Date) || isNaN(event.date.valueOf())) return null;
+                  const statusBadge = getStatusBadgeVariant(event.status);
+                  const countdownText = getCountdownText(event.date);
+
+                  return (
                   <div key={event.id} className="flex items-start relative">
                     <div className="absolute -left-[19px] top-1 flex flex-col items-center z-10">
                       <div 
@@ -179,22 +214,35 @@ export default function SlidingTimelineView({
                               )}
                             </div>
                           </div>
-                           <div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5">
-                            <Badge variant="outline" className={cn("capitalize text-xs py-0 px-1.5 h-auto", getEventTypeStyle(event.type))}>
+                           <div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5 gap-2">
+                            <Badge variant="outline" className={cn("capitalize text-xs py-0 px-1.5 h-auto whitespace-nowrap", getEventTypeStyle(event.type))}>
                               {event.type.replace(/_/g, ' ')}
                             </Badge>
-                            {!isMidnight(event.date) && (
-                              <span className="flex items-center">
-                                <Clock className="h-3.5 w-3.5 mr-1" />
-                                {format(event.date, 'h:mm a')}
-                              </span>
-                            )}
+                            <div className="flex items-center gap-2 flex-wrap justify-end">
+                                {countdownText && (
+                                    <span className="flex items-center text-xs text-muted-foreground whitespace-nowrap">
+                                        <Info className="h-3.5 w-3.5 mr-1" />
+                                        {countdownText}
+                                    </span>
+                                )}
+                                {!event.isAllDay && !isMidnight(event.date) && (
+                                    <span className="flex items-center text-xs text-muted-foreground whitespace-nowrap">
+                                        <Clock className="h-3.5 w-3.5 mr-1" />
+                                        {format(event.date, 'h:mm a')}
+                                    </span>
+                                )}
+                            </div>
                           </div>
                         </CardHeader>
                         <CardContent className="p-3 pt-1 text-sm">
                           {event.notes && <p className="text-foreground/80 mb-2 line-clamp-3">{event.notes}</p>}
                           {event.status && (
-                            <p className="text-xs mb-1">Status: <Badge variant={event.status === 'completed' ? 'default' : 'secondary'} className={cn("capitalize", event.status === 'completed' ? 'bg-green-500 text-white' : '')}>{event.status}</Badge></p>
+                            <div className="text-xs mb-1 flex items-center">
+                                Status:
+                                <Badge variant={statusBadge.variant} className={cn("capitalize ml-1.5", statusBadge.className)}>
+                                {event.status.replace(/-/g, ' ')}
+                                </Badge>
+                            </div>
                           )}
                           {event.links && event.links.length > 0 && (
                             <div>
@@ -214,7 +262,8 @@ export default function SlidingTimelineView({
                       </Card>
                     </div>
                   </div>
-                ))}
+                );
+                })}
               </div>
             </div>
           </ScrollArea>

@@ -41,6 +41,14 @@ const eventTypes: TimelineEvent['type'][] = [
   'ai_suggestion',
 ];
 
+const eventStatuses: Exclude<TimelineEvent['status'], undefined>[] = [
+  'pending',
+  'in-progress',
+  'completed',
+  'missed',
+];
+
+
 const PREDEFINED_COLORS = [
   { name: 'Default', value: undefined },
   { name: 'Red', value: '#FCA5A5' },
@@ -65,6 +73,7 @@ const editEventFormSchema = z.object({
   type: z.enum(eventTypes),
   isAllDay: z.boolean().optional(),
   color: z.string().optional(),
+  status: z.enum(eventStatuses).optional(),
 }).refine(data => {
   if (data.startDateTime && data.endDateTime) {
     return new Date(data.endDateTime) >= new Date(data.startDateTime);
@@ -82,7 +91,7 @@ interface EditEventFormProps {
   onSubmit: (updatedEvent: TimelineEvent) => void;
   onCancel: () => void;
   className?: string;
-  isAddingNewEvent?: boolean; // Added for consistency if needed, though not used in logic here yet
+  isAddingNewEvent?: boolean;
 }
 
 const formatDateForInput = (date?: Date): string => {
@@ -114,7 +123,8 @@ const EditEventForm: FC<EditEventFormProps> = ({
       endDateTime: formatDateForInput(eventToEdit.endDate),
       type: eventToEdit.type || 'custom',
       isAllDay: eventToEdit.isAllDay || false,
-      color: eventToEdit.color || undefined, // Initialize with existing color or undefined
+      color: eventToEdit.color || undefined,
+      status: eventToEdit.status || 'pending',
     },
   });
 
@@ -127,6 +137,7 @@ const EditEventForm: FC<EditEventFormProps> = ({
       type: eventToEdit.type || 'custom',
       isAllDay: eventToEdit.isAllDay || false,
       color: eventToEdit.color || undefined,
+      status: eventToEdit.status || 'pending',
     });
   }, [eventToEdit, form]);
 
@@ -149,7 +160,8 @@ const EditEventForm: FC<EditEventFormProps> = ({
       endDate: endDate,
       type: values.type,
       isAllDay: values.isAllDay || false,
-      color: values.color, // Include the selected color
+      color: values.color,
+      status: values.status || 'pending',
     };
     onSubmit(updatedEvent);
   };
@@ -185,33 +197,35 @@ const EditEventForm: FC<EditEventFormProps> = ({
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="startDateTime"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Start Date & Time</FormLabel>
-              <FormControl>
-                <Input type="datetime-local" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+            control={form.control}
+            name="startDateTime"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Start Date & Time</FormLabel>
+                <FormControl>
+                    <Input type="datetime-local" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
 
-        <FormField
-          control={form.control}
-          name="endDateTime"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>End Date & Time (Optional)</FormLabel>
-              <FormControl>
-                <Input type="datetime-local" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <FormField
+            control={form.control}
+            name="endDateTime"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>End Date & Time (Optional)</FormLabel>
+                <FormControl>
+                    <Input type="datetime-local" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
         
         <FormField
           control={form.control}
@@ -236,31 +250,58 @@ const EditEventForm: FC<EditEventFormProps> = ({
           )}
         />
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Type</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select event type" />
+                    </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                    {eventTypes.map((type) => (
+                        <SelectItem key={type} value={type} className="capitalize">
+                        {type.replace(/_/g, ' ')}
+                        </SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
 
-        <FormField
-          control={form.control}
-          name="type"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Type</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select event type" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {eventTypes.map((type) => (
-                    <SelectItem key={type} value={type} className="capitalize">
-                      {type.replace(/_/g, ' ')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+            <FormField
+            control={form.control}
+            name="status"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Status</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value || 'pending'}>
+                    <FormControl>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select event status" />
+                    </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                    {eventStatuses.map((status) => (
+                        <SelectItem key={status} value={status} className="capitalize">
+                        {status.replace(/-/g, ' ')}
+                        </SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
+
 
         <FormField
           control={form.control}
@@ -309,5 +350,3 @@ const EditEventForm: FC<EditEventFormProps> = ({
 };
 
 export default EditEventForm;
-
-    

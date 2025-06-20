@@ -52,6 +52,7 @@ export const mockTimelineEvents: TimelineEvent[] = [
     title: 'GATE Exam',
     type: 'exam',
     notes: 'Focus on revision of core subjects.',
+    status: 'pending',
     icon: GraduationCap,
     isAllDay: false,
   },
@@ -95,6 +96,7 @@ export const mockTimelineEvents: TimelineEvent[] = [
     title: 'Concurrent Event A',
     type: 'custom',
     notes: 'This event overlaps with DSA practice and Event B.',
+    status: 'in-progress',
     isAllDay: false,
   },
   {
@@ -104,6 +106,7 @@ export const mockTimelineEvents: TimelineEvent[] = [
     title: 'Concurrent Event B',
     type: 'project',
     notes: 'Overlaps with A and DSA.',
+    status: 'pending',
     isAllDay: false,
   },
   {
@@ -113,6 +116,7 @@ export const mockTimelineEvents: TimelineEvent[] = [
     title: 'Concurrent Event C (Short)',
     type: 'exam',
     notes: 'Short overlap.',
+    status: 'pending',
     isAllDay: false,
   },
   {
@@ -121,6 +125,7 @@ export const mockTimelineEvents: TimelineEvent[] = [
     endDate: createDateWithTime(today, 15, 0), // 3:00 PM Today
     title: 'Afternoon Focus Block',
     type: 'goal',
+    status: 'pending',
     isAllDay: false,
   },
   {
@@ -130,6 +135,7 @@ export const mockTimelineEvents: TimelineEvent[] = [
     title: 'Quick Check-in',
     type: 'custom',
     notes: 'Short meeting.',
+    status: 'completed',
     isAllDay: false,
   }
 ];
