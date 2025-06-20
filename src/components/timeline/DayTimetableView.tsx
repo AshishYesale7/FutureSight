@@ -5,9 +5,8 @@ import type { TimelineEvent } from '@/types';
 import { useMemo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { CalendarDays, Bot, Trash2, Clock, ExternalLink as LinkIcon, XCircle, Edit3 } from 'lucide-react';
+import { Bot, Trash2, XCircle, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -23,7 +22,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const HOUR_HEIGHT_PX = 60;
-const MIN_EVENT_COLUMN_WIDTH_PX = 90; 
+const MIN_EVENT_COLUMN_WIDTH_PX = 90;
+const minuteRulerHeightClass = 'h-8'; // Consistent height for the ruler
 
 const getEventTypeStyleClasses = (type: TimelineEvent['type']) => {
   switch (type) {
@@ -49,13 +49,13 @@ const getCustomColorStyles = (color?: string) => {
       borderColor: color,
     };
   }
-  return { backgroundColor: `${color}40`, borderColor: color };
+  // Fallback for named colors or other formats (less precise opacity)
+  return { backgroundColor: `${color}40`, borderColor: color }; // Adding 40 for approx 25% opacity in hex
 };
-
 
 const getEventTypeIcon = (event: TimelineEvent): ReactNode => {
   if (event.type === 'ai_suggestion') return <Bot className="mr-2 h-4 w-4 text-accent flex-shrink-0" />;
-  const Icon = event.icon || CalendarDays;
+  const Icon = event.icon || (() => <span className="mr-2 h-4 w-4 text-accent flex-shrink-0">📅</span>);
   return <Icon className="mr-2 h-4 w-4 text-accent flex-shrink-0" />;
 };
 
@@ -89,14 +89,14 @@ function calculateEventLayouts(
       let endValue;
       if (endDate) {
         if (endDate.getDate() !== startDate.getDate()) {
-          endValue = 24 * 60;
+          endValue = 24 * 60; // Spans to next day or beyond
         } else {
           endValue = endDate.getHours() * 60 + endDate.getMinutes();
         }
       } else {
-        endValue = start + 60;
+        endValue = start + 60; // Default 1 hour duration if no end date
       }
-      endValue = Math.max(start + 15, endValue); 
+      endValue = Math.max(start + 15, endValue); // Minimum 15 min duration
       return {
         ...e,
         originalIndex: idx,
@@ -104,7 +104,7 @@ function calculateEventLayouts(
         endInMinutes: endValue,
       };
     })
-    .sort((a, b) => {
+    .sort((a, b) => { // Primary sort by start time, secondary by duration (longer first)
       if (a.startInMinutes !== b.startInMinutes) return a.startInMinutes - b.startInMinutes;
       return (b.endInMinutes - b.startInMinutes) - (a.endInMinutes - a.startInMinutes);
     });
@@ -113,6 +113,7 @@ function calculateEventLayouts(
   
   let i = 0;
   while (i < events.length) {
+    // Find all events that overlap with events[i] or subsequent events in the current group
     let currentGroup = [events[i]];
     let maxEndInGroup = events[i].endInMinutes;
     for (let j = i + 1; j < events.length; j++) {
@@ -120,12 +121,14 @@ function calculateEventLayouts(
         currentGroup.push(events[j]);
         maxEndInGroup = Math.max(maxEndInGroup, events[j].endInMinutes);
       } else {
-        break;
+        break; // No more overlaps with the current group
       }
     }
     
+    // Sort this group by start time then original index to maintain some stability
     currentGroup.sort((a,b) => a.startInMinutes - b.startInMinutes || a.originalIndex - b.originalIndex);
 
+    // Assign columns within this group
     const columns: { event: typeof events[0]; columnOrder: number }[][] = [];
     for (const event of currentGroup) {
       let placed = false;
@@ -145,13 +148,14 @@ function calculateEventLayouts(
     const numColsInGroup = columns.length;
     maxConcurrentColumns = Math.max(maxConcurrentColumns, numColsInGroup);
 
+    // Assign layout properties
     for (const col of columns) {
       for (const item of col) {
         const event = item.event;
         const colIdx = item.columnOrder;
         
         const colWidthPercentage = 100 / numColsInGroup;
-        const gapPercentage = numColsInGroup > 1 ? 0.5 : 0; 
+        const gapPercentage = numColsInGroup > 1 ? 0.5 : 0; // Small gap between columns
         const actualColWidth = colWidthPercentage - (gapPercentage * (numColsInGroup - 1) / numColsInGroup);
         const leftOffset = colIdx * (actualColWidth + gapPercentage);
 
@@ -159,22 +163,22 @@ function calculateEventLayouts(
           ...event,
           layout: {
             top: event.startInMinutes * minuteHeightPx,
-            height: Math.max(15, (event.endInMinutes - event.startInMinutes) * minuteHeightPx),
+            height: Math.max(15, (event.endInMinutes - event.startInMinutes) * minuteHeightPx), // Min height for visibility
             left: `${leftOffset}%`,
             width: `${actualColWidth}%`,
-            zIndex: 10 + colIdx, 
+            zIndex: 10 + colIdx, // Simple z-index based on column
           },
         } as EventWithLayout);
       }
     }
-    i += currentGroup.length;
+    i += currentGroup.length; // Move to the start of the next non-overlapping group
   }
   
+  // Final sort by top position then z-index for rendering order
   layoutResults.sort((a, b) => a.layout.top - b.layout.top || a.layout.zIndex - b.layout.zIndex);
 
   return { eventsWithLayout: layoutResults, maxConcurrentColumns };
 }
-
 
 interface DayTimetableViewProps {
   date: Date;
@@ -198,8 +202,8 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
   
   const minEventGridWidth = useMemo(() => {
     return maxConcurrentColumns > 3 
-      ? `${Math.max(100, maxConcurrentColumns * MIN_EVENT_COLUMN_WIDTH_PX)}px`
-      : '100%';
+      ? `${Math.max(100, maxConcurrentColumns * MIN_EVENT_COLUMN_WIDTH_PX)}px` // e.g., at least 90px per column
+      : '100%'; // Default to full width if few columns
   }, [maxConcurrentColumns]);
 
   const handleDeleteEvent = (eventId: string, eventTitle: string) => {
@@ -209,10 +213,8 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
     }
   };
 
-  const minuteRulerHeightClass = 'h-8'; 
-
   return (
-    <Card className="frosted-glass w-full shadow-xl flex flex-col mt-6"> {/* No fixed height */}
+    <Card className="frosted-glass w-full shadow-xl flex flex-col mt-6">
       <CardHeader className="p-4 border-b border-border/30 flex flex-row justify-between items-center">
         <div>
           <CardTitle className="font-headline text-xl text-primary">
@@ -265,10 +267,10 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
           ))}
         </div>
       )}
-
-      <CardContent className="p-0 flex"> {/* Use flex for the two main columns. No fixed height. */}
-          {/* Vertical Hour Labels Column - The "Pole". Not sticky itself. It scrolls with parent. */}
-          <div className="w-16 md:w-20 bg-background border-r border-border/30 self-start shrink-0"> 
+      
+      <CardContent className="p-0 flex flex-1 min-h-0"> {/* flex-1 min-h-0 to allow children to control height & scroll */}
+          {/* Vertical Hour Labels Column - The "Pole". */}
+          <div className="w-16 md:w-20 bg-background border-r border-border/30 self-start shrink-0 z-10"> {/* No sticky, scrolls with card. z-10 to be above event lines */}
             {/* Spacer to align with the minute ruler height */}
             <div className={cn("border-b border-border/30", minuteRulerHeightClass)}></div>
             {hours.map(hour => (
@@ -281,27 +283,21 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
 
           {/* Event Grid Area (Minute Ruler + Events) */}
           {/* This area handles BOTH vertical scrolling for its content and horizontal scrolling for events. */}
-          <div className="flex-1 overflow-auto" style={{ minWidth: 0 }}> {/* overflow-auto handles both x and y. minWidth:0 for flex child */}
+          <div className="flex-1 overflow-auto relative h-full" style={{ minWidth: 0 }}> {/* h-full important for flex child to get height for overflow */}
             
             {/* Horizontal Minute Ruler - This ruler is STICKY to the top of THIS scrollable container. */}
             <div
               className={cn(
-                "bg-muted z-20 flex items-center border-b border-border/30 sticky top-0", // STICKY HERE
+                "bg-muted z-20 flex items-center border-b border-border/30 sticky top-0",
                 minuteRulerHeightClass
               )}
               style={{ minWidth: minEventGridWidth }} 
             >
-              <div className="flex-1 grid grid-cols-4 items-center h-full px-1">
-                <span className="text-[10px] text-muted-foreground text-center">00'</span>
-                <div className="border-l border-border/40 h-full flex items-center justify-center">
-                    <span className="text-[10px] text-muted-foreground text-center">15'</span>
-                </div>
-                <div className="border-l border-border/40 h-full flex items-center justify-center">
-                    <span className="text-[10px] text-muted-foreground text-center">30'</span>
-                </div>
-                <div className="border-l border-border/40 h-full flex items-center justify-center">
-                    <span className="text-[10px] text-muted-foreground text-center">45'</span>
-                </div>
+              <div className="w-full grid grid-cols-4 items-center h-full px-1 text-center text-[10px] text-muted-foreground">
+                <div>00'</div>
+                <div className="border-l border-border/40 h-full flex items-center justify-center">15'</div>
+                <div className="border-l border-border/40 h-full flex items-center justify-center">30'</div>
+                <div className="border-l border-border/40 h-full flex items-center justify-center">45'</div>
               </div>
             </div>
 
@@ -379,4 +375,3 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
     </Card>
   );
 }
-
