@@ -271,7 +271,7 @@ export default function ActualDashboardPage() {
           <TabsTrigger value="list"><List className="mr-2 h-4 w-4" /> List View</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="calendar" className="space-y-6 overflow-y-auto flex-1 flex flex-col min-h-0">
+        <TabsContent value="calendar" className="space-y-6 overflow-y-auto flex-1 flex flex-col min-h-0 mt-0">
           <EventCalendarView 
             events={displayedTimelineEvents} 
             month={activeDisplayMonth}
@@ -294,7 +294,7 @@ export default function ActualDashboardPage() {
             />
           )}
         </TabsContent>
-        <TabsContent value="list" className="flex-1 min-h-0">
+        <TabsContent value="list" className="flex-1 min-h-0 mt-0">
           <TimelineListView events={displayedTimelineEvents} onDeleteEvent={handleDeleteTimelineEvent} />
         </TabsContent>
       </Tabs>

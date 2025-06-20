@@ -80,7 +80,7 @@ export default function EventCalendarView({
           onSelect={(day) => handleDayClickInternal(day)} // onSelect now triggers the internal handler
           month={month} 
           onMonthChange={onMonthChange} 
-          className="rounded-md w-full p-0 [&_button]:text-base [&_button:has(span_.absolute)]:overflow-visible"
+          className="rounded-md w-full p-0 [&_button]:text-base" // Removed: [&_button:has(span_.absolute)]:overflow-visible
           classNames={{
             // day_selected: "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary/90", // Selection styling can be removed or kept if needed
             day_today: "bg-accent text-accent-foreground ring-2 ring-accent/70",
