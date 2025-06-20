@@ -4,7 +4,7 @@
 import type { TimelineEvent } from '@/types';
 import { useMemo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, Bot, Trash2, Clock, ExternalLink as LinkIcon } from 'lucide-react';
+import { CalendarDays, Bot, Trash2, Clock, ExternalLink as LinkIcon, Edit3 } from 'lucide-react';
 import { format, parseISO, startOfDay, isSameDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -48,9 +48,10 @@ const isMidnight = (date: Date): boolean => {
 interface TimelineListViewProps {
   events: TimelineEvent[];
   onDeleteEvent?: (eventId: string) => void;
+  onEditEvent?: (event: TimelineEvent) => void;
 }
 
-export default function TimelineListView({ events: allEventsFromProps, onDeleteEvent }: TimelineListViewProps) {
+export default function TimelineListView({ events: allEventsFromProps, onDeleteEvent, onEditEvent }: TimelineListViewProps) {
   const { toast } = useToast();
 
   const processedEvents = useMemo(() => {
@@ -101,40 +102,51 @@ export default function TimelineListView({ events: allEventsFromProps, onDeleteE
                <div className="absolute -left-[5px] top-0 h-3 w-3 rounded-full bg-primary border-2 border-background"></div>
               {groupedEvents[dayKey].map((event, index) => (
                 <Card key={event.id} className="frosted-glass bg-card/50 shadow-sm relative">
-                   <div className="absolute -left-[23px] top-4 h-3 w-3 rounded-full bg-accent border-2 border-background"></div>
+                   <div 
+                     className="absolute -left-[23px] top-4 h-3 w-3 rounded-full border-2 border-background"
+                     style={event.color ? { backgroundColor: event.color } : { backgroundColor: 'hsl(var(--accent))' }} // Fallback to accent
+                   ></div>
                   <CardHeader className="p-3 pb-2">
                     <div className="flex justify-between items-start gap-2">
                       <h4 className="font-semibold text-md text-primary flex items-center">
                         {getEventTypeIcon(event)}
                         {event.title}
                       </h4>
-                      {event.isDeletable && onDeleteEvent && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10">
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">Delete event</span>
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent className="frosted-glass">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This action cannot be undone. This will permanently delete "{event.title}".
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-destructive hover:bg-destructive/90"
-                                onClick={() => handleDeleteEvent(event.id, event.title)}
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
+                      <div className="flex items-center space-x-1">
+                        {onEditEvent && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-primary/70 hover:text-primary hover:bg-primary/10" onClick={() => onEditEvent(event)}>
+                            <Edit3 className="h-4 w-4" />
+                            <span className="sr-only">Edit event</span>
+                          </Button>
+                        )}
+                        {event.isDeletable && onDeleteEvent && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Delete event</span>
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="frosted-glass">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete "{event.title}".
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive hover:bg-destructive/90"
+                                  onClick={() => handleDeleteEvent(event.id, event.title)}
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5">
                       <Badge variant="outline" className={cn("capitalize text-xs py-0 px-1.5 h-auto", getEventTypeStyle(event.type))}>

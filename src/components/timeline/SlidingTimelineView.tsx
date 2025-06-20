@@ -4,7 +4,7 @@
 import type { TimelineEvent } from '@/types';
 import { useMemo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, Bot, Trash2, ChevronLeft, ChevronRight, Clock, ExternalLink as LinkIcon } from 'lucide-react';
+import { CalendarDays, Bot, Trash2, ChevronLeft, ChevronRight, Clock, ExternalLink as LinkIcon, Edit3 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, isToday } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,13 +60,15 @@ const isMidnight = (date: Date): boolean => {
 interface SlidingTimelineViewProps {
   events: TimelineEvent[];
   onDeleteEvent?: (eventId: string) => void;
-  currentDisplayMonth: Date; // Controlled by parent
-  onNavigateMonth: (direction: 'prev' | 'next') => void; // Callback to parent
+  onEditEvent?: (event: TimelineEvent) => void;
+  currentDisplayMonth: Date; 
+  onNavigateMonth: (direction: 'prev' | 'next') => void; 
 }
 
 export default function SlidingTimelineView({ 
   events: allEventsFromProps, 
   onDeleteEvent,
+  onEditEvent,
   currentDisplayMonth,
   onNavigateMonth
 }: SlidingTimelineViewProps) {
@@ -113,24 +115,27 @@ export default function SlidingTimelineView({
           </div>
         ) : (
           <ScrollArea className="h-full p-4 pr-2">
-            <div className="relative pl-5"> {/* Padding left for the timeline track and dots */}
-              {/* Timeline Track */}
+            <div className="relative pl-5"> 
               <div className="absolute left-[9px] top-0 bottom-0 w-0.5 bg-border/70 z-0" />
 
               <div className="space-y-6">
                 {eventsForCurrentMonth.map((event) => (
                   <div key={event.id} className="flex items-start relative">
-                    {/* Dot and Date */}
                     <div className="absolute -left-[19px] top-1 flex flex-col items-center z-10">
-                      <div className={cn("w-3.5 h-3.5 rounded-full border-2 border-background", getEventDotColor(event.type))} />
+                      <div 
+                        className={cn(
+                          "w-3.5 h-3.5 rounded-full border-2 border-background", 
+                          !event.color && getEventDotColor(event.type)
+                        )} 
+                        style={event.color ? { backgroundColor: event.color } : {}}
+                      />
                        <div className="mt-1 text-center">
                         <p className="text-xs font-semibold text-primary">{format(event.date, 'dd')}</p>
                         <p className="text-xs text-muted-foreground -mt-0.5">{format(event.date, 'MMM')}</p>
                       </div>
                     </div>
                     
-                    {/* Event Card Details */}
-                    <div className="ml-6 flex-1"> {/* Margin left to align with dot's right */}
+                    <div className="ml-6 flex-1"> 
                        <Card className="bg-card/60 shadow-md hover:shadow-lg transition-shadow duration-200">
                         <CardHeader className="p-3 pb-2">
                           <div className="flex justify-between items-start gap-2">
@@ -138,33 +143,41 @@ export default function SlidingTimelineView({
                               {getEventTypeIcon(event)}
                               {event.title}
                             </h4>
-                            {event.isDeletable && onDeleteEvent && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10">
-                                    <Trash2 className="h-4 w-4" />
-                                    <span className="sr-only">Delete event</span>
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="frosted-glass">
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This action cannot be undone. This will permanently delete "{event.title}".
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      className="bg-destructive hover:bg-destructive/90"
-                                      onClick={() => handleDeleteEvent(event.id, event.title)}
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            )}
+                            <div className="flex items-center space-x-1">
+                              {onEditEvent && (
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-primary/70 hover:text-primary hover:bg-primary/10" onClick={() => onEditEvent(event)}>
+                                  <Edit3 className="h-4 w-4" />
+                                  <span className="sr-only">Edit event</span>
+                                </Button>
+                              )}
+                              {event.isDeletable && onDeleteEvent && (
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                      <Trash2 className="h-4 w-4" />
+                                      <span className="sr-only">Delete event</span>
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent className="frosted-glass">
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete "{event.title}".
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        className="bg-destructive hover:bg-destructive/90"
+                                        onClick={() => handleDeleteEvent(event.id, event.title)}
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              )}
+                            </div>
                           </div>
                            <div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5">
                             <Badge variant="outline" className={cn("capitalize text-xs py-0 px-1.5 h-auto", getEventTypeStyle(event.type))}>
