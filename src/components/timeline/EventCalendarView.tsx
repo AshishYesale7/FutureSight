@@ -19,16 +19,16 @@ import { useToast } from '@/hooks/use-toast';
 interface EventCalendarViewProps {
   events: TimelineEvent[];
   onDeleteEvent?: (eventId: string) => void; // Kept if details are shown in parent modal, but not used here
-  month: Date; 
+  month: Date;
   onMonthChange: (newMonth: Date) => void;
   onDayClick: (day: Date, hasEvents: boolean) => void; // New prop
 }
 
-export default function EventCalendarView({ 
-  events: allEventsFromProps, 
-  month, 
+export default function EventCalendarView({
+  events: allEventsFromProps,
+  month,
   onMonthChange,
-  onDayClick 
+  onDayClick
 }: EventCalendarViewProps) {
   // Removed selectedDate and isModalOpen state, as day click is handled by parent
   const { toast } = useToast();
@@ -50,7 +50,7 @@ export default function EventCalendarView({
       onDayClick(day, eventsOnDay.length > 0); // Call parent's handler
     }
   };
-  
+
   const DayWithDotRenderer: DayContentRenderer = (dayProps) => {
     const isEventDay = uniqueEventDaysForDots.some(eventDay => isSameDay(dayProps.date, eventDay));
     return (
@@ -64,7 +64,7 @@ export default function EventCalendarView({
   };
 
   return (
-    <Card className="frosted-glass w-full shadow-xl overflow-hidden">
+    <Card className="frosted-glass w-full shadow-xl">
       <CardHeader className="p-4 border-b border-border/30">
         <CardTitle className="font-headline text-2xl text-primary">
           Event Calendar
@@ -78,9 +78,9 @@ export default function EventCalendarView({
           mode="single"
           // selected prop is removed as selection highlighting is not primary for this component anymore
           onSelect={(day) => handleDayClickInternal(day)} // onSelect now triggers the internal handler
-          month={month} 
-          onMonthChange={onMonthChange} 
-          className="rounded-md w-full p-0 [&_button]:text-base" // Removed: [&_button:has(span_.absolute)]:overflow-visible
+          month={month}
+          onMonthChange={onMonthChange}
+          className="rounded-md w-full p-0 [&_button]:text-base"
           classNames={{
             // day_selected: "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary/90", // Selection styling can be removed or kept if needed
             day_today: "bg-accent text-accent-foreground ring-2 ring-accent/70",
