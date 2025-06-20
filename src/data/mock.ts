@@ -58,6 +58,7 @@ export const mockTimelineEvents: TimelineEvent[] = [
   {
     id: '5',
     date: startOfDay(addDays(today, 30)), // All-day event
+    endDate: startOfDay(addDays(today, 31)), // All-day events usually span to the start of the next day
     title: 'Submit University Applications (All Day)',
     type: 'application',
     notes: 'Final check of SOP and LORs.',
@@ -93,7 +94,33 @@ export const mockTimelineEvents: TimelineEvent[] = [
     endDate: createDateWithTime(today, 11, 30), // 11:30 AM Today
     title: 'Concurrent Event A',
     type: 'custom',
-    notes: 'This event overlaps with DSA practice.',
+    notes: 'This event overlaps with DSA practice and Event B.',
+    isAllDay: false,
+  },
+  {
+    id: 'evt-today-overlap-2',
+    date: createDateWithTime(today, 10, 30), // 10:30 AM Today
+    endDate: createDateWithTime(today, 12, 0),  // 12:00 PM Today
+    title: 'Concurrent Event B',
+    type: 'project',
+    notes: 'Overlaps with A and DSA.',
+    isAllDay: false,
+  },
+  {
+    id: 'evt-today-overlap-3',
+    date: createDateWithTime(today, 10, 45), // 10:45 AM Today
+    endDate: createDateWithTime(today, 11, 45), // 11:45 AM Today
+    title: 'Concurrent Event C (Short)',
+    type: 'exam',
+    notes: 'Short overlap.',
+    isAllDay: false,
+  },
+  {
+    id: 'evt-today-later',
+    date: createDateWithTime(today, 14, 0), // 2:00 PM Today
+    endDate: createDateWithTime(today, 15, 0), // 3:00 PM Today
+    title: 'Afternoon Focus Block',
+    type: 'goal',
     isAllDay: false,
   },
   {
@@ -173,10 +200,8 @@ export const mockRawCalendarEvents: RawCalendarEvent[] = [
     id: 'calEvt004-allday',
     summary: 'Public Holiday: Spring Festival',
     description: 'University closed for Spring Festival.',
-    // For all-day events, Google Calendar often provides just dates.
-    // The AI should interpret this as an all-day event.
-    startDateTime: formatISO(startOfDay(addDays(today, 10))), // e.g., 2023-10-27
-    endDateTime: formatISO(startOfDay(addDays(today, 11))),   // e.g., 2023-10-28 (exclusive end)
+    startDateTime: formatISO(startOfDay(addDays(today, 10))), 
+    endDateTime: formatISO(startOfDay(addDays(today, 11))),   
     htmlLink: 'https://calendar.google.com/event?id=calEvt004-allday'
   }
 ];

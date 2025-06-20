@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { format, getHours, getMinutes, differenceInMinutes, startOfDay, addMinutes } from 'date-fns';
+import { format, getHours, getMinutes, differenceInMinutes, addMinutes } from 'date-fns';
 import { CalendarDays, Bot, Trash2, Clock, ExternalLink as LinkIcon, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const HOUR_HEIGHT_PX = 60; // Height of one hour slot in pixels
-const MINUTE_HEIGHT_PX = HOUR_HEIGHT_PX / 60;
 
 const getEventTypeStyleClasses = (type: TimelineEvent['type']) => {
   switch (type) {
@@ -38,24 +37,129 @@ const getEventTypeStyleClasses = (type: TimelineEvent['type']) => {
   }
 };
 
-const getEventTypeBadgeStyle = (type: TimelineEvent['type']) => { // For small type badges
-  switch (type) {
-    case 'exam': return 'bg-red-500/80 border-red-700 text-white';
-    case 'deadline': return 'bg-yellow-500/80 border-yellow-700 text-yellow-900';
-    case 'goal': return 'bg-green-500/80 border-green-700 text-white';
-    case 'project': return 'bg-blue-500/80 border-blue-700 text-white';
-    case 'application': return 'bg-purple-500/80 border-purple-700 text-white';
-    case 'ai_suggestion': return 'bg-teal-500/80 border-teal-700 text-white';
-    default: return 'bg-gray-500/80 border-gray-700 text-white';
-  }
-};
-
-
 const getEventTypeIcon = (event: TimelineEvent): ReactNode => {
   if (event.type === 'ai_suggestion') return <Bot className="mr-2 h-4 w-4 text-accent flex-shrink-0" />;
   const Icon = event.icon || CalendarDays;
   return <Icon className="mr-2 h-4 w-4 text-accent flex-shrink-0" />;
 };
+
+interface EventWithLayout extends TimelineEvent {
+  layout: {
+    top: number;
+    height: number;
+    left: string; // percentage string e.g. "0%"
+    width: string; // percentage string e.g. "50%"
+    zIndex: number;
+  };
+}
+
+// Algorithm to calculate layout for overlapping events
+function calculateEventLayouts(
+  timedEvents: TimelineEvent[],
+  hourHeightPx: number
+): EventWithLayout[] {
+  const minuteHeightPx = hourHeightPx / 60;
+
+  // Augment events with start/end in minutes and original index for stable sort
+  const events = timedEvents
+    .map((e, idx) => {
+      const startDate = e.date;
+      const endDate = e.endDate;
+      const start = getHours(startDate) * 60 + getMinutes(startDate);
+      let endValue;
+      if (endDate) {
+        // If end date is on a different day, cap it at the end of the current day for layout purposes
+        if (endDate.getDate() !== startDate.getDate()) {
+          endValue = 24 * 60; // End of the day
+        } else {
+          endValue = getHours(endDate) * 60 + getMinutes(endDate);
+        }
+      } else {
+        endValue = start + 60; // Default 1 hour duration
+      }
+      // Ensure minimum duration for visibility and correct end calculation
+      endValue = Math.max(start + 15, endValue); 
+      return {
+        ...e,
+        originalIndex: idx,
+        startInMinutes: start,
+        endInMinutes: endValue,
+      };
+    })
+    .sort((a, b) => { // Sort by start time, then by end time (desc) for tie-breaking
+      if (a.startInMinutes !== b.startInMinutes) return a.startInMinutes - b.startInMinutes;
+      return b.endInMinutes - a.endInMinutes;
+    });
+
+  // This array will hold the final layout properties for each event
+  const layoutResults: EventWithLayout[] = [];
+
+  // Process events in groups that overlap
+  let i = 0;
+  while (i < events.length) {
+    // Find all events in the current collision group
+    let currentGroup = [events[i]];
+    let maxEndInGroup = events[i].endInMinutes;
+    
+    for (let j = i + 1; j < events.length; j++) {
+      if (events[j].startInMinutes < maxEndInGroup) {
+        currentGroup.push(events[j]);
+        maxEndInGroup = Math.max(maxEndInGroup, events[j].endInMinutes);
+      } else {
+        break; // Next event doesn't overlap with the current group's span
+      }
+    }
+    
+    // Sort this group by start time primarily, then by original index for stability
+    currentGroup.sort((a,b) => a.startInMinutes - b.startInMinutes || a.originalIndex - b.originalIndex);
+
+    // Place events in columns within this group
+    const columns: { event: typeof events[0]; columnOrder: number }[][] = []; 
+
+    for (const event of currentGroup) {
+      let placed = false;
+      for (let c = 0; c < columns.length; c++) {
+        // Check if the current column is available (no overlap with the last event placed in it)
+        const lastEventInColumn = columns[c][columns[c].length - 1];
+        if (lastEventInColumn.endInMinutes <= event.startInMinutes) {
+          columns[c].push({event, columnOrder: c});
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        // Need a new column for this event
+        columns.push([{event, columnOrder: columns.length}]);
+      }
+    }
+    
+    const numColsInGroup = columns.length;
+
+    for (const col of columns) {
+      for (const item of col) {
+        const event = item.event;
+        const colIdx = item.columnOrder;
+        layoutResults.push({
+          ...event,
+          layout: {
+            top: event.startInMinutes * minuteHeightPx,
+            height: (event.endInMinutes - event.startInMinutes) * minuteHeightPx,
+            left: `${(colIdx / numColsInGroup) * 100}%`,
+            width: `${(1 / numColsInGroup) * 100}%`,
+            zIndex: 10 + colIdx,
+          },
+        } as EventWithLayout);
+      }
+    }
+    i += currentGroup.length; // Move to the start of the next potential group
+  }
+  
+  // Restore original sort order if necessary, or sort by display properties
+  layoutResults.sort((a, b) => a.layout.top - b.layout.top || a.layout.zIndex - b.layout.zIndex);
+
+  return layoutResults;
+}
+
 
 interface DayTimetableViewProps {
   date: Date;
@@ -66,31 +170,21 @@ interface DayTimetableViewProps {
 
 export default function DayTimetableView({ date, events, onClose, onDeleteEvent }: DayTimetableViewProps) {
   const { toast } = useToast();
-
-  const hours = Array.from({ length: 24 }, (_, i) => i); // 0 (12 AM) to 23 (11 PM)
+  const hours = Array.from({ length: 24 }, (_, i) => i);
 
   const allDayEvents = useMemo(() => events.filter(e => e.isAllDay), [events]);
   const timedEvents = useMemo(() => events.filter(e => !e.isAllDay), [events]);
+
+  const timedEventsWithLayout = useMemo(
+    () => calculateEventLayouts(timedEvents, HOUR_HEIGHT_PX),
+    [timedEvents]
+  );
 
   const handleDeleteEvent = (eventId: string, eventTitle: string) => {
     if (onDeleteEvent) {
       onDeleteEvent(eventId);
       toast({ title: "Event Deleted", description: `"${eventTitle}" has been removed from the timetable.` });
     }
-  };
-
-  const calculateEventStyle = (event: TimelineEvent) => {
-    const startMinutes = getHours(event.date) * 60 + getMinutes(event.date);
-    const top = startMinutes * MINUTE_HEIGHT_PX;
-
-    let durationMinutes = 60; // Default to 1 hour if no end date
-    if (event.endDate) {
-      durationMinutes = differenceInMinutes(event.endDate, event.date);
-    }
-    durationMinutes = Math.max(15, durationMinutes); // Minimum 15 minutes height
-    const height = durationMinutes * MINUTE_HEIGHT_PX;
-
-    return { top: `${top}px`, height: `${height}px` };
   };
   
   return (
@@ -137,10 +231,10 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent 
         <ScrollArea className="h-full">
           <div className="flex">
             {/* Hour Labels Column */}
-            <div className="w-16 md:w-20 border-r border-border/30 sticky left-0 bg-background/80 z-10 backdrop-blur-sm">
+            <div className="w-16 md:w-20 border-r border-border/30 sticky left-0 bg-background/80 z-20 backdrop-blur-sm"> {/* Increased z-index for labels */}
               {hours.map(hour => (
                 <div key={`label-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px` }}
-                     className="text-xs text-muted-foreground text-right pr-2 pt-1 border-b border-border/20 last:border-b-0">
+                     className="text-xs text-muted-foreground text-right pr-2 pt-1 border-b border-border/20 last:border-b-0 flex items-start justify-end">
                   {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
                 </div>
               ))}
@@ -151,56 +245,63 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent 
               {/* Hour Lines */}
               {hours.map(hour => (
                 <div key={`line-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px` }}
-                     className="border-b border-border/20 last:border-b-0">
+                     className="border-b border-border/20 last:border-b-0 w-full absolute" // Make lines full width and position them
+                     style={{ top: `${hour * HOUR_HEIGHT_PX}px`, left: 0, right: 0 }}
+                >
                 </div>
               ))}
 
               {/* Timed Events */}
-              {timedEvents.map(event => {
-                const { top, height } = calculateEventStyle(event);
+              {timedEventsWithLayout.map(event => {
+                const isSmallWidth = parseFloat(event.layout.width) < 25; // Example threshold for small width
                 return (
                   <div
                     key={event.id}
                     className={cn(
-                      "absolute left-1 right-1 rounded-md p-1.5 border text-xs overflow-hidden shadow-sm",
-                      "focus-within:ring-2 focus-within:ring-ring focus-within:z-10",
-                      getEventTypeStyleClasses(event.type)
+                      "absolute rounded border text-xs overflow-hidden shadow-sm",
+                      "focus-within:ring-2 focus-within:ring-ring",
+                      getEventTypeStyleClasses(event.type),
+                      isSmallWidth ? "p-0.5" : "p-1" // Adjust padding for very narrow events
                     )}
-                    style={{ top, height, minHeight: '20px' }} // minHeight to ensure visibility
-                    // tabIndex={0} // Make focusable for accessibility
+                    style={{ 
+                        top: `${event.layout.top}px`, 
+                        height: `${event.layout.height}px`,
+                        left: event.layout.left,
+                        width: event.layout.width,
+                        zIndex: event.layout.zIndex,
+                    }}
                   >
-                    <div className="flex justify-between items-start h-full">
+                    <div className="flex flex-col h-full"> {/* Use flex-col for content stacking */}
                         <div className="flex-grow overflow-hidden">
-                            <p className="font-semibold truncate text-current">{event.title}</p>
-                            <p className="text-xs opacity-80 truncate">
-                                {format(event.date, 'h:mm a')}
-                                {event.endDate && ` - ${format(event.endDate, 'h:mm a')}`}
-                            </p>
-                            {event.notes && <p className="text-xs opacity-70 truncate mt-0.5">{event.notes}</p>}
+                            <p className={cn("font-semibold truncate text-current", isSmallWidth ? "text-[10px]" : "text-xs")}>{event.title}</p>
+                            {!isSmallWidth && ( // Only show time if not too narrow
+                              <p className="opacity-80 truncate text-[10px]">
+                                  {format(event.date, 'h:mm a')}
+                                  {event.endDate && ` - ${format(event.endDate, 'h:mm a')}`}
+                              </p>
+                            )}
+                            {/* Notes can be shown if space allows, or in a tooltip on hover for small events */}
+                            {/* {!isSmallWidth && event.notes && <p className="text-[10px] opacity-70 truncate mt-0.5">{event.notes}</p>} */}
                         </div>
                         {event.isDeletable && onDeleteEvent && (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:text-destructive/80 hover:bg-destructive/10 opacity-70 hover:opacity-100 flex-shrink-0 ml-1">
-                                    <Trash2 className="h-3 w-3" />
-                                </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent className="frosted-glass">
-                                <AlertDialogHeader><AlertDialogTitle>Delete "{event.title}"?</AlertDialogTitle></AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleDeleteEvent(event.id, event.title)}>Delete</AlertDialogAction>
-                                </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
+                            <div className={cn("mt-auto flex-shrink-0", isSmallWidth ? "text-center" : "text-right")}>
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:text-destructive/80 hover:bg-destructive/10 opacity-70 hover:opacity-100">
+                                        <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent className="frosted-glass">
+                                      <AlertDialogHeader><AlertDialogTitle>Delete "{event.title}"?</AlertDialogTitle></AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleDeleteEvent(event.id, event.title)}>Delete</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            </div>
                         )}
                     </div>
-                     {/* Optional: Add a small type badge if space permits and height is sufficient */}
-                    {/* {parseFloat(height) > 30 && (
-                        <Badge variant="outline" className={cn("absolute bottom-1 right-1 capitalize text-[10px] py-0 px-1 h-auto leading-tight", getEventTypeBadgeStyle(event.type))}>
-                            {event.type.replace(/_/g, ' ')}
-                        </Badge>
-                    )} */}
                   </div>
                 );
               })}
