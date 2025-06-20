@@ -1,37 +1,47 @@
 
 'use client';
 
-// Removed: import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { useTheme } from '@/hooks/use-theme';
+import { ThemeProvider } from '@/context/ThemeContext'; // Import ThemeProvider
+import { useTheme } from '@/hooks/use-theme'; // useTheme will now be context-aware
 import { usePathname } from 'next/navigation';
+import type { ReactNode} from 'react';
 import { useEffect } from 'react';
 
-// Metadata object is removed as 'use client' makes it incompatible here.
-// Title and meta description are set directly in the <head> below.
+// This new component will be a child of ThemeProvider and can safely use the context-aware useTheme
+function AppThemeApplicator({ children }: { children: ReactNode }) {
+  const { theme: userPreferredTheme, isMounted } = useTheme(); // isMounted helps prevent premature class application
+  const pathname = usePathname();
+  const isAuthPage = pathname.startsWith('/auth/');
+
+  useEffect(() => {
+    // Only apply theme if the hook is mounted and theme is settled.
+    // This avoids potential flashes or applying SSR theme briefly before client theme is determined.
+    if (isMounted) {
+      const root = document.documentElement;
+      root.classList.remove('light', 'dark');
+
+      if (isAuthPage) {
+        root.classList.add('dark'); // Force dark theme for auth pages
+      } else {
+        root.classList.add(userPreferredTheme); // Apply user's preferred theme for other pages
+      }
+    }
+  }, [pathname, userPreferredTheme, isAuthPage, isMounted]);
+
+  return <>{children}</>;
+}
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { theme: userPreferredTheme } = useTheme(); // This is the theme for the dashboard
-  const pathname = usePathname();
-  const isAuthPage = pathname.startsWith('/auth/');
-
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove('light', 'dark'); // Clear any existing theme class
-
-    if (isAuthPage) {
-      root.classList.add('dark'); // Force dark theme for auth pages
-    } else {
-      root.classList.add(userPreferredTheme); // Apply user's preferred theme for other pages
-    }
-  }, [pathname, userPreferredTheme, isAuthPage]);
+  // The useTheme() call for DOM manipulation is moved to AppThemeApplicator
+  // to ensure it's within the ThemeProvider's context.
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -45,8 +55,12 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
-          {children}
-          <Toaster />
+          <ThemeProvider>
+            <AppThemeApplicator>
+              {children}
+              <Toaster />
+            </AppThemeApplicator>
+          </ThemeProvider>
         </AuthProvider>
         <SpeedInsights />
       </body>
