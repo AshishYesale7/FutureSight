@@ -5,21 +5,18 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { ThemeProvider } from '@/context/ThemeContext'; // Import ThemeProvider
-import { useTheme } from '@/hooks/use-theme'; // useTheme will now be context-aware
+import { ThemeProvider } from '@/context/ThemeContext';
+import { useTheme } from '@/hooks/use-theme';
 import { usePathname } from 'next/navigation';
 import type { ReactNode} from 'react';
 import { useEffect } from 'react';
 
-// This new component will be a child of ThemeProvider and can safely use the context-aware useTheme
 function AppThemeApplicator({ children }: { children: ReactNode }) {
-  const { theme: userPreferredTheme, isMounted } = useTheme(); // isMounted helps prevent premature class application
+  const { theme: userPreferredTheme, backgroundImage, isMounted } = useTheme();
   const pathname = usePathname();
   const isAuthPage = pathname.startsWith('/auth/');
 
   useEffect(() => {
-    // Only apply theme if the hook is mounted and theme is settled.
-    // This avoids potential flashes or applying SSR theme briefly before client theme is determined.
     if (isMounted) {
       const root = document.documentElement;
       root.classList.remove('light', 'dark');
@@ -27,10 +24,39 @@ function AppThemeApplicator({ children }: { children: ReactNode }) {
       if (isAuthPage) {
         root.classList.add('dark'); // Force dark theme for auth pages
       } else {
-        root.classList.add(userPreferredTheme); // Apply user's preferred theme for other pages
+        root.classList.add(userPreferredTheme);
+      }
+
+      // Apply background image to body
+      if (backgroundImage) {
+        document.body.style.backgroundImage = `url("${backgroundImage}")`;
+        document.body.style.backgroundSize = 'cover';
+        document.body.style.backgroundPosition = 'center';
+        document.body.style.backgroundRepeat = 'no-repeat';
+        document.body.style.backgroundAttachment = 'fixed'; // Makes it fixed during scroll
+      } else {
+        document.body.style.backgroundImage = '';
+        document.body.style.backgroundSize = '';
+        document.body.style.backgroundPosition = '';
+        document.body.style.backgroundRepeat = '';
+        document.body.style.backgroundAttachment = '';
       }
     }
-  }, [pathname, userPreferredTheme, isAuthPage, isMounted]);
+  }, [pathname, userPreferredTheme, isAuthPage, backgroundImage, isMounted]);
+
+  // Clean up body styles on unmount or if background is removed
+  useEffect(() => {
+    return () => {
+      if (isMounted) { // Check isMounted for cleanup as well
+        document.body.style.backgroundImage = '';
+        document.body.style.backgroundSize = '';
+        document.body.style.backgroundPosition = '';
+        document.body.style.backgroundRepeat = '';
+        document.body.style.backgroundAttachment = '';
+      }
+    };
+  }, [isMounted]);
+
 
   return <>{children}</>;
 }
@@ -40,8 +66,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // The useTheme() call for DOM manipulation is moved to AppThemeApplicator
-  // to ensure it's within the ThemeProvider's context.
 
   return (
     <html lang="en" suppressHydrationWarning>
