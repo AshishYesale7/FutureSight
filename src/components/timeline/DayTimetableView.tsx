@@ -6,7 +6,6 @@ import { useMemo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-// Removed ScrollArea import as we're managing overflow directly
 import { format, getHours, getMinutes } from 'date-fns';
 import { CalendarDays, Bot, Trash2, Clock, ExternalLink as LinkIcon, XCircle, Edit3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -50,8 +49,10 @@ const getCustomColorStyles = (color?: string) => {
       borderColor: color,
     };
   }
-  return { backgroundColor: `${color}40`, borderColor: color };
+  // Fallback for named colors or other formats, adjust opacity as needed
+  return { backgroundColor: `${color}40`, borderColor: color }; // Assuming color might be a named CSS color
 };
+
 
 const getEventTypeIcon = (event: TimelineEvent): ReactNode => {
   if (event.type === 'ai_suggestion') return <Bot className="mr-2 h-4 w-4 text-accent flex-shrink-0" />;
@@ -88,30 +89,36 @@ function calculateEventLayouts(
       const start = getHours(startDate) * 60 + getMinutes(startDate);
       let endValue;
       if (endDate) {
+        // If end date is on a different day, cap it at the end of the current day for rendering purposes
         if (endDate.getDate() !== startDate.getDate()) {
-          endValue = 24 * 60;
+          endValue = 24 * 60; // End of the day
         } else {
           endValue = getHours(endDate) * 60 + getMinutes(endDate);
         }
       } else {
-        endValue = start + 60;
+        endValue = start + 60; // Default 1 hour duration if no end date
       }
-      endValue = Math.max(start + 15, endValue);
+      // Ensure minimum duration for visibility (e.g., 15 minutes)
+      endValue = Math.max(start + 15, endValue); 
       return {
         ...e,
-        originalIndex: idx,
+        originalIndex: idx, // Preserve original index for tie-breaking in sort
         startInMinutes: start,
         endInMinutes: endValue,
       };
     })
-    .sort((a, b) => {
+    .sort((a, b) => { // Sort primarily by start time, then by duration (longer events first)
       if (a.startInMinutes !== b.startInMinutes) return a.startInMinutes - b.startInMinutes;
-      return b.endInMinutes - a.endInMinutes;
+      return (b.endInMinutes - b.startInMinutes) - (a.endInMinutes - a.startInMinutes);
     });
 
   const layoutResults: EventWithLayout[] = [];
+  
+  // This is a simplified version of a common calendar layout algorithm.
+  // It iterates through events, placing them into columns.
   let i = 0;
   while (i < events.length) {
+    // Find a group of events that start before the current earliest end time in this iteration
     let currentGroup = [events[i]];
     let maxEndInGroup = events[i].endInMinutes;
     for (let j = i + 1; j < events.length; j++) {
@@ -119,16 +126,21 @@ function calculateEventLayouts(
         currentGroup.push(events[j]);
         maxEndInGroup = Math.max(maxEndInGroup, events[j].endInMinutes);
       } else {
-        break;
+        break; // Next event starts after this group is done
       }
     }
+    
+    // Sort this specific group by original index to maintain some stability if times are exact
     currentGroup.sort((a,b) => a.startInMinutes - b.startInMinutes || a.originalIndex - b.originalIndex);
 
+
+    // Naive column assignment for the current group
     const columns: { event: typeof events[0]; columnOrder: number }[][] = [];
     for (const event of currentGroup) {
       let placed = false;
       for (let c = 0; c < columns.length; c++) {
         const lastEventInColumn = columns[c][columns[c].length - 1];
+        // Check if this event can fit in the current column (starts after the last one ends)
         if (lastEventInColumn.endInMinutes <= event.startInMinutes) {
           columns[c].push({event, columnOrder: c});
           placed = true;
@@ -136,6 +148,7 @@ function calculateEventLayouts(
         }
       }
       if (!placed) {
+        // Open a new column
         columns.push([{event, columnOrder: columns.length}]);
       }
     }
@@ -146,10 +159,12 @@ function calculateEventLayouts(
     for (const col of columns) {
       for (const item of col) {
         const event = item.event;
-        const colIdx = item.columnOrder;
+        const colIdx = item.columnOrder; // This is the 0-indexed position of this event's column within its group
+        
         const colWidthPercentage = 100 / numColsInGroup;
-        const gapPercentage = numColsInGroup > 1 ? 0.5 : 0; // 0.5% gap between columns
-        const actualColWidth = colWidthPercentage - gapPercentage * (numColsInGroup -1) / numColsInGroup;
+        // Apply a small gap between columns if there's more than one
+        const gapPercentage = numColsInGroup > 1 ? 0.5 : 0; // 0.5% gap
+        const actualColWidth = colWidthPercentage - (gapPercentage * (numColsInGroup - 1) / numColsInGroup);
         const leftOffset = colIdx * (actualColWidth + gapPercentage);
 
         layoutResults.push({
@@ -159,16 +174,20 @@ function calculateEventLayouts(
             height: Math.max(15, (event.endInMinutes - event.startInMinutes) * minuteHeightPx), // Min height 15px
             left: `${leftOffset}%`,
             width: `${actualColWidth}%`,
-            zIndex: 10 + colIdx,
+            zIndex: 10 + colIdx, // Simple zIndex based on column
           },
         } as EventWithLayout);
       }
     }
-    i += currentGroup.length;
+    i += currentGroup.length; // Move to the next set of events
   }
+  
+  // Re-sort all results by top position, then by zIndex to ensure correct visual layering if needed
   layoutResults.sort((a, b) => a.layout.top - b.layout.top || a.layout.zIndex - b.layout.zIndex);
+
   return { eventsWithLayout: layoutResults, maxConcurrentColumns };
 }
+
 
 interface DayTimetableViewProps {
   date: Date;
@@ -191,10 +210,12 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
   );
 
   const minEventGridWidth = useMemo(() => {
-    return maxConcurrentColumns > 3 // Only apply min width if many columns
-      ? `${maxConcurrentColumns * MIN_EVENT_COLUMN_WIDTH_PX}px`
+    // Only apply min width if many columns, ensuring it's at least 100%
+    return maxConcurrentColumns > 3 
+      ? `${Math.max(100, (maxConcurrentColumns * MIN_EVENT_COLUMN_WIDTH_PX) / parseFloat(getComputedStyle(document.documentElement).fontSize) * 16)}px` // Approximation if needed based on rem or other units. For simplicity, using fixed px.
       : '100%';
   }, [maxConcurrentColumns]);
+
 
   const handleDeleteEvent = (eventId: string, eventTitle: string) => {
     if (onDeleteEvent) {
@@ -218,7 +239,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
       </CardHeader>
 
       {allDayEvents.length > 0 && (
-        <div className="p-3 border-b border-border/30 space-y-1 bg-background/30 flex-shrink-0">
+        <div className="p-3 border-b border-border/30 space-y-1 bg-background/50 flex-shrink-0">
           {allDayEvents.map(event => (
             <div
               key={event.id}
@@ -244,7 +265,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent className="frosted-glass">
-                        <AlertDialogHeader><AlertDialogTitle>Delete "{event.title}"?</AlertDialogTitle></AlertDialogHeader>
+                        <AlertDialogHeader><AlertDialogTitle>Delete "{event.title}"?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleDeleteEvent(event.id, event.title)}>Delete</AlertDialogAction>
@@ -261,7 +282,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
       <CardContent className="p-0 flex-1 overflow-y-auto"> {/* Main vertical scroll for schedule */}
         <div className="flex h-full"> {/* Container for hour labels + event grid area */}
           {/* Hour Labels Column - Sticky Left & Top */}
-          <div className="w-16 md:w-20 bg-background/90 backdrop-blur-sm sticky top-0 left-0 z-30 border-r border-border/30 flex-shrink-0">
+          <div className="w-16 md:w-20 bg-background sticky top-0 left-0 z-30 border-r border-border/30 flex-shrink-0">
             {/* Placeholder for top-left corner above hour labels, aligns with minute ruler height */}
             <div className="h-8 border-b border-border/30"></div>
             {hours.map(hour => (
@@ -276,26 +297,28 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
           <div className="flex-1 relative overflow-x-auto" style={{ minWidth: minEventGridWidth }}>
             {/* Horizontal Minute Ruler - Sticky Top within this scrollable area */}
             <div
-              className="sticky top-0 h-8 bg-muted/30 backdrop-blur-sm z-20 flex items-stretch border-b border-border/30"
-              style={{ minWidth: minEventGridWidth }} // Ensure ruler matches grid width
+              className="sticky top-0 h-8 bg-muted z-20 flex items-stretch border-b border-border/30"
+              style={{ minWidth: minEventGridWidth }} 
             >
-              {Array.from({ length: 4 * maxConcurrentColumns }).map((_, idx) => ( // More markers if wider
+              {/* Dynamically create minute markers based on maxConcurrentColumns to fill width */}
+              {/* This is a simplified representation; precise markers might need more complex calculation if column widths vary drastically */}
+              {Array.from({ length: Math.max(4, maxConcurrentColumns * 2) }).map((_, idx) => ( 
                 <div key={`minute-marker-col-${idx}`} className="flex-1 flex">
-                  {Array.from({ length: 4 }).map((_, MIdx) => ( // 0, 15, 30, 45 min markers
+                  {Array.from({ length: 4 }).map((_, MIdx) => ( 
                     <div key={`minute-marker-${MIdx}`} className="w-1/4 relative">
-                      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground">
+                      { MIdx !==0 && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[9px] text-muted-foreground">
                         {MIdx * 15}
-                      </span>
-                       <div className="absolute bottom-0 left-0 w-px h-2 bg-border/50"></div> {/* Tick mark */}
+                      </span>}
+                       <div className="absolute bottom-0 left-0 w-px h-2 bg-border/50"></div>
                     </div>
                   ))}
                 </div>
               ))}
-                 <div className="absolute right-0 bottom-0 text-[9px] text-muted-foreground pr-1">60</div>
+                 <div className="absolute right-1 bottom-0 text-[9px] text-muted-foreground">60</div>
             </div>
 
             {/* Event Rendering Area */}
-            <div className="relative" style={{ minHeight: `${hours.length * HOUR_HEIGHT_PX}px`}}> {/* Ensure full day height */}
+            <div className="relative" style={{ minHeight: `${hours.length * HOUR_HEIGHT_PX}px`}}> 
               {/* Hour Lines - Span full width of event grid */}
               {hours.map(hour => (
                 <div key={`line-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px`, top: `${hour * HOUR_HEIGHT_PX}px` }}
@@ -305,7 +328,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
 
               {/* Timed Events */}
               {timedEventsWithLayout.map(event => {
-                const isSmallWidth = parseFloat(event.layout.width) < 25;
+                const isSmallWidth = parseFloat(event.layout.width) < 25; // Heuristic for "small"
                 return (
                   <div
                     key={event.id}
@@ -313,7 +336,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                       "absolute rounded border text-xs overflow-hidden shadow-sm cursor-pointer",
                       "focus-within:ring-2 focus-within:ring-ring",
                       !event.color && getEventTypeStyleClasses(event.type),
-                      isSmallWidth ? "p-0.5" : "p-1"
+                      isSmallWidth ? "p-0.5" : "p-1" 
                     )}
                     style={{
                         top: `${event.layout.top}px`,
@@ -323,7 +346,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                         zIndex: event.layout.zIndex,
                         ...(event.color ? getCustomColorStyles(event.color) : {})
                     }}
-                    title={`${event.title}\n${format(event.date, 'h:mm a')}${event.endDate ? ` - ${format(event.endDate, 'h:mm a')}` : ''}\n${event.notes || ''}`}
+                    title={`${event.title}\n${format(event.date, 'h:mm a')}${event.endDate ? ` - ${format(event.endDate, 'h:mm a')}` : ''}\nNotes: ${event.notes || 'N/A'}`}
                   >
                     <div className="flex flex-col h-full">
                         <div className="flex-grow overflow-hidden">
@@ -349,7 +372,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                                     </Button>
                                     </AlertDialogTrigger>
                                     <AlertDialogContent className="frosted-glass">
-                                      <AlertDialogHeader><AlertDialogTitle>Delete "{event.title}"?</AlertDialogTitle></AlertDialogHeader>
+                                      <AlertDialogHeader><AlertDialogTitle>Delete "{event.title}"?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
                                       <AlertDialogFooter>
                                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                                           <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleDeleteEvent(event.id, event.title)}>Delete</AlertDialogAction>
