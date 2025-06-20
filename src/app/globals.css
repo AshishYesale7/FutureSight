@@ -117,15 +117,18 @@ body {
 
 /* Custom utility for frosted glass effect */
 .frosted-glass {
-  @apply backdrop-blur-md border-border/15 shadow-lg;
+  /* The backdrop-blur is what creates the "frost" on the content behind it */
+  @apply backdrop-blur-lg shadow-lg border;
 }
-:root .frosted-glass { /* Light theme frosted glass background */
-  background-color: hsl(210 40% 97% / 0.65); /* A semi-opaque very light grayish-blue, good for text-primary */
+:root .frosted-glass { /* Light theme frosted glass styling */
+  /* A semi-transparent white background gives the "glass" its own color */
+  background-color: hsl(210 60% 98% / 0.5); /* Very light, semi-transparent cool white */
+  /* A slightly darker, semi-transparent border helps with the "engraved" effect */
+  border-color: hsl(210 25% 85% / 0.7);
 }
-.dark .frosted-glass { /* Dark theme frosted glass background */
-  background-color: hsl(var(--card) / 0.35); /* Uses the dark theme's --card color but more transparent */
+.dark .frosted-glass { /* Dark theme frosted glass styling */
+  /* A semi-transparent dark slate background for the "glass" */
+  background-color: hsl(var(--card) / 0.55); /* Uses the dark theme's --card color but semi-transparent */
+  /* A slightly lighter, semi-transparent border */
+  border-color: hsl(210 20% 30% / 0.8);
 }
-
-
-/* Ensure calendar day buttons can show the dot if position absolute is used inside them */
-/* Removed: .rdp-button_reset.rdp-button.rdp-day { overflow: visible !important; } */
