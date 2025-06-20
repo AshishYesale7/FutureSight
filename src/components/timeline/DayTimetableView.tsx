@@ -151,7 +151,7 @@ function calculateEventLayouts(
         const colIdx = item.columnOrder;
         
         const colWidthPercentage = 100 / numColsInGroup;
-        const gapPercentage = numColsInGroup > 1 ? 0.5 : 0;
+        const gapPercentage = numColsInGroup > 1 ? 0.5 : 0; // 0.5% gap between columns
         const actualColWidth = colWidthPercentage - (gapPercentage * (numColsInGroup - 1) / numColsInGroup);
         const leftOffset = colIdx * (actualColWidth + gapPercentage);
 
@@ -159,10 +159,10 @@ function calculateEventLayouts(
           ...event,
           layout: {
             top: event.startInMinutes * minuteHeightPx,
-            height: Math.max(15, (event.endInMinutes - event.startInMinutes) * minuteHeightPx),
+            height: Math.max(15, (event.endInMinutes - event.startInMinutes) * minuteHeightPx), // Ensure min height of 15px for events
             left: `${leftOffset}%`,
             width: `${actualColWidth}%`,
-            zIndex: 10 + colIdx,
+            zIndex: 10 + colIdx, // Stagger z-index for better visual separation
           },
         } as EventWithLayout);
       }
@@ -170,6 +170,7 @@ function calculateEventLayouts(
     i += currentGroup.length;
   }
   
+  // Ensure zIndex is consistently applied based on start time then original index for tie-breaking if needed
   layoutResults.sort((a, b) => a.layout.top - b.layout.top || a.layout.zIndex - b.layout.zIndex);
 
   return { eventsWithLayout: layoutResults, maxConcurrentColumns };
@@ -197,9 +198,10 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
   );
   
   const minEventGridWidth = useMemo(() => {
+    // Only enforce min width if there are actually columns that might need it
     return maxConcurrentColumns > 3 
-      ? `${Math.max(100, maxConcurrentColumns * MIN_EVENT_COLUMN_WIDTH_PX)}px`
-      : '100%';
+      ? `${Math.max(100, maxConcurrentColumns * MIN_EVENT_COLUMN_WIDTH_PX)}px` // e.g. if 4 cols, min width 360px
+      : '100%'; // Default to 100% if few columns
   }, [maxConcurrentColumns]);
 
 
@@ -211,7 +213,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
   };
 
   return (
-    <Card className="frosted-glass w-full shadow-xl flex flex-col mt-6"> {/* Removed max-height constraint */}
+    <Card className="frosted-glass w-full shadow-xl flex flex-col mt-6"> {/* Removed max-height and overflow constraints */}
       <CardHeader className="p-4 border-b border-border/30 flex flex-row justify-between items-center flex-shrink-0">
         <div>
           <CardTitle className="font-headline text-xl text-primary">
@@ -265,7 +267,6 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
         </div>
       )}
 
-      {/* CardContent no longer has overflow-y-auto; it expands. Vertical scrolling is handled by parent TabsContent */}
       <CardContent className="p-0"> 
         <div className="flex"> {/* Main container for hour labels + event grid area */}
           {/* Hour Labels Column - Sticky Left & Top */}
@@ -284,12 +285,18 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
           <div className="flex-1 relative overflow-x-auto" style={{ minWidth: minEventGridWidth }}>
             {/* Horizontal Minute Ruler - Sticky Top within this scrollable area */}
             <div
-              className="sticky top-0 h-8 bg-muted z-20 flex items-center justify-between px-2 border-b border-border/30"
+              className="sticky top-0 h-8 bg-muted z-20 flex items-center justify-around px-1 border-b border-border/30"
               style={{ minWidth: minEventGridWidth }} 
             >
-              <span className="text-[10px] text-muted-foreground">00 min</span>
-              <div className="flex-1 h-px bg-border/30 mx-2"></div>
-              <span className="text-[10px] text-muted-foreground">60 min</span>
+              <span className="text-[10px] text-muted-foreground">00'</span>
+              <div className="h-full w-px bg-border/40"></div>
+              <span className="text-[10px] text-muted-foreground">15'</span>
+              <div className="h-full w-px bg-border/40"></div>
+              <span className="text-[10px] text-muted-foreground">30'</span>
+              <div className="h-full w-px bg-border/40"></div>
+              <span className="text-[10px] text-muted-foreground">45'</span>
+              <div className="h-full w-px bg-border/40"></div>
+              <span className="text-[10px] text-muted-foreground">60'</span>
             </div>
 
             {/* Event Rendering Area */}
@@ -303,15 +310,15 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
 
               {/* Timed Events */}
               {timedEventsWithLayout.map(event => {
-                const isSmallWidth = parseFloat(event.layout.width) < 25;
+                const isSmallWidth = parseFloat(event.layout.width) < 25; // Heuristic for when event width is small
                 return (
                   <div
                     key={event.id}
                     className={cn(
                       "absolute rounded border text-xs overflow-hidden shadow-sm cursor-pointer",
-                      "focus-within:ring-2 focus-within:ring-ring",
+                      "focus-within:ring-2 focus-within:ring-ring", // For accessibility on focus
                       !event.color && getEventTypeStyleClasses(event.type),
-                      isSmallWidth ? "p-0.5" : "p-1" 
+                      isSmallWidth ? "p-0.5" : "p-1" // Reduce padding on very narrow events
                     )}
                     style={{
                         top: `${event.layout.top}px`,
@@ -323,16 +330,18 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                     }}
                     title={`${event.title}\n${format(event.date, 'h:mm a')}${event.endDate ? ` - ${format(event.endDate, 'h:mm a')}` : ''}\nNotes: ${event.notes || 'N/A'}`}
                   >
-                    <div className="flex flex-col h-full">
+                    <div className="flex flex-col h-full"> {/* Ensure content uses full height */}
+                        {/* Event Title and Time */}
                         <div className="flex-grow overflow-hidden">
                             <p className={cn("font-semibold truncate", isSmallWidth ? "text-[10px]" : "text-xs", event.color ? 'text-foreground' : 'text-current')}>{event.title}</p>
-                            {!isSmallWidth && (
+                            {!isSmallWidth && ( // Hide time if too narrow to avoid clutter
                               <p className={cn("opacity-80 truncate text-[10px]", event.color ? 'text-foreground/80' : '')}>
                                   {format(event.date, 'h:mm a')}
                                   {event.endDate && ` - ${format(event.endDate, 'h:mm a')}`}
                               </p>
                             )}
                         </div>
+                        {/* Action Buttons (Edit/Delete) */}
                         <div className={cn("mt-auto flex-shrink-0 flex items-center space-x-0.5", isSmallWidth ? "justify-center" : "justify-end")}>
                             {onEditEvent && (
                                <Button variant="ghost" size="icon" className="h-5 w-5 text-primary/70 hover:text-primary hover:bg-primary/10 opacity-70 hover:opacity-100" onClick={(e) => {e.stopPropagation(); onEditEvent(event);}}>
@@ -367,4 +376,3 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
     </Card>
   );
 }
-
