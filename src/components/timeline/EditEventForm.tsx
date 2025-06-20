@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import { Slash } from 'lucide-react';
 
 import type { TimelineEvent} from '@/types';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,22 @@ const eventTypes: TimelineEvent['type'][] = [
   'ai_suggestion',
 ];
 
+const PREDEFINED_COLORS = [
+  { name: 'Default', value: undefined },
+  { name: 'Red', value: '#FCA5A5' },
+  { name: 'Orange', value: '#FDBA74' },
+  { name: 'Amber', value: '#FCD34D' },
+  { name: 'Lime', value: '#A3E635' },
+  { name: 'Green', value: '#86EFAC' },
+  { name: 'Teal', value: '#5EEAD4' },
+  { name: 'Cyan', value: '#67E8F9' },
+  { name: 'Blue', value: '#93C5FD' },
+  { name: 'Indigo', value: '#A5B4FC' },
+  { name: 'Violet', value: '#C4B5FD' },
+  { name: 'Pink', value: '#F9A8D4' },
+];
+
+
 const editEventFormSchema = z.object({
   title: z.string().min(1, { message: 'Title is required.' }),
   notes: z.string().optional(),
@@ -47,6 +64,15 @@ const editEventFormSchema = z.object({
   endDateTime: z.string().optional(),
   type: z.enum(eventTypes),
   isAllDay: z.boolean().optional(),
+  color: z.string().optional(),
+}).refine(data => {
+  if (data.startDateTime && data.endDateTime) {
+    return new Date(data.endDateTime) >= new Date(data.startDateTime);
+  }
+  return true;
+}, {
+  message: "End date/time cannot be before start date/time.",
+  path: ["endDateTime"],
 });
 
 export type EditEventFormValues = z.infer<typeof editEventFormSchema>;
@@ -56,13 +82,12 @@ interface EditEventFormProps {
   onSubmit: (updatedEvent: TimelineEvent) => void;
   onCancel: () => void;
   className?: string;
+  isAddingNewEvent?: boolean; // Added for consistency if needed, though not used in logic here yet
 }
 
 const formatDateForInput = (date?: Date): string => {
   if (!date) return '';
-  // Ensure date is a valid Date object
   if (!(date instanceof Date) || isNaN(date.valueOf())) {
-    console.warn("formatDateForInput received invalid date:", date);
     return '';
   }
   const year = date.getFullYear();
@@ -89,6 +114,7 @@ const EditEventForm: FC<EditEventFormProps> = ({
       endDateTime: formatDateForInput(eventToEdit.endDate),
       type: eventToEdit.type || 'custom',
       isAllDay: eventToEdit.isAllDay || false,
+      color: eventToEdit.color || undefined, // Initialize with existing color or undefined
     },
   });
 
@@ -100,6 +126,7 @@ const EditEventForm: FC<EditEventFormProps> = ({
       endDateTime: formatDateForInput(eventToEdit.endDate),
       type: eventToEdit.type || 'custom',
       isAllDay: eventToEdit.isAllDay || false,
+      color: eventToEdit.color || undefined,
     });
   }, [eventToEdit, form]);
 
@@ -111,29 +138,18 @@ const EditEventForm: FC<EditEventFormProps> = ({
       startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
       if (endDate) {
         endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 0, 0, 0, 0);
-        // Optional: If all-day and end date is same as start, some might prefer to make it span the whole day or to next day's start.
-        // For now, just zeroing out time.
       }
     }
     
-    // Validate that endDate is not before startDate if both exist
-    if (endDate && startDate && endDate < startDate) {
-        form.setError("endDateTime", { 
-            type: "manual", 
-            message: "End date/time cannot be before start date/time." 
-        });
-        return;
-    }
-
-
     const updatedEvent: TimelineEvent = {
-      ...eventToEdit, // Preserve non-form fields (id, icon, links, status, color etc.)
+      ...eventToEdit,
       title: values.title,
       notes: values.notes,
       date: startDate,
       endDate: endDate,
       type: values.type,
-      isAllDay: values.isAllDay || false, // Ensure it's always boolean
+      isAllDay: values.isAllDay || false,
+      color: values.color, // Include the selected color
     };
     onSubmit(updatedEvent);
   };
@@ -246,6 +262,41 @@ const EditEventForm: FC<EditEventFormProps> = ({
           )}
         />
 
+        <FormField
+          control={form.control}
+          name="color"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Event Color</FormLabel>
+              <FormControl>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {PREDEFINED_COLORS.map((colorOption) => (
+                    <button
+                      type="button"
+                      key={colorOption.name}
+                      title={colorOption.name}
+                      onClick={() => field.onChange(colorOption.value)}
+                      className={cn(
+                        "h-7 w-7 rounded-full border-2 transition-all",
+                        field.value === colorOption.value
+                          ? "ring-2 ring-offset-background ring-ring" 
+                          : "hover:scale-110",
+                        colorOption.value ? "" : "border-dashed bg-transparent text-muted-foreground flex items-center justify-center"
+                      )}
+                      style={colorOption.value ? { backgroundColor: colorOption.value, borderColor: colorOption.value } : {borderColor: 'hsl(var(--border))'}}
+                    >
+                      {!colorOption.value && <Slash className="h-4 w-4" />}
+                      <span className="sr-only">{colorOption.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+
         <div className="flex justify-end space-x-3 pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
@@ -258,3 +309,5 @@ const EditEventForm: FC<EditEventFormProps> = ({
 };
 
 export default EditEventForm;
+
+    
