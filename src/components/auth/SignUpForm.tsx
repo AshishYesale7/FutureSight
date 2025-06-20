@@ -73,7 +73,7 @@ export default function SignUpForm() {
           alt="Logo"
           width={100}
           height={100}
-          className="rounded-full"
+          className="rounded-full border-2 border-white/50 dark:border-white/20 shadow-lg"
           data-ai-hint="abstract logo"
         />
       </div>

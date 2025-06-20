@@ -9,16 +9,16 @@ body {
 @layer base {
   :root {
     --background: 210 33% 92%; /* PRD: Light grayish-blue #D0DCE5 */
-    --foreground: 210 25% 15%; /* Darker slate for text */
+    --foreground: 210 25% 18%; /* Adjusted for better general text contrast in light mode */
 
-    --card: 210 40% 97%; /* Slightly lighter than background, for frosted glass on #D0DCE5 */
-    --card-foreground: 210 25% 15%; /* Match foreground */
+    --card: 210 40% 96%; /* Card base for light mode, slightly less stark white */
+    --card-foreground: 210 25% 15%; /* Dark text for cards */
 
     --popover: 210 40% 97%;
     --popover-foreground: 210 25% 15%;
 
     --primary: 210 25% 40%; /* PRD: Deep slate blue #4A6580 */
-    --primary-foreground: 210 20% 96%; /* Very light (off-white) for contrast on deep slate blue */
+    --primary-foreground: 0 0% 100%; /* Adjusted to pure white for max contrast */
 
     --secondary: 210 25% 55%; /* Lighter slate blue */
     --secondary-foreground: 210 20% 96%; /* Light text for contrast on mid-slate blue */
@@ -117,8 +117,15 @@ body {
 
 /* Custom utility for frosted glass effect */
 .frosted-glass {
-  @apply bg-card/20 backdrop-blur-md border border-border/15 shadow-lg;
+  @apply backdrop-blur-md border-border/15 shadow-lg;
 }
+:root .frosted-glass { /* Light theme frosted glass background */
+  background-color: hsl(210 40% 97% / 0.65); /* A semi-opaque very light grayish-blue, good for text-primary */
+}
+.dark .frosted-glass { /* Dark theme frosted glass background */
+  background-color: hsl(var(--card) / 0.35); /* Uses the dark theme's --card color but more transparent */
+}
+
 
 /* Ensure calendar day buttons can show the dot if position absolute is used inside them */
 /* Removed: .rdp-button_reset.rdp-button.rdp-day { overflow: visible !important; } */
