@@ -112,12 +112,12 @@ export default function ActualDashboardPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const serializableEvents = displayedTimelineEvents.map(event => {
-        const { icon, ...rest } = event;
+        const { icon, ...rest } = event; // Exclude icon from serialization
         return {
           ...rest,
           date: (event.date instanceof Date && !isNaN(event.date.valueOf())) ? event.date.toISOString() : new Date().toISOString(),
           endDate: (event.endDate instanceof Date && !isNaN(event.endDate.valueOf())) ? event.endDate.toISOString() : undefined,
-          color: event.color,
+          color: event.color, // Include color
         };
       });
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serializableEvents));
@@ -145,7 +145,7 @@ export default function ActualDashboardPage() {
       icon: Bot,
       isDeletable: true,
       isAllDay: insight.isAllDay || false,
-      color: undefined, // AI events don't have custom colors by default
+      color: undefined, 
     };
   };
 
@@ -266,29 +266,30 @@ export default function ActualDashboardPage() {
       setIsAddingNewEvent(false);
       setEventBeingEdited({
         ...event,
-        // Ensure dates are Date objects if they are not already
         date: event.date instanceof Date ? event.date : parseDatePreservingTime(event.date as unknown as string) || new Date(),
         endDate: event.endDate ? (event.endDate instanceof Date ? event.endDate : parseDatePreservingTime(event.endDate as unknown as string)) : undefined,
       });
     } else {
-      // Adding a new event
       setIsAddingNewEvent(true);
+      const defaultNewEventDate = selectedDateForDayView ? new Date(selectedDateForDayView) : new Date();
+      defaultNewEventDate.setHours(9,0,0,0); // Default to 9 AM or current time of selected day
+
       setEventBeingEdited({
-        id: `custom-${Date.now()}`, // Temporary ID for new event
+        id: `custom-${Date.now()}`,
         title: '',
-        date: new Date(), // Default to now
+        date: defaultNewEventDate,
         endDate: undefined,
         type: 'custom',
         notes: '',
         isAllDay: false,
         isDeletable: true,
-        color: undefined,
+        color: undefined, // Default no color
         status: 'pending',
-        icon: CalendarIconLucide, // Default icon
+        icon: CalendarIconLucide,
       });
     }
     setIsEditModalOpen(true);
-  }, []);
+  }, [selectedDateForDayView]); // Added selectedDateForDayView dependency
 
   const handleCloseEditModal = useCallback(() => {
     setIsEditModalOpen(false);
@@ -300,11 +301,14 @@ export default function ActualDashboardPage() {
     setDisplayedTimelineEvents(prevEvents => {
       const eventExists = prevEvents.some(event => event.id === updatedEvent.id);
       if (eventExists) {
-        // Update existing event
         return prevEvents.map(event => (event.id === updatedEvent.id ? updatedEvent : event));
       } else {
-        // Add new event
-        return [...prevEvents, updatedEvent].sort((a, b) => a.date.getTime() - b.date.getTime());
+        // Add new event and sort
+        return [...prevEvents, updatedEvent].sort((a, b) => {
+            const dateA = a.date instanceof Date ? a.date.getTime() : 0;
+            const dateB = b.date instanceof Date ? b.date.getTime() : 0;
+            return dateA - dateB;
+        });
       }
     });
     toast({
@@ -324,55 +328,55 @@ export default function ActualDashboardPage() {
         </p>
       </div>
 
-      <div className="flex justify-between items-center">
-        <Tabs
-          value={viewMode}
-          onValueChange={(value) => handleViewModeChange(value as 'calendar' | 'list')}
-          className="flex-grow"
-        >
+      <Tabs
+        value={viewMode}
+        onValueChange={(value) => handleViewModeChange(value as 'calendar' | 'list')}
+        className="flex flex-col flex-1 min-h-0" // Tabs now wraps content and manages its own flex layout
+      >
+        <div className="flex justify-between items-center mb-4">
           <TabsList className="grid w-full grid-cols-2 max-w-xs">
             <TabsTrigger value="calendar"><CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar View</TabsTrigger>
             <TabsTrigger value="list"><List className="mr-2 h-4 w-4" /> List View</TabsTrigger>
           </TabsList>
-        </Tabs>
-        <Button onClick={() => handleOpenEditModal()} className="bg-accent hover:bg-accent/90 text-accent-foreground ml-4">
-          <PlusCircle className="mr-2 h-5 w-5" /> Add New Event
-        </Button>
-      </div>
+          <Button onClick={() => handleOpenEditModal()} className="bg-accent hover:bg-accent/90 text-accent-foreground ml-4">
+            <PlusCircle className="mr-2 h-5 w-5" /> Add New Event
+          </Button>
+        </div>
 
-
-      <TabsContent value="calendar" className={cn("space-y-6 flex-1 flex flex-col min-h-0 mt-0", viewMode === 'calendar' ? 'block' : 'hidden')}>
-        <EventCalendarView
-          events={displayedTimelineEvents}
-          month={activeDisplayMonth}
-          onMonthChange={setActiveDisplayMonth}
-          onDayClick={handleDayClickFromCalendar}
-        />
-        {selectedDateForDayView ? (
-          <DayTimetableView
-            date={selectedDateForDayView}
-            events={eventsForDayView}
-            onClose={closeDayTimetableView}
-            onDeleteEvent={handleDeleteTimelineEvent}
-            onEditEvent={handleOpenEditModal}
+        <TabsContent value="calendar" className={cn("space-y-6 flex-1 flex flex-col min-h-0 mt-0", viewMode === 'calendar' ? 'block' : 'hidden')}>
+          <EventCalendarView
+            events={displayedTimelineEvents}
+            month={activeDisplayMonth}
+            onMonthChange={setActiveDisplayMonth}
+            onDayClick={handleDayClickFromCalendar}
           />
-        ) : (
-          <SlidingTimelineView
+          {selectedDateForDayView ? (
+            <DayTimetableView
+              date={selectedDateForDayView}
+              events={eventsForDayView}
+              onClose={closeDayTimetableView}
+              onDeleteEvent={handleDeleteTimelineEvent}
+              onEditEvent={handleOpenEditModal}
+            />
+          ) : (
+            <SlidingTimelineView
+              events={displayedTimelineEvents}
+              onDeleteEvent={handleDeleteTimelineEvent}
+              onEditEvent={handleOpenEditModal}
+              currentDisplayMonth={activeDisplayMonth}
+              onNavigateMonth={handleMonthNavigationForSharedViews}
+            />
+          )}
+        </TabsContent>
+        <TabsContent value="list" className={cn("flex-1 min-h-0 mt-0", viewMode === 'list' ? 'block' : 'hidden')}>
+          <TimelineListView
             events={displayedTimelineEvents}
             onDeleteEvent={handleDeleteTimelineEvent}
             onEditEvent={handleOpenEditModal}
-            currentDisplayMonth={activeDisplayMonth}
-            onNavigateMonth={handleMonthNavigationForSharedViews}
           />
-        )}
-      </TabsContent>
-      <TabsContent value="list" className={cn("flex-1 min-h-0 mt-0", viewMode === 'list' ? 'block' : 'hidden')}>
-        <TimelineListView
-          events={displayedTimelineEvents}
-          onDeleteEvent={handleDeleteTimelineEvent}
-          onEditEvent={handleOpenEditModal}
-        />
-      </TabsContent>
+        </TabsContent>
+      </Tabs>
+
 
       <TodaysPlanCard />
 
