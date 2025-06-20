@@ -13,6 +13,7 @@ export interface TimelineEvent {
   icon?: LucideIcon | React.ElementType;
   isDeletable?: boolean;
   isAllDay?: boolean; // Flag for all-day events
+  color?: string; // Optional custom color for the event
 }
 
 export interface CareerGoal {
