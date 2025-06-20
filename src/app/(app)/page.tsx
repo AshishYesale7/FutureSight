@@ -272,7 +272,7 @@ export default function ActualDashboardPage() {
     } else {
       setIsAddingNewEvent(true);
       const defaultNewEventDate = selectedDateForDayView ? new Date(selectedDateForDayView) : new Date();
-      defaultNewEventDate.setHours(9,0,0,0); // Default to 9 AM or current time of selected day
+      defaultNewEventDate.setHours(9,0,0,0);
 
       setEventBeingEdited({
         id: `custom-${Date.now()}`,
@@ -283,13 +283,13 @@ export default function ActualDashboardPage() {
         notes: '',
         isAllDay: false,
         isDeletable: true,
-        color: undefined, // Default no color
+        color: undefined,
         status: 'pending',
         icon: CalendarIconLucide,
       });
     }
     setIsEditModalOpen(true);
-  }, [selectedDateForDayView]); // Added selectedDateForDayView dependency
+  }, [selectedDateForDayView]);
 
   const handleCloseEditModal = useCallback(() => {
     setIsEditModalOpen(false);
@@ -303,7 +303,6 @@ export default function ActualDashboardPage() {
       if (eventExists) {
         return prevEvents.map(event => (event.id === updatedEvent.id ? updatedEvent : event));
       } else {
-        // Add new event and sort
         return [...prevEvents, updatedEvent].sort((a, b) => {
             const dateA = a.date instanceof Date ? a.date.getTime() : 0;
             const dateB = b.date instanceof Date ? b.date.getTime() : 0;
@@ -320,7 +319,7 @@ export default function ActualDashboardPage() {
 
 
   return (
-    <div className="space-y-8 h-full flex flex-col">
+    <div className={cn("space-y-8 h-full flex flex-col")}>
       <div>
         <h1 className="font-headline text-3xl font-semibold text-primary">Your Career Dashboard</h1>
         <p className="text-foreground/80">
@@ -331,7 +330,7 @@ export default function ActualDashboardPage() {
       <Tabs
         value={viewMode}
         onValueChange={(value) => handleViewModeChange(value as 'calendar' | 'list')}
-        className="flex flex-col flex-1 min-h-0" // Tabs now wraps content and manages its own flex layout
+        className="flex flex-col flex-1 min-h-0"
       >
         <div className="flex justify-between items-center mb-4">
           <TabsList className="grid w-full grid-cols-2 max-w-xs">
@@ -343,7 +342,7 @@ export default function ActualDashboardPage() {
           </Button>
         </div>
 
-        <TabsContent value="calendar" className={cn("space-y-6 flex-1 flex flex-col min-h-0 mt-0", viewMode === 'calendar' ? 'block' : 'hidden')}>
+        <TabsContent key="calendar-view" value="calendar" className={cn("space-y-6 flex-1 flex flex-col min-h-0 mt-0", viewMode === 'calendar' ? 'block' : 'hidden')}>
           <EventCalendarView
             events={displayedTimelineEvents}
             month={activeDisplayMonth}
@@ -368,7 +367,7 @@ export default function ActualDashboardPage() {
             />
           )}
         </TabsContent>
-        <TabsContent value="list" className={cn("flex-1 min-h-0 mt-0", viewMode === 'list' ? 'block' : 'hidden')}>
+        <TabsContent key="list-view" value="list" className={cn("flex-1 min-h-0 mt-0", viewMode === 'list' ? 'block' : 'hidden')}>
           <TimelineListView
             events={displayedTimelineEvents}
             onDeleteEvent={handleDeleteTimelineEvent}
