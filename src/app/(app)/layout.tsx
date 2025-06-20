@@ -23,9 +23,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <SidebarNav />
-      <div className="flex flex-1 flex-col pl-64"> {/* Adjust pl based on sidebar width */}
+      <div className="flex flex-1 flex-col md:pl-64"> {/* Adjusted pl for md screens and up */}
         <Header />
-        <main className="flex-1 p-6 bg-background overflow-auto">
+        <main className="flex-1 p-6 overflow-auto"> {/* Removed bg-background */}
           {children}
         </main>
       </div>
