@@ -212,7 +212,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
   const minuteRulerHeightClass = 'h-8'; 
 
   return (
-    <Card className="frosted-glass w-full shadow-xl flex flex-col mt-6">
+    <Card className="frosted-glass w-full shadow-xl flex flex-col mt-6"> {/* No fixed height */}
       <CardHeader className="p-4 border-b border-border/30 flex flex-row justify-between items-center">
         <div>
           <CardTitle className="font-headline text-xl text-primary">
@@ -266,11 +266,10 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
         </div>
       )}
 
-      <CardContent className="p-0 flex-1">
-        <div className="flex"> {/* Main container for hour labels + event grid area */}
-          {/* Hour Labels Column - The "Pole" */}
-          <div className="sticky top-0 left-0 w-16 md:w-20 bg-background z-30 border-r border-border/30 self-start">
-            {/* Spacer to align with the minute ruler */}
+      <CardContent className="p-0 flex"> {/* Use flex for the two main columns. No fixed height. */}
+          {/* Vertical Hour Labels Column - The "Pole". Not sticky itself. It scrolls with parent. */}
+          <div className="w-16 md:w-20 bg-background border-r border-border/30 self-start shrink-0"> 
+            {/* Spacer to align with the minute ruler height */}
             <div className={cn("border-b border-border/30", minuteRulerHeightClass)}></div>
             {hours.map(hour => (
               <div key={`label-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px` }}
@@ -281,25 +280,32 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
           </div>
 
           {/* Event Grid Area (Minute Ruler + Events) */}
-          {/* This area handles horizontal scrolling for events if needed */}
-          <div className="flex-1 overflow-x-auto" style={{ minWidth: 0 }}> {/* minWidth: 0 for flex child overflow */}
-            {/* Horizontal Minute Ruler - Sticky to the top of this scrollable Event Grid Area */}
+          {/* This area handles BOTH vertical scrolling for its content and horizontal scrolling for events. */}
+          <div className="flex-1 overflow-auto" style={{ minWidth: 0 }}> {/* overflow-auto handles both x and y. minWidth:0 for flex child */}
+            
+            {/* Horizontal Minute Ruler - This ruler is STICKY to the top of THIS scrollable container. */}
             <div
               className={cn(
-                "sticky top-0 bg-muted z-20 flex items-center border-b border-border/30",
+                "bg-muted z-20 flex items-center border-b border-border/30 sticky top-0", // STICKY HERE
                 minuteRulerHeightClass
               )}
               style={{ minWidth: minEventGridWidth }} 
             >
               <div className="flex-1 grid grid-cols-4 items-center h-full px-1">
                 <span className="text-[10px] text-muted-foreground text-center">00'</span>
-                <span className="text-[10px] text-muted-foreground text-center border-l border-border/40 h-full flex items-center justify-center">15'</span>
-                <span className="text-[10px] text-muted-foreground text-center border-l border-border/40 h-full flex items-center justify-center">30'</span>
-                <span className="text-[10px] text-muted-foreground text-center border-l border-border/40 h-full flex items-center justify-center">45'</span>
+                <div className="border-l border-border/40 h-full flex items-center justify-center">
+                    <span className="text-[10px] text-muted-foreground text-center">15'</span>
+                </div>
+                <div className="border-l border-border/40 h-full flex items-center justify-center">
+                    <span className="text-[10px] text-muted-foreground text-center">30'</span>
+                </div>
+                <div className="border-l border-border/40 h-full flex items-center justify-center">
+                    <span className="text-[10px] text-muted-foreground text-center">45'</span>
+                </div>
               </div>
             </div>
 
-            {/* Event Rendering Area */}
+            {/* Event Rendering Area - Relative positioning for events within this container. */}
             <div className="relative" style={{ minHeight: `${hours.length * HOUR_HEIGHT_PX}px`, minWidth: minEventGridWidth }}> 
               {/* Hour Lines */}
               {hours.map(hour => (
@@ -325,7 +331,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                         height: `${event.layout.height}px`,
                         left: event.layout.left,
                         width: event.layout.width,
-                        zIndex: event.layout.zIndex,
+                        zIndex: event.layout.zIndex, 
                         ...(event.color ? getCustomColorStyles(event.color) : {})
                     }}
                     title={`${event.title}\n${format(event.date, 'h:mm a')}${event.endDate ? ` - ${format(event.endDate, 'h:mm a')}` : ''}\nNotes: ${event.notes || 'N/A'}`}
@@ -369,7 +375,6 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
               })}
             </div> {/* End Event Rendering Area */}
           </div> {/* End Event Grid Area */}
-        </div> {/* End Main Flex container for labels + event grid */}
       </CardContent>
     </Card>
   );
