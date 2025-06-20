@@ -12,7 +12,7 @@ import type { ReactNode} from 'react';
 import { useEffect } from 'react';
 
 function AppThemeApplicator({ children }: { children: ReactNode }) {
-  const { theme: userPreferredTheme, backgroundImage, isMounted } = useTheme();
+  const { theme: userPreferredTheme, backgroundImage, backgroundColor, isMounted } = useTheme();
   const pathname = usePathname();
   const isAuthPage = pathname.startsWith('/auth/');
 
@@ -22,10 +22,13 @@ function AppThemeApplicator({ children }: { children: ReactNode }) {
       root.classList.remove('light', 'dark');
 
       if (isAuthPage) {
-        root.classList.add('dark'); // Force dark theme for auth pages
+        root.classList.add('dark');
       } else {
         root.classList.add(userPreferredTheme);
       }
+      
+      // Apply background color first, so image can go on top
+      document.body.style.backgroundColor = backgroundColor || '';
 
       // Apply background image to body
       if (backgroundImage) {
@@ -42,13 +45,14 @@ function AppThemeApplicator({ children }: { children: ReactNode }) {
         document.body.style.backgroundAttachment = '';
       }
     }
-  }, [pathname, userPreferredTheme, isAuthPage, backgroundImage, isMounted]);
+  }, [pathname, userPreferredTheme, isAuthPage, backgroundImage, backgroundColor, isMounted]);
 
   // Clean up body styles on unmount or if background is removed
   useEffect(() => {
     return () => {
       if (isMounted) { // Check isMounted for cleanup as well
         document.body.style.backgroundImage = '';
+        document.body.style.backgroundColor = '';
         document.body.style.backgroundSize = '';
         document.body.style.backgroundPosition = '';
         document.body.style.backgroundRepeat = '';

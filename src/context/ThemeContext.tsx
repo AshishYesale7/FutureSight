@@ -7,6 +7,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 type Theme = 'light' | 'dark';
 const THEME_STORAGE_KEY = 'futuresight-theme';
 const BACKGROUND_IMAGE_STORAGE_KEY = 'futuresight-background-image';
+const BACKGROUND_COLOR_STORAGE_KEY = 'futuresight-background-color';
 
 interface ThemeContextType {
   theme: Theme;
@@ -14,6 +15,8 @@ interface ThemeContextType {
   toggleTheme: () => void;
   backgroundImage: string | null;
   setBackgroundImage: (url: string | null) => void;
+  backgroundColor: string | null;
+  setBackgroundColor: (color: string | null) => void;
   isMounted: boolean;
 }
 
@@ -37,9 +40,17 @@ const getInitialBackgroundImage = (): string | null => {
   return localStorage.getItem(BACKGROUND_IMAGE_STORAGE_KEY);
 };
 
+const getInitialBackgroundColor = (): string | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  return localStorage.getItem(BACKGROUND_COLOR_STORAGE_KEY);
+}
+
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setThemeState] = useState<Theme>(getInitialTheme);
   const [backgroundImage, setBackgroundImageState] = useState<string | null>(getInitialBackgroundImage);
+  const [backgroundColor, setBackgroundColorState] = useState<string | null>(getInitialBackgroundColor);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -53,6 +64,9 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
     const storedBackgroundImage = localStorage.getItem(BACKGROUND_IMAGE_STORAGE_KEY);
     setBackgroundImageState(storedBackgroundImage);
+    
+    const storedBackgroundColor = localStorage.getItem(BACKGROUND_COLOR_STORAGE_KEY);
+    setBackgroundColorState(storedBackgroundColor);
   }, []);
 
   useEffect(() => {
@@ -70,6 +84,16 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       }
     }
   }, [backgroundImage, isMounted]);
+  
+  useEffect(() => {
+    if (isMounted) {
+      if (backgroundColor) {
+        localStorage.setItem(BACKGROUND_COLOR_STORAGE_KEY, backgroundColor);
+      } else {
+        localStorage.removeItem(BACKGROUND_COLOR_STORAGE_KEY);
+      }
+    }
+  }, [backgroundColor, isMounted]);
 
   const setTheme = useCallback((newTheme: Theme) => {
     if (newTheme === 'light' || newTheme === 'dark') {
@@ -84,9 +108,13 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const setBackgroundImage = useCallback((url: string | null) => {
     setBackgroundImageState(url);
   }, []);
+  
+  const setBackgroundColor = useCallback((color: string | null) => {
+    setBackgroundColorState(color);
+  }, []);
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, backgroundImage, setBackgroundImage, isMounted }}>
+    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme, backgroundImage, setBackgroundImage, backgroundColor, setBackgroundColor, isMounted }}>
       {children}
     </ThemeContext.Provider>
   );

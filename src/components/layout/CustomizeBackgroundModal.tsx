@@ -16,15 +16,24 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTheme } from '@/hooks/use-theme';
 import { useToast } from '@/hooks/use-toast';
-import { ImageUp, Link, Trash2 } from 'lucide-react';
+import { ImageUp, Link, Trash2, Palette, Slash } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface CustomizeBackgroundModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
 }
 
+const BACKGROUND_COLORS = [
+    { name: 'Default Theme', value: null },
+    { name: 'Deep Purple', value: 'hsl(265 35% 8%)' },
+    { name: 'Midnight Blue', value: 'hsl(240 30% 10%)' },
+    { name: 'Plum', value: 'hsl(300 20% 9%)' },
+    { name: 'Charcoal', value: 'hsl(240 5% 12%)' },
+];
+
 export default function CustomizeBackgroundModal({ isOpen, onOpenChange }: CustomizeBackgroundModalProps) {
-  const { setBackgroundImage } = useTheme();
+  const { setBackgroundImage, setBackgroundColor, backgroundColor: currentBackgroundColor } = useTheme();
   const { toast } = useToast();
   const [imageUrl, setImageUrl] = useState('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
@@ -80,9 +89,10 @@ export default function CustomizeBackgroundModal({ isOpen, onOpenChange }: Custo
     }
   };
 
-  const handleRemoveBackground = () => {
+  const handleResetBackground = () => {
     setBackgroundImage(null);
-    toast({ title: 'Success', description: 'Background image removed.' });
+    setBackgroundColor(null);
+    toast({ title: 'Success', description: 'Background reset to default.' });
     onOpenChange(false);
     resetForm();
   };
@@ -112,7 +122,7 @@ export default function CustomizeBackgroundModal({ isOpen, onOpenChange }: Custo
         <DialogHeader className="p-6 pb-4 border-b border-border/30">
           <DialogTitle className="font-headline text-xl text-primary">Customize Background</DialogTitle>
           <DialogDescription>
-            Set a custom background image by providing a URL or uploading a file (max 5MB).
+            Set a custom background image or color. Your changes are saved automatically.
           </DialogDescription>
         </DialogHeader>
         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
@@ -154,10 +164,37 @@ export default function CustomizeBackgroundModal({ isOpen, onOpenChange }: Custo
               </Button>
             </div>
           )}
+
+          <div className="space-y-3">
+            <Label className="flex items-center">
+                <Palette className="mr-2 h-4 w-4" /> Background Color
+            </Label>
+            <div className="flex flex-wrap gap-3 pt-1">
+                {BACKGROUND_COLORS.map((colorOption) => (
+                <button
+                    type="button"
+                    key={colorOption.name}
+                    title={colorOption.name}
+                    onClick={() => setBackgroundColor(colorOption.value)}
+                    className={cn(
+                        "h-8 w-8 rounded-full border-2 transition-all flex items-center justify-center",
+                        (currentBackgroundColor === colorOption.value || (!currentBackgroundColor && colorOption.value === null))
+                        ? "ring-2 ring-offset-2 ring-offset-background ring-ring"
+                        : "hover:scale-110",
+                        !colorOption.value && "border-dashed bg-transparent text-muted-foreground"
+                    )}
+                    style={{ backgroundColor: colorOption.value || 'transparent', borderColor: colorOption.value || 'hsl(var(--border))' }}
+                >
+                    {!colorOption.value && <Slash className="h-5 w-5" />}
+                    <span className="sr-only">{colorOption.name}</span>
+                </button>
+                ))}
+            </div>
+          </div>
         </div>
         <DialogFooter className="p-6 pt-4 border-t border-border/30 flex-col sm:flex-row gap-2">
-           <Button onClick={handleRemoveBackground} variant="destructive" className="w-full sm:w-auto mr-auto">
-            <Trash2 className="mr-2 h-4 w-4" /> Remove Background
+           <Button onClick={handleResetBackground} variant="destructive" className="w-full sm:w-auto mr-auto">
+            <Trash2 className="mr-2 h-4 w-4" /> Reset Background
           </Button>
           <DialogClose asChild>
             <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={resetForm}>
