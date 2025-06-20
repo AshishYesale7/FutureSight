@@ -172,7 +172,8 @@ export const mockTodaysPlan: TodaysPlan = {
   ],
 };
 
-// Mock Google Data with specific times and end times
+const dayWithOverlappingGoogleEvents = addDays(today, 3); // Choose a specific day for these
+
 export const mockRawCalendarEvents: RawCalendarEvent[] = [
   {
     id: 'calEvt001',
@@ -187,7 +188,7 @@ export const mockRawCalendarEvents: RawCalendarEvent[] = [
     summary: 'Submit Assignment 3 - CS501',
     description: 'Final submission for CS501 Advanced Algorithms assignment.',
     startDateTime: formatISO(createDateWithTime(addDays(today, 5), 23, 59)), 
-    endDateTime: formatISO(addHours(createDateWithTime(addDays(today, 5), 23, 59), 1)), // Assuming a 1-minute "duration" past midnight for clarity
+    endDateTime: formatISO(addHours(createDateWithTime(addDays(today, 5), 23, 59), 1)), 
     htmlLink: 'https://calendar.google.com/event?id=calEvt002'
   },
   {
@@ -203,6 +204,39 @@ export const mockRawCalendarEvents: RawCalendarEvent[] = [
     startDateTime: formatISO(startOfDay(addDays(today, 10))), 
     endDateTime: formatISO(startOfDay(addDays(today, 11))),   
     htmlLink: 'https://calendar.google.com/event?id=calEvt004-allday'
+  },
+  // Added overlapping Google Calendar Events for demonstration
+  {
+    id: 'googleCalOverlap001',
+    summary: 'Google Event Alpha (Imported)',
+    description: 'Detailed discussion on module A.',
+    startDateTime: formatISO(createDateWithTime(dayWithOverlappingGoogleEvents, 9, 0)), // 9:00 AM
+    endDateTime: formatISO(createDateWithTime(dayWithOverlappingGoogleEvents, 10, 30)),   // 10:30 AM
+    htmlLink: 'https://calendar.google.com/event?id=googleCalOverlap001'
+  },
+  {
+    id: 'googleCalOverlap002',
+    summary: 'Google Event Bravo (Imported)',
+    description: 'Workshop on new tools.',
+    startDateTime: formatISO(createDateWithTime(dayWithOverlappingGoogleEvents, 10, 0)), // 10:00 AM
+    endDateTime: formatISO(createDateWithTime(dayWithOverlappingGoogleEvents, 11, 0)),   // 11:00 AM
+    htmlLink: 'https://calendar.google.com/event?id=googleCalOverlap002'
+  },
+  {
+    id: 'googleCalOverlap003',
+    summary: 'Google Event Charlie (Imported)',
+    description: 'Quick sync-up call.',
+    startDateTime: formatISO(createDateWithTime(dayWithOverlappingGoogleEvents, 10, 15)), // 10:15 AM
+    endDateTime: formatISO(createDateWithTime(dayWithOverlappingGoogleEvents, 11, 15)),   // 11:15 AM
+    htmlLink: 'https://calendar.google.com/event?id=googleCalOverlap003'
+  },
+  {
+    id: 'googleCalLater004',
+    summary: 'Google Event Delta (Afternoon)',
+    description: 'Planning for next week.',
+    startDateTime: formatISO(createDateWithTime(dayWithOverlappingGoogleEvents, 14, 0)), // 2:00 PM
+    endDateTime: formatISO(createDateWithTime(dayWithOverlappingGoogleEvents, 15, 0)),   // 3:00 PM
+    htmlLink: 'https://calendar.google.com/event?id=googleCalLater004'
   }
 ];
 

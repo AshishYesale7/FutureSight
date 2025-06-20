@@ -188,7 +188,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent 
   };
   
   return (
-    <Card className="frosted-glass w-full shadow-xl flex flex-col h-[70vh] md:h-[500px] max-h-[70vh]">
+    <Card className="frosted-glass w-full shadow-xl flex flex-col"> {/* Removed height constraints */}
       <CardHeader className="p-4 border-b border-border/30 flex flex-row justify-between items-center">
         <div>
           <CardTitle className="font-headline text-xl text-primary">
@@ -227,87 +227,83 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent 
         </div>
       )}
       
-      <CardContent className="p-0 flex-1 min-h-0 overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className="flex">
-            {/* Hour Labels Column */}
-            <div className="w-16 md:w-20 border-r border-border/30 sticky left-0 bg-background/80 z-20 backdrop-blur-sm"> {/* Increased z-index for labels */}
-              {hours.map(hour => (
-                <div key={`label-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px` }}
-                     className="text-xs text-muted-foreground text-right pr-2 pt-1 border-b border-border/20 last:border-b-0 flex items-start justify-end">
-                  {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
-                </div>
-              ))}
-            </div>
-
-            {/* Events Grid Column */}
-            <div className="flex-1 relative">
-              {/* Hour Lines */}
-              {hours.map(hour => (
-                <div key={`line-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px` }}
-                     className="border-b border-border/20 last:border-b-0 w-full absolute" // Make lines full width and position them
-                     style={{ top: `${hour * HOUR_HEIGHT_PX}px`, left: 0, right: 0 }}
-                >
-                </div>
-              ))}
-
-              {/* Timed Events */}
-              {timedEventsWithLayout.map(event => {
-                const isSmallWidth = parseFloat(event.layout.width) < 25; // Example threshold for small width
-                return (
-                  <div
-                    key={event.id}
-                    className={cn(
-                      "absolute rounded border text-xs overflow-hidden shadow-sm",
-                      "focus-within:ring-2 focus-within:ring-ring",
-                      getEventTypeStyleClasses(event.type),
-                      isSmallWidth ? "p-0.5" : "p-1" // Adjust padding for very narrow events
-                    )}
-                    style={{ 
-                        top: `${event.layout.top}px`, 
-                        height: `${event.layout.height}px`,
-                        left: event.layout.left,
-                        width: event.layout.width,
-                        zIndex: event.layout.zIndex,
-                    }}
-                  >
-                    <div className="flex flex-col h-full"> {/* Use flex-col for content stacking */}
-                        <div className="flex-grow overflow-hidden">
-                            <p className={cn("font-semibold truncate text-current", isSmallWidth ? "text-[10px]" : "text-xs")}>{event.title}</p>
-                            {!isSmallWidth && ( // Only show time if not too narrow
-                              <p className="opacity-80 truncate text-[10px]">
-                                  {format(event.date, 'h:mm a')}
-                                  {event.endDate && ` - ${format(event.endDate, 'h:mm a')}`}
-                              </p>
-                            )}
-                            {/* Notes can be shown if space allows, or in a tooltip on hover for small events */}
-                            {/* {!isSmallWidth && event.notes && <p className="text-[10px] opacity-70 truncate mt-0.5">{event.notes}</p>} */}
-                        </div>
-                        {event.isDeletable && onDeleteEvent && (
-                            <div className={cn("mt-auto flex-shrink-0", isSmallWidth ? "text-center" : "text-right")}>
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:text-destructive/80 hover:bg-destructive/10 opacity-70 hover:opacity-100">
-                                        <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent className="frosted-glass">
-                                      <AlertDialogHeader><AlertDialogTitle>Delete "{event.title}"?</AlertDialogTitle></AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleDeleteEvent(event.id, event.title)}>Delete</AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            </div>
-                        )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+      <CardContent className="p-0"> {/* Removed flex-1, min-h-0, overflow-hidden */}
+        {/* Use a div instead of ScrollArea if internal scrolling is not desired */}
+        <div className="flex"> {/* Removed ScrollArea and its h-full */}
+          {/* Hour Labels Column */}
+          <div className="w-16 md:w-20 border-r border-border/30 sticky left-0 bg-background/80 z-20 backdrop-blur-sm">
+            {hours.map(hour => (
+              <div key={`label-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px` }}
+                   className="text-xs text-muted-foreground text-right pr-2 pt-1 border-b border-border/20 last:border-b-0 flex items-start justify-end">
+                {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
+              </div>
+            ))}
           </div>
-        </ScrollArea>
+
+          {/* Events Grid Column */}
+          <div className="flex-1 relative">
+            {/* Hour Lines */}
+            {hours.map(hour => (
+              <div key={`line-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px`, top: `${hour * HOUR_HEIGHT_PX}px` }}
+                   className="border-b border-border/20 last:border-b-0 w-full absolute left-0 right-0"
+              >
+              </div>
+            ))}
+
+            {/* Timed Events */}
+            {timedEventsWithLayout.map(event => {
+              const isSmallWidth = parseFloat(event.layout.width) < 25; // Example threshold for small width
+              return (
+                <div
+                  key={event.id}
+                  className={cn(
+                    "absolute rounded border text-xs overflow-hidden shadow-sm",
+                    "focus-within:ring-2 focus-within:ring-ring",
+                    getEventTypeStyleClasses(event.type),
+                    isSmallWidth ? "p-0.5" : "p-1" // Adjust padding for very narrow events
+                  )}
+                  style={{ 
+                      top: `${event.layout.top}px`, 
+                      height: `${event.layout.height}px`,
+                      left: event.layout.left,
+                      width: event.layout.width,
+                      zIndex: event.layout.zIndex,
+                  }}
+                >
+                  <div className="flex flex-col h-full">
+                      <div className="flex-grow overflow-hidden">
+                          <p className={cn("font-semibold truncate text-current", isSmallWidth ? "text-[10px]" : "text-xs")}>{event.title}</p>
+                          {!isSmallWidth && (
+                            <p className="opacity-80 truncate text-[10px]">
+                                {format(event.date, 'h:mm a')}
+                                {event.endDate && ` - ${format(event.endDate, 'h:mm a')}`}
+                            </p>
+                          )}
+                      </div>
+                      {event.isDeletable && onDeleteEvent && (
+                          <div className={cn("mt-auto flex-shrink-0", isSmallWidth ? "text-center" : "text-right")}>
+                              <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:text-destructive/80 hover:bg-destructive/10 opacity-70 hover:opacity-100">
+                                      <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent className="frosted-glass">
+                                    <AlertDialogHeader><AlertDialogTitle>Delete "{event.title}"?</AlertDialogTitle></AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleDeleteEvent(event.id, event.title)}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                              </AlertDialog>
+                          </div>
+                      )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
