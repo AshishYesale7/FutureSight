@@ -160,18 +160,18 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
 
   return (
     <Dialog open={isOpen} onOpenChange={handleModalOpenChange}>
-      <DialogContent className="sm:max-w-lg frosted-glass p-0">
-        <DialogHeader className="p-6 pb-4 border-b border-border/30">
-          <DialogTitle className="font-headline text-xl text-primary">Customize Theme</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="sm:max-w-md frosted-glass p-0 flex flex-col max-h-[90vh]">
+        <DialogHeader className="p-4 border-b border-border/30">
+          <DialogTitle className="font-headline text-lg text-primary">Customize Theme</DialogTitle>
+          <DialogDescription className="text-sm">
             Personalize your app's appearance. Changes are saved automatically.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
-          <div className="space-y-4">
-              <Label className="font-semibold text-lg flex items-center text-primary">
-                  <Droplets className="mr-2 h-5 w-5" /> Glass & Card Style
+        <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0">
+          <div className="space-y-3">
+              <Label className="font-semibold text-base flex items-center text-primary">
+                  <Droplets className="mr-2 h-4 w-4" /> Glass & Card Style
               </Label>
               <RadioGroup 
                   value={glassEffect} 
@@ -182,7 +182,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
                       <Label key={effect.id} htmlFor={effect.id} className="flex items-center space-x-3 p-3 rounded-lg border border-transparent has-[[data-state=checked]]:border-accent has-[[data-state=checked]]:bg-accent/10 hover:bg-muted/50 cursor-pointer transition-colors">
                           <RadioGroupItem value={effect.id} id={effect.id} />
                           <div className="flex-1">
-                              <p className="font-medium flex items-center">{effect.label}</p>
+                              <p className="font-medium text-sm flex items-center">{effect.label}</p>
                               <p className="text-xs text-muted-foreground">{effect.description}</p>
                           </div>
                       </Label>
@@ -193,11 +193,11 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
           <Separator />
 
           {/* Theme Color Customization */}
-          <div className="space-y-4">
-             <Label className="font-semibold text-lg flex items-center text-primary">
-                <Palette className="mr-2 h-5 w-5" /> Theme Colors
+          <div className="space-y-3">
+             <Label className="font-semibold text-base flex items-center text-primary">
+                <Palette className="mr-2 h-4 w-4" /> Theme Colors
             </Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            <div className="grid grid-cols-1 gap-x-6 gap-y-3">
               {themeColorConfig.map(config => (
                 <div key={config.id} className="flex items-center justify-between">
                   <Label htmlFor={`color-${config.id}`} className="flex items-center gap-2 text-sm">
@@ -218,8 +218,8 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
           
           {/* Background Customization */}
           <div className="space-y-4">
-            <Label className="font-semibold text-lg flex items-center text-primary">
-              <ImageUp className="mr-2 h-5 w-5" /> Background Image
+            <Label className="font-semibold text-base flex items-center text-primary">
+              <ImageUp className="mr-2 h-4 w-4" /> Background Image
             </Label>
             <div className="space-y-2">
               <Label htmlFor="imageUrl" className="text-sm flex items-center">
@@ -227,12 +227,12 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
               </Label>
               <div className="flex space-x-2">
                 <Input id="imageUrl" type="url" placeholder="https://example.com/image.jpg" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
-                <Button onClick={handleUrlApply} variant="outline" className="shrink-0">Apply URL</Button>
+                <Button onClick={handleUrlApply} variant="outline" className="shrink-0">Apply</Button>
               </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="background-file-upload" className="text-sm flex items-center">
-                <ImageUp className="mr-2 h-4 w-4" /> Upload Image (Max 5MB)
+                <ImageUp className="mr-2 h-4 w-4" /> Upload (Max 5MB)
               </Label>
               <Input id="background-file-upload" type="file" accept="image/*" onChange={handleFileChange} />
             </div>
@@ -249,8 +249,8 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
 
           {/* Solid Color Background */}
            <div className="space-y-3">
-            <Label className="font-semibold text-lg flex items-center text-primary">
-                <Paintbrush className="mr-2 h-5 w-5" /> Solid Background Color
+            <Label className="font-semibold text-base flex items-center text-primary">
+                <Paintbrush className="mr-2 h-4 w-4" /> Solid Background Color
             </Label>
             <div className="flex flex-wrap gap-3 pt-1">
                 {BACKGROUND_COLORS.map((colorOption) => (
@@ -276,12 +276,12 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
           </div>
         </div>
 
-        <DialogFooter className="p-6 pt-4 border-t border-border/30 flex-col sm:flex-row gap-2">
-           <Button onClick={handleReset} variant="destructive" className="w-full sm:w-auto mr-auto">
-            <Trash2 className="mr-2 h-4 w-4" /> Reset All Customizations
+        <DialogFooter className="p-4 pt-3 border-t border-border/30 flex-row justify-between w-full">
+           <Button onClick={handleReset} variant="destructive" size="sm">
+            <Trash2 className="mr-2 h-4 w-4" /> Reset
           </Button>
           <DialogClose asChild>
-            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={resetForm}>
+            <Button type="button" variant="outline" size="sm" onClick={resetForm}>
               Close
             </Button>
           </DialogClose>
