@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { ColorPickerPopover } from '../ui/ColorPickerPopover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { GlassEffect } from '@/context/ThemeContext';
+import { Slider } from '@/components/ui/slider';
 
 interface CustomizeThemeModalProps {
   isOpen: boolean;
@@ -179,13 +180,53 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
                   className="space-y-1"
               >
                   {glassEffectConfig.map(effect => (
-                      <Label key={effect.id} htmlFor={effect.id} className="flex items-center space-x-3 p-3 rounded-lg border border-transparent has-[[data-state=checked]]:border-accent has-[[data-state=checked]]:bg-accent/10 hover:bg-muted/50 cursor-pointer transition-colors">
-                          <RadioGroupItem value={effect.id} id={effect.id} />
-                          <div className="flex-1">
-                              <p className="font-medium text-sm flex items-center">{effect.label}</p>
-                              <p className="text-xs text-muted-foreground">{effect.description}</p>
+                      <div key={effect.id} className="rounded-lg border has-[[data-state=checked]]:border-accent has-[[data-state=checked]]:bg-accent/10 transition-colors">
+                        <Label htmlFor={effect.id} className="flex items-center space-x-3 p-3  hover:bg-muted/50 cursor-pointer">
+                            <RadioGroupItem value={effect.id} id={effect.id} />
+                            <div className="flex-1">
+                                <p className="font-medium text-sm flex items-center">{effect.label}</p>
+                                <p className="text-xs text-muted-foreground">{effect.description}</p>
+                            </div>
+                        </Label>
+                        {glassEffect === effect.id && (
+                          <div className="pt-1 pb-3 px-4 space-y-3 border-t border-accent/20">
+                            {effect.id === 'frosted' && (
+                               <div className="grid gap-1">
+                                  <div className="flex justify-between items-center">
+                                      <Label htmlFor="frosted-blur" className="text-xs">Blur</Label>
+                                      <span className="text-xs text-muted-foreground">{glassEffectSettings.frosted.blur}px</span>
+                                  </div>
+                                  <Slider id="frosted-blur" min={0} max={40} step={1} value={[glassEffectSettings.frosted.blur]} onValueChange={([value]) => setGlassEffectSettings({ ...glassEffectSettings, frosted: { ...glassEffectSettings.frosted, blur: value } })} />
+                              </div>
+                            )}
+                             {effect.id === 'water-droplets' && (
+                              <div className="space-y-3">
+                                <div className="grid gap-1">
+                                    <div className="flex justify-between items-center"><Label htmlFor="wd-blur" className="text-xs">Blur</Label><span className="text-xs text-muted-foreground">{glassEffectSettings.waterDroplets.blur}px</span></div>
+                                    <Slider id="wd-blur" min={0} max={20} step={1} value={[glassEffectSettings.waterDroplets.blur]} onValueChange={([v]) => setGlassEffectSettings({...glassEffectSettings, waterDroplets: {...glassEffectSettings.waterDroplets, blur: v}})} />
+                                </div>
+                                <div className="grid gap-1">
+                                    <div className="flex justify-between items-center"><Label htmlFor="wd-saturate" className="text-xs">Saturate</Label><span className="text-xs text-muted-foreground">{glassEffectSettings.waterDroplets.saturate}%</span></div>
+                                    <Slider id="wd-saturate" min={100} max={200} step={5} value={[glassEffectSettings.waterDroplets.saturate]} onValueChange={([v]) => setGlassEffectSettings({...glassEffectSettings, waterDroplets: {...glassEffectSettings.waterDroplets, saturate: v}})} />
+                                </div>
+                                 <div className="grid gap-1">
+                                    <div className="flex justify-between items-center"><Label htmlFor="wd-brightness" className="text-xs">Brightness</Label><span className="text-xs text-muted-foreground">{glassEffectSettings.waterDroplets.brightness}%</span></div>
+                                    <Slider id="wd-brightness" min={50} max={150} step={5} value={[glassEffectSettings.waterDroplets.brightness]} onValueChange={([v]) => setGlassEffectSettings({...glassEffectSettings, waterDroplets: {...glassEffectSettings.waterDroplets, brightness: v}})} />
+                                </div>
+                              </div>
+                            )}
+                             {effect.id === 'subtle-shadow' && (
+                               <div className="grid gap-1">
+                                  <div className="flex justify-between items-center">
+                                      <Label htmlFor="ss-opacity" className="text-xs">Shadow Opacity</Label>
+                                      <span className="text-xs text-muted-foreground">{Math.round(glassEffectSettings.subtleShadow.opacity * 100)}%</span>
+                                  </div>
+                                  <Slider id="ss-opacity" min={0} max={1} step={0.05} value={[glassEffectSettings.subtleShadow.opacity]} onValueChange={([value]) => setGlassEffectSettings({ ...glassEffectSettings, subtleShadow: { ...glassEffectSettings.subtleShadow, opacity: value } })} />
+                              </div>
+                            )}
                           </div>
-                      </Label>
+                        )}
+                      </div>
                   ))}
               </RadioGroup>
           </div>
