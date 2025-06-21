@@ -6,7 +6,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 
 type Theme = 'light' | 'dark';
 type CustomTheme = Record<string, string>;
-export type GlassEffect = 'frosted' | 'water-droplets' | 'subtle-shadow';
+export type GlassEffect = 'frosted' | 'water-droplets' | 'subtle-shadow' | 'grainyFrosted';
 
 // NEW Type for settings
 export interface GlassEffectSettings {
@@ -21,6 +21,10 @@ export interface GlassEffectSettings {
   subtleShadow: {
     opacity: number; // 0 to 1
   };
+  grainyFrosted: {
+    blur: number; // in pixels
+    noiseOpacity: number; // 0 to 1
+  };
 }
 
 const THEME_STORAGE_KEY = 'futuresight-theme';
@@ -31,11 +35,11 @@ const GLASS_EFFECT_STORAGE_KEY = 'futuresight-glass-effect';
 const GLASS_SETTINGS_STORAGE_KEY = 'futuresight-glass-settings';
 const DEFAULT_BACKGROUND_IMAGE = 'https://img.freepik.com/premium-photo/abstract-holographic-defocused-foil-texture-background-with-frosted-glass-effect-background_1064085-619.jpg';
 
-// NEW default settings
 const DEFAULT_GLASS_EFFECT_SETTINGS: GlassEffectSettings = {
   frosted: { blur: 12 },
   waterDroplets: { blur: 6, saturate: 180, brightness: 90 },
   subtleShadow: { opacity: 0.15 },
+  grainyFrosted: { blur: 10, noiseOpacity: 0.05 },
 };
 
 interface ThemeContextType {
@@ -64,19 +68,29 @@ const getInitialState = <T,>(key: string, defaultValue: T): T => {
   }
   try {
     const storedValue = localStorage.getItem(key);
-    return storedValue ? JSON.parse(storedValue) : defaultValue;
+    if (!storedValue) {
+      return defaultValue;
+    }
+    const parsedValue = JSON.parse(storedValue);
+    // If the default value is an object, merge it with the stored value
+    // This ensures new settings are added without losing user's old settings
+    if (typeof defaultValue === 'object' && defaultValue !== null && typeof parsedValue === 'object' && parsedValue !== null) {
+      return { ...defaultValue, ...parsedValue };
+    }
+    return parsedValue;
   } catch (error) {
     console.error(`Error reading from localStorage key “${key}”:`, error);
     return defaultValue;
   }
 };
 
+
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [theme, setThemeState] = useState<Theme>(() => getInitialState<Theme>(THEME_STORAGE_KEY, 'light'));
   const [backgroundImage, setBackgroundImageState] = useState<string | null>(() => getInitialState<string | null>(BACKGROUND_IMAGE_STORAGE_KEY, DEFAULT_BACKGROUND_IMAGE));
   const [backgroundColor, setBackgroundColorState] = useState<string | null>(() => getInitialState<string | null>(BACKGROUND_COLOR_STORAGE_KEY, null));
   const [customTheme, setCustomThemeState] = useState<CustomTheme | null>(() => getInitialState<CustomTheme | null>(CUSTOM_THEME_STORAGE_KEY, null));
-  const [glassEffect, setGlassEffectState] = useState<GlassEffect>(() => getInitialState<GlassEffect>(GLASS_EFFECT_STORAGE_KEY, 'frosted'));
+  const [glassEffect, setGlassEffectState] = useState<GlassEffect>(() => getInitialState<GlassEffect>(GLASS_EFFECT_STORAGE_KEY, 'grainyFrosted'));
   const [glassEffectSettings, setGlassEffectSettingsState] = useState<GlassEffectSettings>(() => getInitialState<GlassEffectSettings>(GLASS_SETTINGS_STORAGE_KEY, DEFAULT_GLASS_EFFECT_SETTINGS));
   const [isMounted, setIsMounted] = useState(false);
 
@@ -136,7 +150,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     setBackgroundImage(DEFAULT_BACKGROUND_IMAGE);
     setBackgroundColor(null);
     setCustomTheme(null);
-    setGlassEffect('frosted');
+    setGlassEffect('grainyFrosted');
     setGlassEffectSettings(DEFAULT_GLASS_EFFECT_SETTINGS);
   }, []);
 
