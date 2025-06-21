@@ -64,6 +64,8 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     isMounted,
     glassEffect,
     setGlassEffect,
+    glassEffectSettings,
+    setGlassEffectSettings,
   } = useTheme();
   
   const { toast } = useToast();
@@ -158,7 +160,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
 
   return (
     <Dialog open={isOpen} onOpenChange={handleModalOpenChange}>
-      <DialogContent className="sm:max-w-2xl frosted-glass p-0">
+      <DialogContent className="sm:max-w-lg frosted-glass p-0">
         <DialogHeader className="p-6 pb-4 border-b border-border/30">
           <DialogTitle className="font-headline text-xl text-primary">Customize Theme</DialogTitle>
           <DialogDescription>
@@ -224,7 +226,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
                 <Link className="mr-2 h-4 w-4" /> Image URL
               </Label>
               <div className="flex space-x-2">
-                <Input id="imageUrl" type="url" placeholder="https://example.com/image.jpg" value={imageUrl} onChange={(e) => setImageUrl(e.targe.value)} />
+                <Input id="imageUrl" type="url" placeholder="https://example.com/image.jpg" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
                 <Button onClick={handleUrlApply} variant="outline" className="shrink-0">Apply URL</Button>
               </div>
             </div>

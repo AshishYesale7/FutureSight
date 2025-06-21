@@ -158,7 +158,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
 
   return (
     <Dialog open={isOpen} onOpenChange={handleModalOpenChange}>
-      <DialogContent className="sm:max-w-2xl frosted-glass p-0">
+      <DialogContent className="sm:max-w-lg frosted-glass p-0">
         <DialogHeader className="p-6 pb-4 border-b border-border/30">
           <DialogTitle className="font-headline text-xl text-primary">Customize Theme</DialogTitle>
           <DialogDescription>
