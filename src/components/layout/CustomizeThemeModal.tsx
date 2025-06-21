@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTheme } from '@/hooks/use-theme';
 import { useToast } from '@/hooks/use-toast';
-import { ImageUp, Link, Trash2, Palette, Slash, Paintbrush, Text, Sparkles, Box, Droplets } from 'lucide-react';
+import { ImageUp, Link, Trash2, Palette, Slash, Paintbrush, Text, Sparkles, Box, Droplets, Layers } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { ColorPickerPopover } from '../ui/ColorPickerPopover';
@@ -47,6 +47,7 @@ const themeColorConfig = [
 ];
 
 const glassEffectConfig: {id: GlassEffect, label: string, icon: React.ElementType, description: string}[] = [
+    { id: 'grainyFrosted', label: 'Grainy Frosted', icon: Layers, description: 'A subtle, textured glass with a noise overlay.' },
     { id: 'frosted', label: 'Frosted Glass', icon: Box, description: 'A classic translucent, blurred effect.' },
     { id: 'water-droplets', label: 'Water Droplets', icon: Droplets, description: 'A textured, dynamic water droplet effect.' },
     { id: 'subtle-shadow', label: 'Subtle Shadow', icon: Box, description: 'A clean look with soft shadows instead of glass.' },
@@ -190,6 +191,18 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
                         </Label>
                         {glassEffect === effect.id && (
                           <div className="pt-1 pb-3 px-4 space-y-3 border-t border-accent/20">
+                            {effect.id === 'grainyFrosted' && (
+                               <div className="space-y-3">
+                                 <div className="grid gap-1">
+                                     <div className="flex justify-between items-center"><Label htmlFor="gf-blur" className="text-xs">Blur</Label><span className="text-xs text-muted-foreground">{glassEffectSettings.grainyFrosted.blur}px</span></div>
+                                     <Slider id="gf-blur" min={0} max={40} step={1} value={[glassEffectSettings.grainyFrosted.blur]} onValueChange={([v]) => setGlassEffectSettings({...glassEffectSettings, grainyFrosted: {...glassEffectSettings.grainyFrosted, blur: v}})} />
+                                 </div>
+                                 <div className="grid gap-1">
+                                     <div className="flex justify-between items-center"><Label htmlFor="gf-noise" className="text-xs">Noise Opacity</Label><span className="text-xs text-muted-foreground">{Math.round(glassEffectSettings.grainyFrosted.noiseOpacity * 100)}%</span></div>
+                                     <Slider id="gf-noise" min={0} max={0.2} step={0.01} value={[glassEffectSettings.grainyFrosted.noiseOpacity]} onValueChange={([v]) => setGlassEffectSettings({...glassEffectSettings, grainyFrosted: {...glassEffectSettings.grainyFrosted, noiseOpacity: v}})} />
+                                 </div>
+                               </div>
+                            )}
                             {effect.id === 'frosted' && (
                                <div className="grid gap-1">
                                   <div className="flex justify-between items-center">
