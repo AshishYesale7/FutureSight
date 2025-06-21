@@ -12,7 +12,7 @@ import type { ReactNode} from 'react';
 import { useEffect } from 'react';
 
 function AppThemeApplicator({ children }: { children: ReactNode }) {
-  const { theme: userPreferredTheme, backgroundImage, backgroundColor, customTheme, isMounted } = useTheme();
+  const { theme: userPreferredTheme, backgroundImage, backgroundColor, customTheme, glassEffect, isMounted } = useTheme();
   const pathname = usePathname();
   const isAuthPage = pathname.startsWith('/auth/');
 
@@ -48,8 +48,16 @@ function AppThemeApplicator({ children }: { children: ReactNode }) {
       } else {
         document.body.style.backgroundImage = '';
       }
+
+      // 5. Apply glass effect data attribute
+      if (glassEffect) {
+        root.setAttribute('data-glass-effect', glassEffect);
+      } else {
+        root.removeAttribute('data-glass-effect');
+      }
+
     }
-  }, [pathname, userPreferredTheme, isAuthPage, backgroundImage, backgroundColor, customTheme, isMounted]);
+  }, [pathname, userPreferredTheme, isAuthPage, backgroundImage, backgroundColor, customTheme, glassEffect, isMounted]);
 
   // Clean up body styles on unmount or if background is removed
   useEffect(() => {
