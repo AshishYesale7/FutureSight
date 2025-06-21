@@ -6,11 +6,13 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 
 type Theme = 'light' | 'dark';
 type CustomTheme = Record<string, string>;
+export type GlassEffect = 'frosted' | 'water-droplets' | 'subtle-shadow';
 
 const THEME_STORAGE_KEY = 'futuresight-theme';
 const BACKGROUND_IMAGE_STORAGE_KEY = 'futuresight-background-image';
 const BACKGROUND_COLOR_STORAGE_KEY = 'futuresight-background-color';
 const CUSTOM_THEME_STORAGE_KEY = 'futuresight-custom-theme';
+const GLASS_EFFECT_STORAGE_KEY = 'futuresight-glass-effect';
 const DEFAULT_BACKGROUND_IMAGE = 'https://img.freepik.com/premium-photo/abstract-holographic-defocused-foil-texture-background-with-frosted-glass-effect-background_1064085-619.jpg';
 
 interface ThemeContextType {
@@ -23,6 +25,8 @@ interface ThemeContextType {
   setBackgroundColor: (color: string | null) => void;
   customTheme: CustomTheme | null;
   setCustomTheme: (theme: CustomTheme | null) => void;
+  glassEffect: GlassEffect;
+  setGlassEffect: (effect: GlassEffect) => void;
   resetCustomizations: () => void;
   isMounted: boolean;
 }
@@ -47,6 +51,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const [backgroundImage, setBackgroundImageState] = useState<string | null>(() => getInitialState<string | null>(BACKGROUND_IMAGE_STORAGE_KEY, DEFAULT_BACKGROUND_IMAGE));
   const [backgroundColor, setBackgroundColorState] = useState<string | null>(() => getInitialState<string | null>(BACKGROUND_COLOR_STORAGE_KEY, null));
   const [customTheme, setCustomThemeState] = useState<CustomTheme | null>(() => getInitialState<CustomTheme | null>(CUSTOM_THEME_STORAGE_KEY, null));
+  const [glassEffect, setGlassEffectState] = useState<GlassEffect>(() => getInitialState<GlassEffect>(GLASS_EFFECT_STORAGE_KEY, 'frosted'));
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -67,6 +72,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => setItemInStorage(BACKGROUND_IMAGE_STORAGE_KEY, backgroundImage), [backgroundImage, isMounted]);
   useEffect(() => setItemInStorage(BACKGROUND_COLOR_STORAGE_KEY, backgroundColor), [backgroundColor, isMounted]);
   useEffect(() => setItemInStorage(CUSTOM_THEME_STORAGE_KEY, customTheme), [customTheme, isMounted]);
+  useEffect(() => setItemInStorage(GLASS_EFFECT_STORAGE_KEY, glassEffect), [glassEffect, isMounted]);
 
 
   const setTheme = useCallback((newTheme: Theme) => {
@@ -91,11 +97,16 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     setCustomThemeState(theme);
   }, []);
 
+  const setGlassEffect = useCallback((effect: GlassEffect) => {
+    setGlassEffectState(effect);
+  }, []);
+
   const resetCustomizations = useCallback(() => {
     setBackgroundImage(DEFAULT_BACKGROUND_IMAGE);
     setBackgroundColor(null);
     setCustomTheme(null);
-  }, [setBackgroundImage, setBackgroundColor, setCustomTheme]);
+    setGlassEffect('frosted');
+  }, [setBackgroundImage, setBackgroundColor, setCustomTheme, setGlassEffect]);
 
   return (
     <ThemeContext.Provider value={{ 
@@ -103,6 +114,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       backgroundImage, setBackgroundImage, 
       backgroundColor, setBackgroundColor,
       customTheme, setCustomTheme,
+      glassEffect, setGlassEffect,
       resetCustomizations,
       isMounted 
     }}>
