@@ -31,11 +31,12 @@ interface CustomizeThemeModalProps {
 }
 
 const BACKGROUND_COLORS = [
-    { name: 'Default Theme', value: null },
-    { name: 'Deep Purple', value: 'hsl(265 35% 8%)' },
-    { name: 'Midnight Blue', value: 'hsl(240 30% 10%)' },
-    { name: 'Plum', value: 'hsl(300 20% 9%)' },
-    { name: 'Charcoal', value: 'hsl(240 5% 12%)' },
+    { name: 'Default', value: null },
+    { name: 'Midnight Slate', value: 'hsl(220 25% 12%)' },
+    { name: 'Deep Jungle', value: 'hsl(160 30% 10%)' },
+    { name: 'Crimson Ember', value: 'hsl(350 50% 14%)' },
+    { name: 'Royal Indigo', value: 'hsl(250 40% 15%)' },
+    { name: 'Smoky Quartz', value: 'hsl(30 15% 13%)' },
 ];
 
 const themeColorConfig = [
@@ -56,7 +57,8 @@ const glassEffectConfig: {id: GlassEffect, label: string, icon: React.ElementTyp
 
 export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeThemeModalProps) {
   const { 
-    setBackgroundImage, 
+    setBackgroundImage,
+    backgroundImage: currentBackgroundImage, 
     setBackgroundColor, 
     backgroundColor: currentBackgroundColor,
     customTheme,
@@ -145,6 +147,18 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
       return customTheme[cssVar];
     }
     return initialThemeValues[cssVar] || '#000000';
+  };
+
+  const handleBackgroundColorSelect = (colorValue: string | null) => {
+    if (colorValue) {
+      // User selected a solid color
+      setBackgroundColor(colorValue);
+      setBackgroundImage(null); // Remove background image
+    } else {
+      // User selected "Default", so reset
+      setBackgroundColor(null);
+      resetCustomizations(); // Resets image and other settings to default
+    }
   };
 
   const resetForm = () => {
@@ -311,10 +325,10 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
                     type="button"
                     key={colorOption.name}
                     title={colorOption.name}
-                    onClick={() => setBackgroundColor(colorOption.value)}
+                    onClick={() => handleBackgroundColorSelect(colorOption.value)}
                     className={cn(
                         "h-8 w-8 rounded-full border-2 transition-all flex items-center justify-center",
-                        (currentBackgroundColor === colorOption.value || (!currentBackgroundColor && colorOption.value === null))
+                        (currentBackgroundColor === colorOption.value && !currentBackgroundImage)
                         ? "ring-2 ring-offset-2 ring-offset-background ring-ring"
                         : "hover:scale-110",
                         !colorOption.value && "border-dashed bg-transparent text-muted-foreground"
