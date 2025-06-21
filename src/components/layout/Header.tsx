@@ -60,7 +60,7 @@ export default function Header() {
           <SheetContent side="left" className="w-64 p-0 frosted-glass text-sidebar-foreground bg-sidebar">
             <div className="flex h-16 items-center justify-center border-b border-sidebar-border px-6">
               <Link href="/" className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-sidebar-primary"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-sidebar-primary dark:text-white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
                 <SheetTitle asChild>
                   <h1 className="font-headline text-2xl font-semibold text-sidebar-primary-foreground">FutureSight</h1>
                 </SheetTitle>
