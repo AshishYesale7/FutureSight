@@ -17,6 +17,8 @@ import {
   Moon,
   Sun,
   Palette,
+  Expand,
+  Shrink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from 'firebase/auth';
@@ -33,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from '@/hooks/use-theme';
-import { useState } from 'react'; 
+import { useState, useEffect } from 'react'; 
 import CustomizeThemeModal from './CustomizeThemeModal';
 
 const navItems = [
@@ -51,6 +53,25 @@ export default function SidebarNav() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      setIsFullScreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullScreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullScreenChange);
+  }, []);
+
+  const handleToggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen();
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -110,6 +131,10 @@ export default function SidebarNav() {
               <DropdownMenuItem onClick={() => setIsCustomizeModalOpen(true)}>
                 <Palette className="mr-2 h-4 w-4" />
                 <span>Customize Theme</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleToggleFullScreen}>
+                {isFullScreen ? <Shrink className="mr-2 h-4 w-4" /> : <Expand className="mr-2 h-4 w-4" />}
+                <span>{isFullScreen ? 'Exit Fullscreen' : 'Go Fullscreen'}</span>
               </DropdownMenuItem>
               <DropdownMenuItem disabled>
                 <Settings className="mr-2 h-4 w-4" />
