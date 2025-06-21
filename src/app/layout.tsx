@@ -30,7 +30,10 @@ function AppThemeApplicator({ children }: { children: ReactNode }) {
       
       // 1. Set Light/Dark mode class
       root.classList.remove('light', 'dark');
-      root.classList.add(isAuthPage ? 'dark' : userPreferredTheme);
+      const themeClass = isAuthPage ? 'dark' : userPreferredTheme;
+      if (typeof themeClass === 'string') {
+        root.classList.add(themeClass);
+      }
       
       // 2. Apply custom theme colors as CSS variables
       if (customTheme) {
@@ -66,10 +69,21 @@ function AppThemeApplicator({ children }: { children: ReactNode }) {
       
       // 6. Apply dynamic glass effect settings as CSS variables
       if (glassEffectSettings) {
-        root.style.setProperty('--glass-blur', `${glassEffectSettings.frosted.blur}px`);
-        root.style.setProperty('--glass-saturate', `${glassEffectSettings.waterDroplets.saturate / 100}`);
-        root.style.setProperty('--glass-brightness', `${glassEffectSettings.waterDroplets.brightness / 100}`);
-        root.style.setProperty('--shadow-opacity', `${glassEffectSettings.subtleShadow.opacity}`);
+        // Check for each setting property before applying to prevent runtime errors
+        if (glassEffectSettings.frosted) {
+          root.style.setProperty('--glass-blur', `${glassEffectSettings.frosted.blur}px`);
+        }
+        if (glassEffectSettings.waterDroplets) {
+          root.style.setProperty('--glass-saturate', `${glassEffectSettings.waterDroplets.saturate / 100}`);
+          root.style.setProperty('--glass-brightness', `${glassEffectSettings.waterDroplets.brightness / 100}`);
+        }
+        if (glassEffectSettings.subtleShadow) {
+          root.style.setProperty('--shadow-opacity', `${glassEffectSettings.subtleShadow.opacity}`);
+        }
+        if (glassEffectSettings.grainyFrosted) {
+          root.style.setProperty('--grainy-blur', `${glassEffectSettings.grainyFrosted.blur}px`);
+          root.style.setProperty('--grainy-noise-opacity', `${glassEffectSettings.grainyFrosted.noiseOpacity}`);
+        }
       }
 
     }
