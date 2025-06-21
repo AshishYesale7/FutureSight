@@ -118,21 +118,18 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     resetForm();
   };
 
-  const handleColorChange = (cssVar: string, colorHslString: string) => {
+  const handleColorChange = (cssVar: string, colorString: string) => {
     setCustomTheme({
       ...customTheme,
-      [cssVar]: colorHslString,
+      [cssVar]: colorString,
     });
   };
 
-  const getCurrentColor = (cssVar: string) => {
+  const getCurrentColor = (cssVar: string): string => {
     if (customTheme && customTheme[cssVar]) {
-      return `hsl(${customTheme[cssVar]})`;
+      return customTheme[cssVar];
     }
-    if (initialThemeValues[cssVar]) {
-      return `hsl(${initialThemeValues[cssVar]})`;
-    }
-    return '#000000';
+    return initialThemeValues[cssVar] || '#000000';
   };
 
   const resetForm = () => {
@@ -174,7 +171,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
                   <ColorPickerPopover 
                     id={`color-${config.id}`}
                     value={getCurrentColor(config.cssVar)} 
-                    onChange={(hslString) => handleColorChange(config.cssVar, hslString)} 
+                    onChange={(colorString) => handleColorChange(config.cssVar, colorString)} 
                   />
                 </div>
               ))}

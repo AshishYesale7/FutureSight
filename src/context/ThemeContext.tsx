@@ -11,6 +11,7 @@ const THEME_STORAGE_KEY = 'futuresight-theme';
 const BACKGROUND_IMAGE_STORAGE_KEY = 'futuresight-background-image';
 const BACKGROUND_COLOR_STORAGE_KEY = 'futuresight-background-color';
 const CUSTOM_THEME_STORAGE_KEY = 'futuresight-custom-theme';
+const DEFAULT_BACKGROUND_IMAGE = 'https://img.freepik.com/premium-photo/abstract-holographic-defocused-foil-texture-background-with-frosted-glass-effect-background_1064085-619.jpg';
 
 interface ThemeContextType {
   theme: Theme;
@@ -42,8 +43,8 @@ const getInitialState = <T,>(key: string, defaultValue: T): T => {
 };
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setThemeState] = useState<Theme>(() => getInitialState<Theme>(THEME_STORAGE_KEY, 'dark'));
-  const [backgroundImage, setBackgroundImageState] = useState<string | null>(() => getInitialState<string | null>(BACKGROUND_IMAGE_STORAGE_KEY, null));
+  const [theme, setThemeState] = useState<Theme>(() => getInitialState<Theme>(THEME_STORAGE_KEY, 'light'));
+  const [backgroundImage, setBackgroundImageState] = useState<string | null>(() => getInitialState<string | null>(BACKGROUND_IMAGE_STORAGE_KEY, DEFAULT_BACKGROUND_IMAGE));
   const [backgroundColor, setBackgroundColorState] = useState<string | null>(() => getInitialState<string | null>(BACKGROUND_COLOR_STORAGE_KEY, null));
   const [customTheme, setCustomThemeState] = useState<CustomTheme | null>(() => getInitialState<CustomTheme | null>(CUSTOM_THEME_STORAGE_KEY, null));
   const [isMounted, setIsMounted] = useState(false);
@@ -91,7 +92,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const resetCustomizations = useCallback(() => {
-    setBackgroundImage(null);
+    setBackgroundImage(DEFAULT_BACKGROUND_IMAGE);
     setBackgroundColor(null);
     setCustomTheme(null);
   }, [setBackgroundImage, setBackgroundColor, setCustomTheme]);
