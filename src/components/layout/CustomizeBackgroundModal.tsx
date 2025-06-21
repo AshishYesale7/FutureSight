@@ -16,12 +16,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTheme } from '@/hooks/use-theme';
 import { useToast } from '@/hooks/use-toast';
-import { ImageUp, Link, Trash2, Palette, Slash, Paintbrush, Text, Sparkles, Box, Droplets } from 'lucide-react';
+import { ImageUp, Link, Trash2, Palette, Slash, Paintbrush, Text, Sparkles, Box, Droplets, Layers } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { ColorPickerPopover } from '../ui/ColorPickerPopover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { GlassEffect } from '@/context/ThemeContext';
+import { Slider } from '@/components/ui/slider';
 
 
 interface CustomizeThemeModalProps {
@@ -46,6 +47,7 @@ const themeColorConfig = [
 ];
 
 const glassEffectConfig: {id: GlassEffect, label: string, icon: React.ElementType, description: string}[] = [
+    { id: 'grainyFrosted', label: 'Grainy Frosted', icon: Layers, description: 'A subtle, textured glass with a noise overlay.' },
     { id: 'frosted', label: 'Frosted Glass', icon: Box, description: 'A classic translucent, blurred effect.' },
     { id: 'water-droplets', label: 'Water Droplets', icon: Droplets, description: 'A textured, dynamic water droplet effect.' },
     { id: 'subtle-shadow', label: 'Subtle Shadow', icon: Box, description: 'A clean look with soft shadows instead of glass.' },
@@ -64,6 +66,8 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     isMounted,
     glassEffect,
     setGlassEffect,
+    glassEffectSettings,
+    setGlassEffectSettings,
   } = useTheme();
   
   const { toast } = useToast();
@@ -167,7 +171,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
         </DialogHeader>
 
         <div className="p-4 space-y-4 flex-1 overflow-y-auto min-h-0">
-          <div className="space-y-3">
+           <div className="space-y-3">
               <Label className="font-semibold text-base flex items-center text-primary">
                   <Droplets className="mr-2 h-4 w-4" /> Glass & Card Style
               </Label>
@@ -177,13 +181,65 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
                   className="space-y-1"
               >
                   {glassEffectConfig.map(effect => (
-                      <Label key={effect.id} htmlFor={`bg-${effect.id}`} className="flex items-center space-x-3 p-3 rounded-lg border border-transparent has-[[data-state=checked]]:border-accent has-[[data-state=checked]]:bg-accent/10 hover:bg-muted/50 cursor-pointer transition-colors">
-                          <RadioGroupItem value={effect.id} id={`bg-${effect.id}`} />
-                          <div className="flex-1">
-                              <p className="font-medium text-sm flex items-center">{effect.label}</p>
-                              <p className="text-xs text-muted-foreground">{effect.description}</p>
+                      <div key={effect.id} className="rounded-lg border has-[[data-state=checked]]:border-accent has-[[data-state=checked]]:bg-accent/10 transition-colors">
+                        <Label htmlFor={`bg-modal-${effect.id}`} className="flex items-center space-x-3 p-3 hover:bg-muted/50 cursor-pointer">
+                            <RadioGroupItem value={effect.id} id={`bg-modal-${effect.id}`} />
+                            <div className="flex-1">
+                                <p className="font-medium text-sm flex items-center">{effect.label}</p>
+                                <p className="text-xs text-muted-foreground">{effect.description}</p>
+                            </div>
+                        </Label>
+                        {glassEffect === effect.id && (
+                          <div className="pt-1 pb-3 px-4 space-y-3 border-t border-accent/20">
+                            {effect.id === 'grainyFrosted' && (
+                               <div className="space-y-3">
+                                 <div className="grid gap-1">
+                                     <div className="flex justify-between items-center"><Label htmlFor="gf-blur-bg" className="text-xs">Blur</Label><span className="text-xs text-muted-foreground">{glassEffectSettings.grainyFrosted.blur}px</span></div>
+                                     <Slider id="gf-blur-bg" min={0} max={40} step={1} value={[glassEffectSettings.grainyFrosted.blur]} onValueChange={([v]) => setGlassEffectSettings({...glassEffectSettings, grainyFrosted: {...glassEffectSettings.grainyFrosted, blur: v}})} />
+                                 </div>
+                                 <div className="grid gap-1">
+                                     <div className="flex justify-between items-center"><Label htmlFor="gf-noise-bg" className="text-xs">Noise Opacity</Label><span className="text-xs text-muted-foreground">{Math.round(glassEffectSettings.grainyFrosted.noiseOpacity * 100)}%</span></div>
+                                     <Slider id="gf-noise-bg" min={0} max={0.2} step={0.01} value={[glassEffectSettings.grainyFrosted.noiseOpacity]} onValueChange={([v]) => setGlassEffectSettings({...glassEffectSettings, grainyFrosted: {...glassEffectSettings.grainyFrosted, noiseOpacity: v}})} />
+                                 </div>
+                               </div>
+                            )}
+                            {effect.id === 'frosted' && (
+                               <div className="grid gap-1">
+                                  <div className="flex justify-between items-center">
+                                      <Label htmlFor="frosted-blur-bg" className="text-xs">Blur</Label>
+                                      <span className="text-xs text-muted-foreground">{glassEffectSettings.frosted.blur}px</span>
+                                  </div>
+                                  <Slider id="frosted-blur-bg" min={0} max={40} step={1} value={[glassEffectSettings.frosted.blur]} onValueChange={([value]) => setGlassEffectSettings({ ...glassEffectSettings, frosted: { ...glassEffectSettings.frosted, blur: value } })} />
+                              </div>
+                            )}
+                             {effect.id === 'water-droplets' && (
+                              <div className="space-y-3">
+                                <div className="grid gap-1">
+                                    <div className="flex justify-between items-center"><Label htmlFor="wd-blur-bg" className="text-xs">Blur</Label><span className="text-xs text-muted-foreground">{glassEffectSettings.waterDroplets.blur}px</span></div>
+                                    <Slider id="wd-blur-bg" min={0} max={20} step={1} value={[glassEffectSettings.waterDroplets.blur]} onValueChange={([v]) => setGlassEffectSettings({...glassEffectSettings, waterDroplets: {...glassEffectSettings.waterDroplets, blur: v}})} />
+                                </div>
+                                <div className="grid gap-1">
+                                    <div className="flex justify-between items-center"><Label htmlFor="wd-saturate-bg" className="text-xs">Saturate</Label><span className="text-xs text-muted-foreground">{glassEffectSettings.waterDroplets.saturate}%</span></div>
+                                    <Slider id="wd-saturate-bg" min={100} max={200} step={5} value={[glassEffectSettings.waterDroplets.saturate]} onValueChange={([v]) => setGlassEffectSettings({...glassEffectSettings, waterDroplets: {...glassEffectSettings.waterDroplets, saturate: v}})} />
+                                </div>
+                                 <div className="grid gap-1">
+                                    <div className="flex justify-between items-center"><Label htmlFor="wd-brightness-bg" className="text-xs">Brightness</Label><span className="text-xs text-muted-foreground">{glassEffectSettings.waterDroplets.brightness}%</span></div>
+                                    <Slider id="wd-brightness-bg" min={50} max={150} step={5} value={[glassEffectSettings.waterDroplets.brightness]} onValueChange={([v]) => setGlassEffectSettings({...glassEffectSettings, waterDroplets: {...glassEffectSettings.waterDroplets, brightness: v}})} />
+                                </div>
+                              </div>
+                            )}
+                             {effect.id === 'subtle-shadow' && (
+                               <div className="grid gap-1">
+                                  <div className="flex justify-between items-center">
+                                      <Label htmlFor="ss-opacity-bg" className="text-xs">Shadow Opacity</Label>
+                                      <span className="text-xs text-muted-foreground">{Math.round(glassEffectSettings.subtleShadow.opacity * 100)}%</span>
+                                  </div>
+                                  <Slider id="ss-opacity-bg" min={0} max={1} step={0.05} value={[glassEffectSettings.subtleShadow.opacity]} onValueChange={([value]) => setGlassEffectSettings({ ...glassEffectSettings, subtleShadow: { ...glassEffectSettings.subtleShadow, opacity: value } })} />
+                              </div>
+                            )}
                           </div>
-                      </Label>
+                        )}
+                      </div>
                   ))}
               </RadioGroup>
           </div>
@@ -287,3 +343,5 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     </Dialog>
   );
 }
+
+    
