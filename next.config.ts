@@ -12,7 +12,7 @@ const repoName = process.env.GITHUB_REPOSITORY
 const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
 
 const nextConfig: NextConfig = {
-  // output: 'export', // Crucial for static site generation - This line was previously commented out or removed to allow middleware
+  output: 'export', // Crucial for static site generation for GitHub Pages
 
   // Only set basePath and assetPrefix when building for GitHub Pages
   ...(isGithubActions && {
@@ -43,6 +43,12 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+       {
+        protocol: 'https',
+        hostname: 'img.freepik.com',
         port: '',
         pathname: '/**',
       }
