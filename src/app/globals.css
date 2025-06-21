@@ -118,18 +118,42 @@ body {
   }
 }
 
-/* Custom utility for frosted glass effect */
+/* Custom utility for Glass & Card effects */
 .frosted-glass {
-  background-color: var(--card);
-  @apply backdrop-blur-lg shadow-lg border;
+  /* Default properties shared by all effects */
+  @apply rounded-lg border shadow-lg transition-all duration-300;
+  background-color: var(--card); /* This has transparency by default */
 }
 
-/* Glass effect for the purple "light theme" */
-:root .frosted-glass { 
+/* --- Frosted Glass Effect (Default) --- */
+[data-glass-effect="frosted"] .frosted-glass {
+  @apply backdrop-blur-lg;
   border-color: hsl(280 40% 45% / 0.4);
 }
-
-/* Glass effect for the slate blue "dark theme" */
-.dark .frosted-glass { 
+.dark[data-glass-effect="frosted"] .frosted-glass {
   border-color: hsl(210 20% 30% / 0.8);
+}
+
+
+/* --- Water Droplets Effect --- */
+[data-glass-effect="water-droplets"] .frosted-glass {
+  backdrop-filter: blur(6px) saturate(180%) brightness(0.9);
+  -webkit-backdrop-filter: blur(6px) saturate(180%) brightness(0.9);
+  border-width: 1px;
+  border-color: hsl(280 40% 55% / 0.5);
+  box-shadow: 0 8px 32px 0 hsla(265, 30%, 13%, 0.37);
+}
+.dark[data-glass-effect="water-droplets"] .frosted-glass {
+  border-color: hsl(210 30% 60% / 0.6);
+  box-shadow: 0 8px 32px 0 hsla(210, 20%, 18%, 0.37);
+}
+
+
+/* --- Subtle Shadow Effect (No Glass) --- */
+[data-glass-effect="subtle-shadow"] .frosted-glass {
+  @apply backdrop-blur-none border-transparent shadow-2xl;
+  background-color: hsl(265 35% 10%); /* Opaque version of the card bg */
+}
+.dark[data-glass-effect="subtle-shadow"] .frosted-glass {
+   background-color: hsl(210 20% 14%); /* Opaque version for dark theme */
 }
