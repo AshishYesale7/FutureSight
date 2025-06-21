@@ -27,11 +27,12 @@ interface CustomizeThemeModalProps {
 }
 
 const BACKGROUND_COLORS = [
-    { name: 'Default Theme', value: null },
-    { name: 'Deep Purple', value: 'hsl(265 35% 8%)' },
-    { name: 'Midnight Blue', value: 'hsl(240 30% 10%)' },
-    { name: 'Plum', value: 'hsl(300 20% 9%)' },
-    { name: 'Charcoal', value: 'hsl(240 5% 12%)' },
+    { name: 'Default', value: null },
+    { name: 'Cosmic Fusion', value: 'hsl(255 45% 12%)' },
+    { name: 'Oceanic Teal', value: 'hsl(180 50% 15%)' },
+    { name: 'Crimson Night', value: 'hsl(340 40% 10%)' },
+    { name: 'Royal Amethyst', value: 'hsl(275 35% 14%)' },
+    { name: 'Forest Depths', value: 'hsl(150 25% 12%)' },
 ];
 
 const themeColorConfig = [
@@ -117,18 +118,21 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     resetForm();
   };
 
-  const handleColorChange = (cssVar: string, color: string) => {
+  const handleColorChange = (cssVar: string, colorHslString: string) => {
     setCustomTheme({
       ...customTheme,
-      [cssVar]: color,
+      [cssVar]: colorHslString,
     });
   };
 
   const getCurrentColor = (cssVar: string) => {
     if (customTheme && customTheme[cssVar]) {
-      return customTheme[cssVar];
+      return `hsl(${customTheme[cssVar]})`;
     }
-    return initialThemeValues[cssVar] || '#000000';
+    if (initialThemeValues[cssVar]) {
+      return `hsl(${initialThemeValues[cssVar]})`;
+    }
+    return '#000000';
   };
 
   const resetForm = () => {
@@ -170,7 +174,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
                   <ColorPickerPopover 
                     id={`color-${config.id}`}
                     value={getCurrentColor(config.cssVar)} 
-                    onChange={(color) => handleColorChange(config.cssVar, color)} 
+                    onChange={(hslString) => handleColorChange(config.cssVar, hslString)} 
                   />
                 </div>
               ))}
