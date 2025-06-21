@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -23,6 +24,11 @@ export default function TodaysPlanCard() {
 
   const fetchQuote = async () => {
     setIsLoadingQuote(true);
+    if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+      setQuote("The journey of a thousand miles begins with a single step.");
+      setIsLoadingQuote(false);
+      return;
+    }
     try {
       const result = await generateMotivationalQuote({ topic: 'achieving daily goals and academic success' });
       setQuote(result.quote);

@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import type { NewsArticle } from '@/types';
@@ -8,13 +9,24 @@ import { Newspaper, ExternalLink, Bot } from 'lucide-react';
 import { format } from 'date-fns';
 import Image from 'next/image';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useToast } from '@/hooks/use-toast';
 
 export default function NewsPage() {
   const [articles, setArticles] = useState<NewsArticle[]>(mockNewsArticles);
   const [summarizingArticleId, setSummarizingArticleId] = useState<string | null>(null);
   const [summarizedText, setSummarizedText] = useState<string>('');
+  const { toast } = useToast();
 
   const handleSummarize = async (article: NewsArticle) => {
+    if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+      toast({
+        title: 'Feature Unavailable',
+        description: 'AI features are disabled in this static version of the app.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSummarizingArticleId(article.id);
     setSummarizedText(''); // Clear previous summary
     // Mock AI summarization

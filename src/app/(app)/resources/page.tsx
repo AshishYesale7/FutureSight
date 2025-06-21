@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import type { ResourceLink } from '@/types';
@@ -30,6 +31,15 @@ export default function ResourcesPage() {
   const { toast } = useToast();
 
   const fetchAiSuggestions = async () => {
+    if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+      toast({
+        title: 'Feature Unavailable',
+        description: 'AI features are disabled in this static version of the app.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoadingSuggestions(true);
     try {
       const userInput: SuggestResourcesInput = {

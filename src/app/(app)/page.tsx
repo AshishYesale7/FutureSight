@@ -150,6 +150,15 @@ export default function ActualDashboardPage() {
   };
 
   const handleFetchAndProcessGoogleData = async () => {
+    if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+      toast({
+        title: 'Feature Unavailable',
+        description: 'AI features are disabled in this static version of the app.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoadingInsights(true);
     setInsightsError(null);
     let newTimelineEventsFromAI: TimelineEvent[] = [];

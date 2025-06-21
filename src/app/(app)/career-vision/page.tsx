@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -5,13 +6,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Eye, Sparkles, Bot } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { useToast } from '@/hooks/use-toast';
 
 export default function CareerVisionPage() {
   const [userInput, setUserInput] = useState('');
   const [visionStatement, setVisionStatement] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleGenerateVision = async () => {
+    if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+      toast({
+        title: 'Feature Unavailable',
+        description: 'AI features are disabled in this static version of the app.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!userInput.trim()) return;
     setIsLoading(true);
     // Mock AI interaction
