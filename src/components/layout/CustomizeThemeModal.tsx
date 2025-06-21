@@ -16,10 +16,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTheme } from '@/hooks/use-theme';
 import { useToast } from '@/hooks/use-toast';
-import { ImageUp, Link, Trash2, Palette, Slash, Paintbrush, Text, Sparkles, Sidebar } from 'lucide-react';
+import { ImageUp, Link, Trash2, Palette, Slash, Paintbrush, Text, Sparkles, Box, Droplets } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { ColorPickerPopover } from '../ui/ColorPickerPopover';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import type { GlassEffect } from '@/context/ThemeContext';
 
 interface CustomizeThemeModalProps {
   isOpen: boolean;
@@ -43,6 +45,13 @@ const themeColorConfig = [
   { id: 'accent', label: 'Accent (Buttons)', icon: Sparkles, cssVar: '--accent' },
 ];
 
+const glassEffectConfig: {id: GlassEffect, label: string, icon: React.ElementType, description: string}[] = [
+    { id: 'frosted', label: 'Frosted Glass', icon: Box, description: 'A classic translucent, blurred effect.' },
+    { id: 'water-droplets', label: 'Water Droplets', icon: Droplets, description: 'A textured, dynamic water droplet effect.' },
+    { id: 'subtle-shadow', label: 'Subtle Shadow', icon: Box, description: 'A clean look with soft shadows instead of glass.' },
+];
+
+
 export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeThemeModalProps) {
   const { 
     setBackgroundImage, 
@@ -52,7 +61,9 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     setCustomTheme,
     resetCustomizations,
     theme: currentThemeMode,
-    isMounted
+    isMounted,
+    glassEffect,
+    setGlassEffect,
   } = useTheme();
   
   const { toast } = useToast();
@@ -156,6 +167,29 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
         </DialogHeader>
 
         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          <div className="space-y-4">
+              <Label className="font-semibold text-lg flex items-center text-primary">
+                  <Droplets className="mr-2 h-5 w-5" /> Glass & Card Style
+              </Label>
+              <RadioGroup 
+                  value={glassEffect} 
+                  onValueChange={(value) => setGlassEffect(value as GlassEffect)}
+                  className="space-y-1"
+              >
+                  {glassEffectConfig.map(effect => (
+                      <Label key={effect.id} htmlFor={effect.id} className="flex items-center space-x-3 p-3 rounded-lg border border-transparent has-[[data-state=checked]]:border-accent has-[[data-state=checked]]:bg-accent/10 hover:bg-muted/50 cursor-pointer transition-colors">
+                          <RadioGroupItem value={effect.id} id={effect.id} />
+                          <div className="flex-1">
+                              <p className="font-medium flex items-center">{effect.label}</p>
+                              <p className="text-xs text-muted-foreground">{effect.description}</p>
+                          </div>
+                      </Label>
+                  ))}
+              </RadioGroup>
+          </div>
+
+          <Separator />
+
           {/* Theme Color Customization */}
           <div className="space-y-4">
              <Label className="font-semibold text-lg flex items-center text-primary">
@@ -190,7 +224,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
                 <Link className="mr-2 h-4 w-4" /> Image URL
               </Label>
               <div className="flex space-x-2">
-                <Input id="imageUrl" type="url" placeholder="https://example.com/image.jpg" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+                <Input id="imageUrl" type="url" placeholder="https://example.com/image.jpg" value={imageUrl} onChange={(e) => setImageUrl(e.targe.value)} />
                 <Button onClick={handleUrlApply} variant="outline" className="shrink-0">Apply URL</Button>
               </div>
             </div>
