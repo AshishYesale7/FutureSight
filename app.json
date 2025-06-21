@@ -1,0 +1,47 @@
+
+{
+  "name": "FutureSight Career Planner",
+  "description": "An AI-powered career and academic planning application built with Next.js and Genkit.",
+  "logo": "https://t4.ftcdn.net/jpg/10/33/68/61/360_F_1033686185_RvraYXkGXH40OtR1nhmmQaIIbQQqHN5m.jpg",
+  "keywords": ["nextjs", "react", "genkit", "ai", "firebase", "heroku"],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "env": {
+    "GEMINI_API_KEY": {
+      "description": "Your Google AI Gemini API key.",
+      "required": true
+    },
+    "NEXT_PUBLIC_FIREBASE_API_KEY": {
+      "description": "Firebase API Key from your Firebase project settings.",
+      "required": true
+    },
+    "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN": {
+      "description": "Firebase Auth Domain from your Firebase project settings.",
+      "required": true
+    },
+    "NEXT_PUBLIC_FIREBASE_PROJECT_ID": {
+      "description": "Firebase Project ID from your Firebase project settings.",
+      "required": true
+    },
+    "NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET": {
+      "description": "Firebase Storage Bucket from your Firebase project settings.",
+      "required": true
+    },
+    "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": {
+      "description": "Firebase Messaging Sender ID from your Firebase project settings.",
+      "required": true
+    },
+    "NEXT_PUBLIC_FIREBASE_APP_ID": {
+      "description": "Firebase App ID from your Firebase project settings.",
+      "required": true
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1
+    }
+  }
+}
