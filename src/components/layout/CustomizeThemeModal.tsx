@@ -30,12 +30,12 @@ interface CustomizeThemeModalProps {
 }
 
 const BACKGROUND_COLORS = [
-    { name: 'Default', value: null },
-    { name: 'Midnight Slate', value: 'hsl(220 25% 12%)' },
-    { name: 'Deep Jungle', value: 'hsl(160 30% 10%)' },
-    { name: 'Crimson Ember', value: 'hsl(350 50% 14%)' },
-    { name: 'Royal Indigo', value: 'hsl(250 40% 15%)' },
-    { name: 'Smoky Quartz', value: 'hsl(30 15% 13%)' },
+    { name: 'Default', value: null }, // Allows reverting to theme background
+    { name: 'Midnight Slate', value: 'hsl(220, 25%, 12%)' },
+    { name: 'Deep Jungle', value: 'hsl(160, 30%, 10%)' },
+    { name: 'Crimson Ember', value: 'hsl(350, 50%, 14%)' },
+    { name: 'Royal Indigo', value: 'hsl(250, 40%, 15%)' },
+    { name: 'Smoky Quartz', value: 'hsl(30, 15%, 13%)' },
 ];
 
 const themeColorConfig = [
@@ -96,6 +96,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     try {
       new URL(imageUrl);
       setBackgroundImage(imageUrl);
+      setBackgroundColor(null); // Remove any solid color when applying an image
       toast({ title: 'Success', description: 'Background image updated from URL.' });
       onOpenChange(false);
       resetForm();
@@ -121,6 +122,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
   const handleFileUploadApply = () => {
     if (previewUrl) {
       setBackgroundImage(previewUrl);
+      setBackgroundColor(null); // Remove any solid color when applying an image
       toast({ title: 'Success', description: 'Background image uploaded.' });
       onOpenChange(false);
       resetForm();
@@ -149,14 +151,10 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
   };
 
   const handleBackgroundColorSelect = (colorValue: string | null) => {
+    setBackgroundColor(colorValue);
+    // If a solid color is chosen (or 'Default' is chosen), remove the background image so the color is visible.
     if (colorValue) {
-      // User selected a solid color
-      setBackgroundColor(colorValue);
-      setBackgroundImage(null); // Remove background image
-    } else {
-      // User selected "Default", so reset
-      setBackgroundColor(null);
-      resetCustomizations(); // Resets image and other settings to default
+      setBackgroundImage(null);
     }
   };
 
@@ -357,3 +355,4 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     </Dialog>
   );
 }
+
