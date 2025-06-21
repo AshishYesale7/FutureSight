@@ -12,7 +12,15 @@ import type { ReactNode} from 'react';
 import { useEffect } from 'react';
 
 function AppThemeApplicator({ children }: { children: ReactNode }) {
-  const { theme: userPreferredTheme, backgroundImage, backgroundColor, customTheme, glassEffect, isMounted } = useTheme();
+  const { 
+    theme: userPreferredTheme, 
+    backgroundImage, 
+    backgroundColor, 
+    customTheme, 
+    glassEffect, 
+    glassEffectSettings, 
+    isMounted 
+  } = useTheme();
   const pathname = usePathname();
   const isAuthPage = pathname.startsWith('/auth/');
 
@@ -55,9 +63,17 @@ function AppThemeApplicator({ children }: { children: ReactNode }) {
       } else {
         root.removeAttribute('data-glass-effect');
       }
+      
+      // 6. Apply dynamic glass effect settings as CSS variables
+      if (glassEffectSettings) {
+        root.style.setProperty('--glass-blur', `${glassEffectSettings.frosted.blur}px`);
+        root.style.setProperty('--glass-saturate', `${glassEffectSettings.waterDroplets.saturate / 100}`);
+        root.style.setProperty('--glass-brightness', `${glassEffectSettings.waterDroplets.brightness / 100}`);
+        root.style.setProperty('--shadow-opacity', `${glassEffectSettings.subtleShadow.opacity}`);
+      }
 
     }
-  }, [pathname, userPreferredTheme, isAuthPage, backgroundImage, backgroundColor, customTheme, glassEffect, isMounted]);
+  }, [pathname, userPreferredTheme, isAuthPage, backgroundImage, backgroundColor, customTheme, glassEffect, glassEffectSettings, isMounted]);
 
   // Clean up body styles on unmount or if background is removed
   useEffect(() => {
