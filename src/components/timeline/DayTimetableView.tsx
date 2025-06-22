@@ -155,7 +155,7 @@ function calculateEventLayouts(
       }
     }
     
-    currentGroup.sort((a,b) => a.startInMinutes - b.startInMinutes || a.originalIndex - b.originalIndex);
+    currentGroup.sort((a,b) => a.startInMinutes - b.startInMinutes || a.originalIndex - a.originalIndex);
 
     const columns: { event: typeof events[0]; columnOrder: number }[][] = [];
     for (const event of currentGroup) {
