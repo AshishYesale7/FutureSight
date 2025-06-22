@@ -347,11 +347,9 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
       )}
       
       <CardContent ref={scrollContainerRef} className="p-0 flex-1 min-h-0 overflow-auto">
-        {/* This new wrapper div uses flexbox and allows the two columns to scroll together inside the parent CardContent */}
         <div className="flex w-full">
-            {/* AM/PM Labels Column. This now has a solid bg-background. */}
             <div className="w-16 md:w-20 bg-background border-r border-border/30">
-                <div className={cn("border-b border-border/30", minuteRulerHeightClass)}></div> {/* Spacer for Minute Ruler */}
+                <div className={cn("border-b border-border/30", minuteRulerHeightClass)}></div>
                 <div>
                     {hours.map(hour => (
                     <div key={`label-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px` }}
@@ -362,9 +360,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                 </div>
             </div>
 
-            {/* Grid Area Column */}
             <div className="flex-1 relative" style={{ minWidth: 0 }}>
-                {/* Minute Ruler (NOT sticky, so it scrolls away) */}
                 <div
                 className={cn(
                     "bg-muted flex items-center border-b border-border/30",
@@ -380,7 +376,6 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                     </div>
                 </div>
 
-                {/* Event Grid. The height is set by its content, forcing the parent to scroll */}
                 <div className="relative" style={{ height: `${hours.length * HOUR_HEIGHT_PX}px` }}> 
                 {hours.map(hour => (
                     <div key={`line-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px`, top: `${hour * HOUR_HEIGHT_PX}px` }}
@@ -390,7 +385,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
 
                 {isToday && (
                     <div
-                    ref={nowIndicatorRef} // Ref for auto-scrolling
+                    ref={nowIndicatorRef}
                     className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
                     style={{ top: `${currentTimeTopPosition}px` }}
                     >
