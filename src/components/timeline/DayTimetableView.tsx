@@ -346,112 +346,121 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
         </div>
       )}
       
-      <CardContent ref={scrollContainerRef} className="p-0 flex flex-1 min-h-0 overflow-auto">
-        <div className="w-16 md:w-20 bg-background border-r border-border/30">
-            <div className={cn("border-b border-border/30", minuteRulerHeightClass)}></div> {/* Spacer for Minute Ruler */}
-            {hours.map(hour => (
-              <div key={`label-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px` }}
-                   className="text-xs text-muted-foreground text-right pr-2 pt-1 border-b border-border/20 last:border-b-0 flex items-start justify-end">
-                {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
-              </div>
-            ))}
-        </div>
-
-        <div className="flex-1 relative" style={{ minWidth: 0 }}>
-            <div
-              className={cn(
-                "bg-muted z-10 flex items-center border-b border-border/30", // Removed sticky and z-20
-                minuteRulerHeightClass
-              )}
-              style={{ minWidth: minEventGridWidth }} 
-            >
-                <div className="w-full grid grid-cols-4 items-center h-full px-1 text-center text-[10px] text-muted-foreground">
-                    <div className="text-left">00'</div>
-                    <div className="border-l border-border/40 h-full flex items-center justify-center">15'</div>
-                    <div className="border-l border-border/40 h-full flex items-center justify-center">30'</div>
-                    <div className="border-l border-border/40 h-full flex items-center justify-center">45'</div>
+      <CardContent ref={scrollContainerRef} className="p-0 flex-1 min-h-0 overflow-auto">
+        {/* This new wrapper div uses flexbox and allows the two columns to scroll together inside the parent CardContent */}
+        <div className="flex w-full">
+            {/* AM/PM Labels Column. This now has a solid bg-background. */}
+            <div className="w-16 md:w-20 bg-background border-r border-border/30">
+                <div className={cn("border-b border-border/30", minuteRulerHeightClass)}></div> {/* Spacer for Minute Ruler */}
+                <div>
+                    {hours.map(hour => (
+                    <div key={`label-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px` }}
+                        className="text-xs text-muted-foreground text-right pr-2 pt-1 border-b border-border/20 last:border-b-0 flex items-start justify-end">
+                        {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
+                    </div>
+                    ))}
                 </div>
             </div>
 
-            <div className="relative" style={{ minHeight: `${hours.length * HOUR_HEIGHT_PX}px`, minWidth: minEventGridWidth }}> 
-              {hours.map(hour => (
-                <div key={`line-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px`, top: `${hour * HOUR_HEIGHT_PX}px` }}
-                     className="border-b border-border/20 last:border-b-0 w-full absolute left-0 right-0 z-0"
-                ></div>
-              ))}
-
-              {isToday && (
+            {/* Grid Area Column */}
+            <div className="flex-1 relative" style={{ minWidth: 0 }}>
+                {/* Minute Ruler (NOT sticky, so it scrolls away) */}
                 <div
-                  ref={nowIndicatorRef} // Add ref to the live time indicator
-                  className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
-                  style={{ top: `${currentTimeTopPosition}px` }}
+                className={cn(
+                    "bg-muted flex items-center border-b border-border/30",
+                    minuteRulerHeightClass
+                )}
+                style={{ minWidth: minEventGridWidth }} 
                 >
-                  <div className="flex-shrink-0 w-3 h-3 -ml-[7px] rounded-full bg-accent border-2 border-background shadow-md"></div>
-                  <div className="flex-1 h-[2px] bg-accent opacity-80 shadow"></div>
+                    <div className="w-full grid grid-cols-4 items-center h-full px-1 text-center text-[10px] text-muted-foreground">
+                        <div className="text-left">00'</div>
+                        <div className="border-l border-border/40 h-full flex items-center justify-center">15'</div>
+                        <div className="border-l border-border/40 h-full flex items-center justify-center">30'</div>
+                        <div className="border-l border-border/40 h-full flex items-center justify-center">45'</div>
+                    </div>
                 </div>
-              )}
 
-              {timedEventsWithLayout.map(event => {
-                if (!(event.date instanceof Date) || isNaN(event.date.valueOf())) return null;
-                const isSmallWidth = parseFloat(event.layout.width) < 25;
-                return (
-                  <div
-                    key={event.id}
-                    className={cn(
-                      "absolute rounded border text-xs overflow-hidden shadow-sm cursor-pointer",
-                      "focus-within:ring-2 focus-within:ring-ring",
-                      !event.color && getEventTypeStyleClasses(event.type),
-                      isSmallWidth ? "p-0.5" : "p-1"
-                    )}
-                    style={{
-                        top: `${event.layout.top}px`,
-                        height: `${event.layout.height}px`,
-                        left: event.layout.left,
-                        width: event.layout.width,
-                        zIndex: event.layout.zIndex, 
-                        ...(event.color ? getCustomColorStyles(event.color) : {})
-                    }}
-                    title={getEventTooltip(event)}
-                  >
-                    <div className="flex flex-col h-full">
-                        <div className="flex-grow overflow-hidden">
-                            <p className={cn("font-semibold truncate", isSmallWidth ? "text-[10px]" : "text-xs", event.color ? 'text-foreground' : 'text-current')}>{event.title}</p>
-                            {!isSmallWidth && (
-                              <p className={cn("opacity-80 truncate text-[10px]", event.color ? 'text-foreground/80' : '')}>
-                                  {format(event.date, 'h:mm a')}
-                                  {event.endDate && event.endDate instanceof Date && !isNaN(event.endDate.valueOf()) && ` - ${format(event.endDate, 'h:mm a')}`}
-                              </p>
-                            )}
-                        </div>
-                        <div className={cn("mt-auto flex-shrink-0 flex items-center space-x-0.5", isSmallWidth ? "justify-center" : "justify-end")}>
-                            {onEditEvent && (
-                               <Button variant="ghost" size="icon" className="h-5 w-5 text-primary/70 hover:text-primary hover:bg-primary/10 opacity-70 hover:opacity-100" onClick={(e) => {e.stopPropagation(); onEditEvent(event);}}>
-                                  <Edit3 className="h-3 w-3" />
-                              </Button>
-                            )}
-                            {event.isDeletable && onDeleteEvent && (
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:text-destructive/80 hover:bg-destructive/10 opacity-70 hover:opacity-100" onClick={(e) => e.stopPropagation()}>
-                                        <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent className="frosted-glass">
-                                      <AlertDialogHeader><AlertDialogTitle>Delete "{event.title}"?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleDeleteEvent(event.id, event.title)}>Delete</AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
-                            )}
+                {/* Event Grid. The height is set by its content, forcing the parent to scroll */}
+                <div className="relative" style={{ height: `${hours.length * HOUR_HEIGHT_PX}px` }}> 
+                {hours.map(hour => (
+                    <div key={`line-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px`, top: `${hour * HOUR_HEIGHT_PX}px` }}
+                        className="border-b border-border/20 last:border-b-0 w-full absolute left-0 right-0 z-0"
+                    ></div>
+                ))}
+
+                {isToday && (
+                    <div
+                    ref={nowIndicatorRef} // Ref for auto-scrolling
+                    className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+                    style={{ top: `${currentTimeTopPosition}px` }}
+                    >
+                    <div className="flex-shrink-0 w-3 h-3 -ml-[7px] rounded-full bg-accent border-2 border-background shadow-md"></div>
+                    <div className="flex-1 h-[2px] bg-accent opacity-80 shadow"></div>
+                    </div>
+                )}
+
+                {timedEventsWithLayout.map(event => {
+                    if (!(event.date instanceof Date) || isNaN(event.date.valueOf())) return null;
+                    const isSmallWidth = parseFloat(event.layout.width) < 25;
+                    return (
+                    <div
+                        key={event.id}
+                        className={cn(
+                        "absolute rounded border text-xs overflow-hidden shadow-sm cursor-pointer",
+                        "focus-within:ring-2 focus-within:ring-ring",
+                        !event.color && getEventTypeStyleClasses(event.type),
+                        isSmallWidth ? "p-0.5" : "p-1"
+                        )}
+                        style={{
+                            top: `${event.layout.top}px`,
+                            height: `${event.layout.height}px`,
+                            left: event.layout.left,
+                            width: event.layout.width,
+                            zIndex: event.layout.zIndex, 
+                            ...(event.color ? getCustomColorStyles(event.color) : {})
+                        }}
+                        title={getEventTooltip(event)}
+                    >
+                        <div className="flex flex-col h-full">
+                            <div className="flex-grow overflow-hidden">
+                                <p className={cn("font-semibold truncate", isSmallWidth ? "text-[10px]" : "text-xs", event.color ? 'text-foreground' : 'text-current')}>{event.title}</p>
+                                {!isSmallWidth && (
+                                <p className={cn("opacity-80 truncate text-[10px]", event.color ? 'text-foreground/80' : '')}>
+                                    {format(event.date, 'h:mm a')}
+                                    {event.endDate && event.endDate instanceof Date && !isNaN(event.endDate.valueOf()) && ` - ${format(event.endDate, 'h:mm a')}`}
+                                </p>
+                                )}
+                            </div>
+                            <div className={cn("mt-auto flex-shrink-0 flex items-center space-x-0.5", isSmallWidth ? "justify-center" : "justify-end")}>
+                                {onEditEvent && (
+                                <Button variant="ghost" size="icon" className="h-5 w-5 text-primary/70 hover:text-primary hover:bg-primary/10 opacity-70 hover:opacity-100" onClick={(e) => {e.stopPropagation(); onEditEvent(event);}}>
+                                    <Edit3 className="h-3 w-3" />
+                                </Button>
+                                )}
+                                {event.isDeletable && onDeleteEvent && (
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:text-destructive/80 hover:bg-destructive/10 opacity-70 hover:opacity-100" onClick={(e) => e.stopPropagation()}>
+                                            <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent className="frosted-glass">
+                                        <AlertDialogHeader><AlertDialogTitle>Delete "{event.title}"?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => handleDeleteEvent(event.id, event.title)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
+                            </div>
                         </div>
                     </div>
-                  </div>
-                );
-              })}
+                    );
+                })}
+                </div>
             </div>
-          </div>
+        </div>
       </CardContent>
     </Card>
   );
