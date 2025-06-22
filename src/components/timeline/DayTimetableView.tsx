@@ -220,23 +220,22 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
   const { toast } = useToast();
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const nowIndicatorRef = useRef<HTMLDivElement>(null);
   const [now, setNow] = useState(new Date());
 
   const isToday = useMemo(() => dfnsIsToday(date), [date]);
 
   useEffect(() => {
     if (isToday) {
-      const initialScroll = () => {
-        if (scrollContainerRef.current) {
-          const currentHour = new Date().getHours();
-          const scrollHour = Math.max(0, currentHour - 2);
-          const scrollTop = scrollHour * HOUR_HEIGHT_PX;
-          scrollContainerRef.current.scrollTo({ top: scrollTop, behavior: 'smooth' });
-        }
-      };
-      
-      const timer = setTimeout(initialScroll, 100);
+      // More robust auto-scrolling to the current time indicator
+      const timer = setTimeout(() => {
+        nowIndicatorRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center', // This will center the indicator in the view
+        });
+      }, 300); // A slightly longer delay to ensure DOM is ready
 
+      // Update the live time every minute
       const intervalId = setInterval(() => {
         setNow(new Date());
       }, 60000); 
@@ -281,7 +280,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
   const currentTimeTopPosition = isToday ? (now.getHours() * 60 + now.getMinutes()) * (HOUR_HEIGHT_PX / 60) : 0;
 
   return (
-    <Card className="frosted-glass w-full shadow-xl flex flex-col mt-6">
+    <Card className="frosted-glass w-full shadow-xl flex flex-col mt-6 max-h-[70vh]">
       <CardHeader className="p-4 border-b border-border/30 flex flex-row justify-between items-center">
         <div>
           <CardTitle className="font-headline text-xl text-primary">
@@ -347,8 +346,8 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
         </div>
       )}
       
-      <CardContent className="p-0 flex flex-1 min-h-0">
-        <div className="w-16 md:w-20 bg-background border-r border-border/30 self-start shrink-0 sticky top-0 left-0 z-30">
+      <CardContent ref={scrollContainerRef} className="p-0 flex flex-1 min-h-0 overflow-auto">
+        <div className="w-16 md:w-20 bg-background border-r border-border/30">
             <div className={cn("border-b border-border/30", minuteRulerHeightClass)}></div> {/* Spacer for Minute Ruler */}
             {hours.map(hour => (
               <div key={`label-${hour}`} style={{ height: `${HOUR_HEIGHT_PX}px` }}
@@ -358,10 +357,10 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
             ))}
         </div>
 
-        <div ref={scrollContainerRef} className="flex-1 overflow-auto relative h-full" style={{ minWidth: 0 }}>
+        <div className="flex-1 relative" style={{ minWidth: 0 }}>
             <div
               className={cn(
-                "bg-muted z-20 flex items-center border-b border-border/30 sticky top-0",
+                "bg-muted z-10 flex items-center border-b border-border/30", // Removed sticky and z-20
                 minuteRulerHeightClass
               )}
               style={{ minWidth: minEventGridWidth }} 
@@ -383,6 +382,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
 
               {isToday && (
                 <div
+                  ref={nowIndicatorRef} // Add ref to the live time indicator
                   className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
                   style={{ top: `${currentTimeTopPosition}px` }}
                 >
