@@ -151,11 +151,12 @@ export default function SlidingTimelineView({
               <div className="space-y-6">
                 {eventsForCurrentMonth.map((event) => {
                   if (!(event.date instanceof Date) || isNaN(event.date.valueOf())) return null;
+                  const isEventInPast = isPast(event.date) && !dfnsIsToday(event.date);
                   const statusBadge = getStatusBadgeVariant(event.status);
                   const countdownText = getCountdownText(event.date);
 
                   return (
-                  <div key={event.id} className="flex items-start relative">
+                  <div key={event.id} className={cn("flex items-start relative transition-opacity", isEventInPast && "opacity-60 hover:opacity-100 focus-within:opacity-100")}>
                     <div className="absolute -left-[19px] top-1 flex flex-col items-center z-10">
                       <div 
                         className={cn(

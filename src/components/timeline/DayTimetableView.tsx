@@ -224,6 +224,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
   const [now, setNow] = useState(new Date());
 
   const isToday = useMemo(() => dfnsIsToday(date), [date]);
+  const isDayInPast = useMemo(() => isPast(date) && !dfnsIsToday(date), [date]);
 
   useEffect(() => {
     if (isToday) {
@@ -301,8 +302,9 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
             <div
               key={event.id}
               className={cn(
-                "rounded-md p-1.5 text-xs flex justify-between items-center",
-                !event.color && getEventTypeStyleClasses(event.type)
+                "rounded-md p-1.5 text-xs flex justify-between items-center transition-opacity",
+                !event.color && getEventTypeStyleClasses(event.type),
+                isDayInPast && "opacity-60 hover:opacity-100 focus-within:opacity-100"
               )}
               style={event.color ? getCustomColorStyles(event.color) : {}}
               title={getEventTooltip(event)}
@@ -399,10 +401,11 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                     <div
                         key={event.id}
                         className={cn(
-                        "absolute rounded border text-xs overflow-hidden shadow-sm cursor-pointer",
+                        "absolute rounded border text-xs overflow-hidden shadow-sm cursor-pointer transition-opacity",
                         "focus-within:ring-2 focus-within:ring-ring",
                         !event.color && getEventTypeStyleClasses(event.type),
-                        isSmallWidth ? "p-0.5" : "p-1"
+                        isSmallWidth ? "p-0.5" : "p-1",
+                        isDayInPast && "opacity-60 hover:opacity-100 focus-within:opacity-100"
                         )}
                         style={{
                             top: `${event.layout.top}px`,

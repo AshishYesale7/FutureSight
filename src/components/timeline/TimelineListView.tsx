@@ -121,10 +121,11 @@ export default function TimelineListView({ events: allEventsFromProps, onDeleteE
         {sortedDayKeys.map((dayKey) => {
           const dayDate = parseISO(dayKey);
           if (isNaN(dayDate.valueOf())) return null; // Skip rendering if dayKey is invalid
+          const isDayInPast = isPast(dayDate) && !isSameDay(dayDate, new Date());
           
           return (
           <div key={dayKey}>
-            <h3 className="font-headline text-lg font-semibold text-primary mb-3 sticky top-0 bg-background/80 backdrop-blur-sm py-2 z-10 px-2 rounded-md">
+            <h3 className={cn("font-headline text-lg font-semibold text-primary mb-3 sticky top-0 bg-background/80 backdrop-blur-sm py-2 z-10 px-2 rounded-md transition-opacity", isDayInPast && "opacity-70")}>
               {format(dayDate, 'EEEE, MMMM d, yyyy')}
             </h3>
             <div className="space-y-4 ml-2 border-l-2 border-border/50 pl-4 py-2 relative">
@@ -135,7 +136,7 @@ export default function TimelineListView({ events: allEventsFromProps, onDeleteE
                 const countdownText = getCountdownText(event.date);
                 
                 return (
-                <Card key={event.id} className="frosted-glass bg-card/50 shadow-sm relative">
+                <Card key={event.id} className={cn("frosted-glass bg-card/50 shadow-sm relative transition-opacity", isDayInPast && "opacity-60 hover:opacity-100 focus-within:opacity-100")}>
                    <div 
                      className="absolute -left-[23px] top-4 h-3 w-3 rounded-full border-2 border-background"
                      style={event.color ? { backgroundColor: event.color } : { backgroundColor: 'hsl(var(--accent))' }}
