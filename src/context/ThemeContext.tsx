@@ -128,14 +128,16 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   const setBackgroundImage = useCallback((url: string | null) => {
     setBackgroundImageState(url);
+    setBackgroundColorState(null); // Always clear color when setting an image
   }, []);
   
   const setBackgroundColor = useCallback((color: string | null) => {
     setBackgroundColorState(color);
     if (color) {
-      setBackgroundImageState(null); // If a color is set, remove the image
+      setBackgroundImageState(null); // Clear image if setting a color
     } else {
-      setBackgroundImageState(DEFAULT_BACKGROUND_IMAGE); // If color is removed, restore default image
+      // If color is cleared, restore the default image.
+      setBackgroundImageState(DEFAULT_BACKGROUND_IMAGE); 
     }
   }, []);
   
@@ -157,7 +159,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     setCustomTheme(null);
     setGlassEffect('grainyFrosted');
     setGlassEffectSettings(DEFAULT_GLASS_EFFECT_SETTINGS);
-  }, []);
+  }, [setBackgroundImage]);
 
   return (
     <ThemeContext.Provider value={{ 

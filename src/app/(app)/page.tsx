@@ -343,8 +343,8 @@ export default function ActualDashboardPage() {
       >
         <div className="flex justify-between items-center mb-4">
           <TabsList className="grid w-full grid-cols-2 max-w-xs">
-            <TabsTrigger value="calendar"><CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar View</TabsTrigger>
-            <TabsTrigger value="list"><List className="mr-2 h-4 w-4" /> List View</TabsTrigger>
+            <TabsTrigger value="calendar"><CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar </TabsTrigger>
+            <TabsTrigger value="list"><List className="mr-2 h-4 w-4" /> List </TabsTrigger>
           </TabsList>
           <Button onClick={() => handleOpenEditModal()} className="bg-accent hover:bg-accent/90 text-accent-foreground ml-4">
             <PlusCircle className="mr-2 h-5 w-5" /> Add New Event

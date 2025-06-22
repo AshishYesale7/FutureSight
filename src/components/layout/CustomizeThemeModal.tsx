@@ -86,7 +86,6 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     try {
       new URL(imageUrl);
       setBackgroundImage(imageUrl);
-      setBackgroundColor(null); // Remove any solid color when applying an image
       toast({ title: 'Success', description: 'Background image updated from URL.' });
       onOpenChange(false);
       resetForm();
@@ -112,7 +111,6 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
   const handleFileUploadApply = () => {
     if (previewUrl) {
       setBackgroundImage(previewUrl);
-      setBackgroundColor(null); // Remove any solid color when applying an image
       toast({ title: 'Success', description: 'Background image uploaded.' });
       onOpenChange(false);
       resetForm();
@@ -303,7 +301,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
             <Label className="font-semibold text-base flex items-center text-primary">
                 <Paintbrush className="mr-2 h-4 w-4" /> Solid Background Color
             </Label>
-            <div className="flex items-center gap-4">
+             <div className="flex items-center gap-4">
               <ColorPickerPopover 
                 value={currentBackgroundColor || 'hsl(220, 25%, 12%)'}
                 onChange={handleBackgroundColorSelect}
