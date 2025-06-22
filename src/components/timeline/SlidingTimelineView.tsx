@@ -291,7 +291,8 @@ export default function SlidingTimelineView({
                             <span>{pastEvents.length} Past Event(s) in {format(currentDisplayMonth, 'MMMM')}</span>
                           </AccordionTrigger>
                           <AccordionContent>
-                            <div className="space-y-6 pt-6 opacity-70">
+                            <div className="space-y-6 pt-6 opacity-70 relative">
+                              <div className="absolute left-[-11px] top-6 bottom-0 w-0.5 bg-border/70 z-0" />
                               {pastEvents.reverse().map(event => renderEvent(event))}
                             </div>
                           </AccordionContent>
