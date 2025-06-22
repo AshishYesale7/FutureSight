@@ -245,10 +245,8 @@ export default function ActualDashboardPage() {
   };
 
   const handleDayClickFromCalendar = (day: Date, hasEvents: boolean) => {
-    if (hasEvents) {
-      setSelectedDateForDayView(day);
-    } else {
-      setSelectedDateForDayView(null);
+    setSelectedDateForDayView(day);
+    if (!hasEvents) {
       toast({ title: "No Events", description: `No events scheduled for ${format(day, 'MMMM d, yyyy')}.` });
     }
   };
@@ -342,47 +340,55 @@ export default function ActualDashboardPage() {
         className="flex flex-col flex-1 min-h-0"
       >
         <div className="flex justify-between items-center mb-4">
-          <TabsList className="grid w-full grid-cols-2 max-w-xs">
-            <TabsTrigger value="calendar"><CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar </TabsTrigger>
-            <TabsTrigger value="list"><List className="mr-2 h-4 w-4" /> List </TabsTrigger>
+          <TabsList className="inline-flex h-auto p-1 rounded-full bg-muted/50 backdrop-blur-sm border border-border/30">
+            <TabsTrigger value="calendar" className="px-4 py-1.5 text-sm h-auto rounded-full data-[state=active]:shadow-md">
+                <CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar
+            </TabsTrigger>
+            <div className="w-px h-6 bg-border/50 self-center"></div>
+            <TabsTrigger value="list" className="px-4 py-1.5 text-sm h-auto rounded-full data-[state=active]:shadow-md">
+                <List className="mr-2 h-4 w-4" /> List
+            </TabsTrigger>
           </TabsList>
+          
           <Button onClick={() => handleOpenEditModal()} className="bg-accent hover:bg-accent/90 text-accent-foreground ml-4">
             <PlusCircle className="mr-2 h-5 w-5" /> Add New Event
           </Button>
         </div>
 
-        <TabsContent key="calendar-view" value="calendar" className={cn("space-y-6 flex-1 flex flex-col min-h-0 mt-0", viewMode === 'calendar' ? 'block' : 'hidden')}>
-          <EventCalendarView
-            events={displayedTimelineEvents}
-            month={activeDisplayMonth}
-            onMonthChange={setActiveDisplayMonth}
-            onDayClick={handleDayClickFromCalendar}
-          />
-          {selectedDateForDayView ? (
-            <DayTimetableView
-              date={selectedDateForDayView}
-              events={eventsForDayView}
-              onClose={closeDayTimetableView}
-              onDeleteEvent={handleDeleteTimelineEvent}
-              onEditEvent={handleOpenEditModal}
-            />
-          ) : (
-            <SlidingTimelineView
-              events={displayedTimelineEvents}
-              onDeleteEvent={handleDeleteTimelineEvent}
-              onEditEvent={handleOpenEditModal}
-              currentDisplayMonth={activeDisplayMonth}
-              onNavigateMonth={handleMonthNavigationForSharedViews}
-            />
-          )}
-        </TabsContent>
-        <TabsContent key="list-view" value="list" className={cn("flex-1 min-h-0 mt-0", viewMode === 'list' ? 'block' : 'hidden')}>
-          <TimelineListView
-            events={displayedTimelineEvents}
-            onDeleteEvent={handleDeleteTimelineEvent}
-            onEditEvent={handleOpenEditModal}
-          />
-        </TabsContent>
+        <div className="relative flex-1">
+            <TabsContent key="calendar-view" value="calendar" forceMount className={cn("space-y-6 flex-1 flex flex-col min-h-0 mt-0 absolute inset-0 transition-opacity", viewMode !== 'calendar' && 'opacity-0 pointer-events-none')}>
+              <EventCalendarView
+                events={displayedTimelineEvents}
+                month={activeDisplayMonth}
+                onMonthChange={setActiveDisplayMonth}
+                onDayClick={handleDayClickFromCalendar}
+              />
+              {selectedDateForDayView ? (
+                <DayTimetableView
+                  date={selectedDateForDayView}
+                  events={eventsForDayView}
+                  onClose={closeDayTimetableView}
+                  onDeleteEvent={handleDeleteTimelineEvent}
+                  onEditEvent={handleOpenEditModal}
+                />
+              ) : (
+                <SlidingTimelineView
+                  events={displayedTimelineEvents}
+                  onDeleteEvent={handleDeleteTimelineEvent}
+                  onEditEvent={handleOpenEditModal}
+                  currentDisplayMonth={activeDisplayMonth}
+                  onNavigateMonth={handleMonthNavigationForSharedViews}
+                />
+              )}
+            </TabsContent>
+            <TabsContent key="list-view" value="list" forceMount className={cn("flex-1 min-h-0 mt-0 absolute inset-0 transition-opacity", viewMode !== 'list' && 'opacity-0 pointer-events-none')}>
+              <TimelineListView
+                events={displayedTimelineEvents}
+                onDeleteEvent={handleDeleteTimelineEvent}
+                onEditEvent={handleOpenEditModal}
+              />
+            </TabsContent>
+        </div>
       </Tabs>
 
 
