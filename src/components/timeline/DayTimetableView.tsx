@@ -2,7 +2,7 @@
 'use client';
 
 import type { TimelineEvent } from '@/types';
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactNode, useRef, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { format, isToday as dfnsIsToday, isFuture, isPast, formatDistanceToNowStrict } from 'date-fns';
@@ -219,7 +219,35 @@ interface DayTimetableViewProps {
 export default function DayTimetableView({ date, events, onClose, onDeleteEvent, onEditEvent }: DayTimetableViewProps) {
   const { toast } = useToast();
   const hours = Array.from({ length: 24 }, (_, i) => i);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [now, setNow] = useState(new Date());
 
+  const isToday = useMemo(() => dfnsIsToday(date), [date]);
+
+  useEffect(() => {
+    if (isToday) {
+      const initialScroll = () => {
+        if (scrollContainerRef.current) {
+          const currentHour = new Date().getHours();
+          const scrollHour = Math.max(0, currentHour - 2);
+          const scrollTop = scrollHour * HOUR_HEIGHT_PX;
+          scrollContainerRef.current.scrollTo({ top: scrollTop, behavior: 'smooth' });
+        }
+      };
+      
+      const timer = setTimeout(initialScroll, 100);
+
+      const intervalId = setInterval(() => {
+        setNow(new Date());
+      }, 60000); 
+
+      return () => {
+        clearTimeout(timer);
+        clearInterval(intervalId);
+      };
+    }
+  }, [isToday]);
+  
   const allDayEvents = useMemo(() => events.filter(e => e.isAllDay), [events]);
   const timedEvents = useMemo(() => events.filter(e => !e.isAllDay && e.date instanceof Date && !isNaN(e.date.valueOf())), [events]);
 
@@ -250,6 +278,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
     return [event.title, timeString, countdownString, statusString, notesString].filter(Boolean).join('\n');
   };
 
+  const currentTimeTopPosition = isToday ? (now.getHours() * 60 + now.getMinutes()) * (HOUR_HEIGHT_PX / 60) : 0;
 
   return (
     <Card className="frosted-glass w-full shadow-xl flex flex-col mt-6">
@@ -329,7 +358,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
             ))}
         </div>
 
-        <div className="flex-1 overflow-auto relative h-full" style={{ minWidth: 0 }}>
+        <div ref={scrollContainerRef} className="flex-1 overflow-auto relative h-full" style={{ minWidth: 0 }}>
             <div
               className={cn(
                 "bg-muted z-20 flex items-center border-b border-border/30 sticky top-0",
@@ -351,6 +380,16 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                      className="border-b border-border/20 last:border-b-0 w-full absolute left-0 right-0 z-0"
                 ></div>
               ))}
+
+              {isToday && (
+                <div
+                  className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
+                  style={{ top: `${currentTimeTopPosition}px` }}
+                >
+                  <div className="flex-shrink-0 w-3 h-3 -ml-[7px] rounded-full bg-accent border-2 border-background shadow-md"></div>
+                  <div className="flex-1 h-[2px] bg-accent opacity-80 shadow"></div>
+                </div>
+              )}
 
               {timedEventsWithLayout.map(event => {
                 if (!(event.date instanceof Date) || isNaN(event.date.valueOf())) return null;
