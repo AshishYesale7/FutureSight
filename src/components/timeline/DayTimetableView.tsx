@@ -227,15 +227,13 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
 
   useEffect(() => {
     if (isToday) {
-      // More robust auto-scrolling to the current time indicator
       const timer = setTimeout(() => {
         nowIndicatorRef.current?.scrollIntoView({
           behavior: 'smooth',
-          block: 'center', // This will center the indicator in the view
+          block: 'center',
         });
-      }, 300); // A slightly longer delay to ensure DOM is ready
+      }, 300);
 
-      // Update the live time every minute
       const intervalId = setInterval(() => {
         setNow(new Date());
       }, 60000); 
@@ -363,7 +361,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
             <div className="flex-1 relative" style={{ minWidth: 0 }}>
                 <div
                 className={cn(
-                    "bg-muted flex items-center border-b border-border/30",
+                    "sticky top-0 z-30 bg-background/80 backdrop-blur-sm flex items-center border-b border-border/30",
                     minuteRulerHeightClass
                 )}
                 style={{ minWidth: minEventGridWidth }} 
