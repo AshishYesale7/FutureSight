@@ -1,10 +1,9 @@
-
 'use client';
 
 import type { TimelineEvent } from '@/types';
 import { useMemo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, Bot, Trash2, Clock, ExternalLink as LinkIcon, Edit3, Info } from 'lucide-react';
+import { CalendarDays, Bot, Trash2, Clock, ExternalLink as LinkIcon, Edit3, Info, History } from 'lucide-react';
 import { format, parseISO, startOfDay, isSameDay, formatDistanceToNowStrict, isFuture, isPast, isToday as dfnsIsToday } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +21,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const getEventTypeStyle = (type: TimelineEvent['type']) => {
   switch (type) {
@@ -105,6 +110,128 @@ export default function TimelineListView({ events: allEventsFromProps, onDeleteE
   
   const sortedDayKeys = Object.keys(groupedEvents).sort((a,b) => new Date(a).getTime() - new Date(b).getTime());
 
+  const today = startOfDay(new Date());
+  const pastDayKeys = sortedDayKeys.filter(dayKey => startOfDay(parseISO(dayKey)) < today).reverse();
+  const upcomingDayKeys = sortedDayKeys.filter(dayKey => startOfDay(parseISO(dayKey)) >= today);
+
+
+  const renderDayGroup = (dayKey: string) => {
+    const dayDate = parseISO(dayKey);
+    if (isNaN(dayDate.valueOf())) return null;
+    const isDayInPast = isPast(dayDate) && !isSameDay(dayDate, new Date());
+    
+    return (
+    <div key={dayKey} className={cn(isDayInPast && 'opacity-70')}>
+      <h3 className={cn("font-headline text-lg font-semibold text-primary mb-3 sticky top-0 bg-background/80 backdrop-blur-sm py-2 z-10 px-2 rounded-md")}>
+        {format(dayDate, 'EEEE, MMMM d, yyyy')}
+      </h3>
+      <div className="space-y-4 ml-2 border-l-2 border-border/50 pl-4 py-2 relative">
+          <div className="absolute -left-[5px] top-0 h-3 w-3 rounded-full bg-primary border-2 border-background"></div>
+        {groupedEvents[dayKey].map((event, index) => {
+          if (!(event.date instanceof Date) || isNaN(event.date.valueOf())) return null; // Skip invalid event dates
+          const statusBadge = getStatusBadgeVariant(event.status);
+          const countdownText = getCountdownText(event.date);
+          
+          return (
+          <Card key={event.id} className={cn("frosted-glass bg-card/50 shadow-sm relative")}>
+              <div 
+                className="absolute -left-[23px] top-4 h-3 w-3 rounded-full border-2 border-background"
+                style={event.color ? { backgroundColor: event.color } : { backgroundColor: 'hsl(var(--accent))' }}
+              ></div>
+            <CardHeader className="p-3 pb-2">
+              <div className="flex justify-between items-start gap-2">
+                <h4 className="font-semibold text-md text-primary flex items-center">
+                  {getEventTypeIcon(event)}
+                  {event.title}
+                </h4>
+                <div className="flex items-center space-x-1">
+                  {onEditEvent && (
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-primary/70 hover:text-primary hover:bg-primary/10" onClick={() => onEditEvent(event)}>
+                      <Edit3 className="h-4 w-4" />
+                      <span className="sr-only">Edit event</span>
+                    </Button>
+                  )}
+                  {event.isDeletable && onDeleteEvent && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10">
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Delete event</span>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="frosted-glass">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete "{event.title}".
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive hover:bg-destructive/90"
+                            onClick={() => handleDeleteEvent(event.id, event.title)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5 gap-2">
+                <Badge variant="outline" className={cn("capitalize text-xs py-0 px-1.5 h-auto whitespace-nowrap", getEventTypeStyle(event.type))}>
+                  {event.type.replace(/_/g, ' ')}
+                </Badge>
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  {countdownText && (
+                      <span className="flex items-center text-xs text-muted-foreground whitespace-nowrap">
+                      <Info className="h-3.5 w-3.5 mr-1" />
+                      {countdownText}
+                      </span>
+                  )}
+                  {!event.isAllDay && !isMidnight(event.date) && (
+                      <span className="flex items-center text-xs text-muted-foreground whitespace-nowrap">
+                      <Clock className="h-3.5 w-3.5 mr-1" />
+                      {format(event.date, 'h:mm a')}
+                      </span>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 pt-1 text-sm">
+              {event.notes && <p className="text-foreground/80 mb-2 line-clamp-3">{event.notes}</p>}
+              {event.status && (
+                  <div className="text-xs mb-1 flex items-center">
+                      Status:
+                      <Badge variant={statusBadge.variant} className={cn("capitalize ml-1.5", statusBadge.className)}>
+                      {event.status.replace(/-/g, ' ')}
+                      </Badge>
+                  </div>
+              )}
+              {event.links && event.links.length > 0 && (
+                <div>
+                  <h5 className="text-xs font-medium text-primary mb-0.5">Related Links:</h5>
+                  <ul className="space-y-0.5">
+                    {event.links.map(link => (
+                      <li key={link.url} className="text-xs">
+                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline flex items-center gap-1">
+                          <LinkIcon size={12}/> {link.title}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          );
+        })}
+      </div>
+    </div>
+    );
+  }
 
   if (processedEvents.filter(e => e.date instanceof Date && !isNaN(e.date.valueOf())).length === 0) {
     return (
@@ -118,123 +245,25 @@ export default function TimelineListView({ events: allEventsFromProps, onDeleteE
   return (
     <ScrollArea className="h-full w-full p-1">
       <div className="space-y-6">
-        {sortedDayKeys.map((dayKey) => {
-          const dayDate = parseISO(dayKey);
-          if (isNaN(dayDate.valueOf())) return null; // Skip rendering if dayKey is invalid
-          const isDayInPast = isPast(dayDate) && !isSameDay(dayDate, new Date());
-          
-          return (
-          <div key={dayKey}>
-            <h3 className={cn("font-headline text-lg font-semibold text-primary mb-3 sticky top-0 bg-background/80 backdrop-blur-sm py-2 z-10 px-2 rounded-md transition-opacity", isDayInPast && "opacity-70")}>
-              {format(dayDate, 'EEEE, MMMM d, yyyy')}
-            </h3>
-            <div className="space-y-4 ml-2 border-l-2 border-border/50 pl-4 py-2 relative">
-               <div className="absolute -left-[5px] top-0 h-3 w-3 rounded-full bg-primary border-2 border-background"></div>
-              {groupedEvents[dayKey].map((event, index) => {
-                if (!(event.date instanceof Date) || isNaN(event.date.valueOf())) return null; // Skip invalid event dates
-                const statusBadge = getStatusBadgeVariant(event.status);
-                const countdownText = getCountdownText(event.date);
-                
-                return (
-                <Card key={event.id} className={cn("frosted-glass bg-card/50 shadow-sm relative transition-opacity", isDayInPast && "opacity-60 hover:opacity-100 focus-within:opacity-100")}>
-                   <div 
-                     className="absolute -left-[23px] top-4 h-3 w-3 rounded-full border-2 border-background"
-                     style={event.color ? { backgroundColor: event.color } : { backgroundColor: 'hsl(var(--accent))' }}
-                   ></div>
-                  <CardHeader className="p-3 pb-2">
-                    <div className="flex justify-between items-start gap-2">
-                      <h4 className="font-semibold text-md text-primary flex items-center">
-                        {getEventTypeIcon(event)}
-                        {event.title}
-                      </h4>
-                      <div className="flex items-center space-x-1">
-                        {onEditEvent && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-primary/70 hover:text-primary hover:bg-primary/10" onClick={() => onEditEvent(event)}>
-                            <Edit3 className="h-4 w-4" />
-                            <span className="sr-only">Edit event</span>
-                          </Button>
-                        )}
-                        {event.isDeletable && onDeleteEvent && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10">
-                                <Trash2 className="h-4 w-4" />
-                                <span className="sr-only">Delete event</span>
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="frosted-glass">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  This action cannot be undone. This will permanently delete "{event.title}".
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                  className="bg-destructive hover:bg-destructive/90"
-                                  onClick={() => handleDeleteEvent(event.id, event.title)}
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5 gap-2">
-                      <Badge variant="outline" className={cn("capitalize text-xs py-0 px-1.5 h-auto whitespace-nowrap", getEventTypeStyle(event.type))}>
-                        {event.type.replace(/_/g, ' ')}
-                      </Badge>
-                      <div className="flex items-center gap-2 flex-wrap justify-end">
-                        {countdownText && (
-                            <span className="flex items-center text-xs text-muted-foreground whitespace-nowrap">
-                            <Info className="h-3.5 w-3.5 mr-1" />
-                            {countdownText}
-                            </span>
-                        )}
-                        {!event.isAllDay && !isMidnight(event.date) && (
-                            <span className="flex items-center text-xs text-muted-foreground whitespace-nowrap">
-                            <Clock className="h-3.5 w-3.5 mr-1" />
-                            {format(event.date, 'h:mm a')}
-                            </span>
-                        )}
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-3 pt-1 text-sm">
-                    {event.notes && <p className="text-foreground/80 mb-2 line-clamp-3">{event.notes}</p>}
-                    {event.status && (
-                        <div className="text-xs mb-1 flex items-center">
-                            Status:
-                            <Badge variant={statusBadge.variant} className={cn("capitalize ml-1.5", statusBadge.className)}>
-                            {event.status.replace(/-/g, ' ')}
-                            </Badge>
-                        </div>
-                    )}
-                    {event.links && event.links.length > 0 && (
-                      <div>
-                        <h5 className="text-xs font-medium text-primary mb-0.5">Related Links:</h5>
-                        <ul className="space-y-0.5">
-                          {event.links.map(link => (
-                            <li key={link.url} className="text-xs">
-                              <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline flex items-center gap-1">
-                                <LinkIcon size={12}/> {link.title}
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-                );
-              })}
-            </div>
-          </div>
-          );
-        })}
+        {upcomingDayKeys.map(dayKey => renderDayGroup(dayKey))}
+        
+        {pastDayKeys.length > 0 && (
+          <Accordion type="single" collapsible className="w-full" defaultValue="past-events">
+            <AccordionItem value="past-events" className="border-b-0">
+              <AccordionTrigger className="hover:no-underline font-headline text-lg font-semibold text-primary/80 hover:text-primary mb-3 py-2 z-10 px-2 rounded-md">
+                 <div className="flex items-center">
+                    <History className="mr-2 h-5 w-5" />
+                    Past Events
+                  </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                 <div className="space-y-6">
+                  {pastDayKeys.map(dayKey => renderDayGroup(dayKey))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        )}
       </div>
     </ScrollArea>
   );
