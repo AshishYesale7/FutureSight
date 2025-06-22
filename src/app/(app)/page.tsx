@@ -358,39 +358,41 @@ export default function ActualDashboardPage() {
             <span className="hidden md:inline md:ml-2">Add New Event</span>
           </Button>
         </div>
-
-        <TabsContent key="calendar-view" value="calendar" className={cn("space-y-6 flex-1 flex flex-col min-h-0 mt-0", viewMode === 'calendar' ? 'block' : 'hidden')}>
-          <EventCalendarView
-            events={displayedTimelineEvents}
-            month={activeDisplayMonth}
-            onMonthChange={setActiveDisplayMonth}
-            onDayClick={handleDayClickFromCalendar}
-          />
-          {selectedDateForDayView ? (
-            <DayTimetableView
-              date={selectedDateForDayView}
-              events={eventsForDayView}
-              onClose={closeDayTimetableView}
-              onDeleteEvent={handleDeleteTimelineEvent}
-              onEditEvent={handleOpenEditModal}
-            />
-          ) : (
-            <SlidingTimelineView
-              events={displayedTimelineEvents}
-              onDeleteEvent={handleDeleteTimelineEvent}
-              onEditEvent={handleOpenEditModal}
-              currentDisplayMonth={activeDisplayMonth}
-              onNavigateMonth={handleMonthNavigationForSharedViews}
-            />
-          )}
-        </TabsContent>
-        <TabsContent key="list-view" value="list" className={cn("flex-1 min-h-0 mt-0", viewMode === 'list' ? 'block' : 'hidden')}>
-          <TimelineListView
-            events={displayedTimelineEvents}
-            onDeleteEvent={handleDeleteTimelineEvent}
-            onEditEvent={handleOpenEditModal}
-          />
-        </TabsContent>
+        
+        <div className="relative flex-1">
+            <TabsContent key="calendar-view" value="calendar" className={cn("space-y-6 flex-1 flex flex-col min-h-0 mt-0 absolute inset-0", viewMode !== 'calendar' && 'hidden')}>
+              <EventCalendarView
+                events={displayedTimelineEvents}
+                month={activeDisplayMonth}
+                onMonthChange={setActiveDisplayMonth}
+                onDayClick={handleDayClickFromCalendar}
+              />
+              {selectedDateForDayView ? (
+                <DayTimetableView
+                  date={selectedDateForDayView}
+                  events={eventsForDayView}
+                  onClose={closeDayTimetableView}
+                  onDeleteEvent={handleDeleteTimelineEvent}
+                  onEditEvent={handleOpenEditModal}
+                />
+              ) : (
+                <SlidingTimelineView
+                  events={displayedTimelineEvents}
+                  onDeleteEvent={handleDeleteTimelineEvent}
+                  onEditEvent={handleOpenEditModal}
+                  currentDisplayMonth={activeDisplayMonth}
+                  onNavigateMonth={handleMonthNavigationForSharedViews}
+                />
+              )}
+            </TabsContent>
+            <TabsContent key="list-view" value="list" className={cn("mt-0 h-[75vh]", viewMode !== 'list' && 'hidden')}>
+              <TimelineListView
+                events={displayedTimelineEvents}
+                onDeleteEvent={handleDeleteTimelineEvent}
+                onEditEvent={handleOpenEditModal}
+              />
+            </TabsContent>
+        </div>
       </Tabs>
 
 
@@ -495,4 +497,5 @@ export default function ActualDashboardPage() {
   );
 }
 
+    
     
