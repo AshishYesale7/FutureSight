@@ -29,15 +29,6 @@ interface CustomizeThemeModalProps {
   onOpenChange: (isOpen: boolean) => void;
 }
 
-const BACKGROUND_COLORS = [
-    { name: 'Default', value: null },
-    { name: 'Midnight Slate', value: 'hsl(220, 25%, 12%)' },
-    { name: 'Deep Jungle', value: 'hsl(160, 30%, 10%)' },
-    { name: 'Crimson Ember', value: 'hsl(350, 50%, 14%)' },
-    { name: 'Royal Indigo', value: 'hsl(250, 40%, 15%)' },
-    { name: 'Smoky Quartz', value: 'hsl(30, 15%, 13%)' },
-];
-
 const themeColorConfig = [
   { id: 'background', label: 'Background', icon: Paintbrush, cssVar: '--background' },
   { id: 'foreground', label: 'Foreground Text', icon: Text, cssVar: '--foreground' },
@@ -57,9 +48,8 @@ const glassEffectConfig: {id: GlassEffect, label: string, icon: React.ElementTyp
 export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeThemeModalProps) {
   const { 
     setBackgroundImage,
-    backgroundImage: currentBackgroundImage, 
-    setBackgroundColor, 
     backgroundColor: currentBackgroundColor,
+    setBackgroundColor, 
     customTheme,
     setCustomTheme,
     resetCustomizations,
@@ -152,10 +142,6 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
 
   const handleBackgroundColorSelect = (colorValue: string | null) => {
     setBackgroundColor(colorValue);
-    // If a solid color is chosen (or 'Default' is chosen), remove the background image so the color is visible.
-    if (colorValue) {
-      setBackgroundImage(null);
-    }
   };
 
   const resetForm = () => {
@@ -317,27 +303,23 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
             <Label className="font-semibold text-base flex items-center text-primary">
                 <Paintbrush className="mr-2 h-4 w-4" /> Solid Background Color
             </Label>
-            <div className="flex flex-wrap gap-3 pt-1">
-                {BACKGROUND_COLORS.map((colorOption) => (
-                <button
-                    type="button"
-                    key={colorOption.name}
-                    title={colorOption.name}
-                    onClick={() => handleBackgroundColorSelect(colorOption.value)}
-                    className={cn(
-                        "h-8 w-8 rounded-full border-2 transition-all flex items-center justify-center",
-                        (currentBackgroundColor === colorOption.value && !currentBackgroundImage)
-                        ? "ring-2 ring-offset-2 ring-offset-background ring-ring"
-                        : "hover:scale-110",
-                        !colorOption.value && "border-dashed bg-transparent text-muted-foreground"
-                    )}
-                    style={{ backgroundColor: colorOption.value || 'transparent', borderColor: colorOption.value || 'hsl(var(--border))' }}
-                >
-                    {!colorOption.value && <Slash className="h-5 w-5" />}
-                    <span className="sr-only">{colorOption.name}</span>
-                </button>
-                ))}
+             <div className="flex items-center gap-4">
+              <ColorPickerPopover 
+                value={currentBackgroundColor || 'hsl(220, 25%, 12%)'}
+                onChange={handleBackgroundColorSelect}
+              />
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={() => handleBackgroundColorSelect(null)}
+                title="Remove solid color"
+              >
+                <Slash className="h-4 w-4" />
+              </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Choose a custom color or click the slash icon to restore the default background image.
+            </p>
           </div>
         </div>
 

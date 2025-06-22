@@ -132,6 +132,11 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   
   const setBackgroundColor = useCallback((color: string | null) => {
     setBackgroundColorState(color);
+    if (color) {
+      setBackgroundImageState(null); // If a color is set, remove the image
+    } else {
+      setBackgroundImageState(DEFAULT_BACKGROUND_IMAGE); // If color is removed, restore default image
+    }
   }, []);
   
   const setCustomTheme = useCallback((theme: CustomTheme | null) => {
