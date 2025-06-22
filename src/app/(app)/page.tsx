@@ -339,19 +339,20 @@ export default function ActualDashboardPage() {
         onValueChange={(value) => handleViewModeChange(value as 'calendar' | 'list')}
         className="flex flex-col flex-1 min-h-0"
       >
-        <div className="flex justify-between items-center mb-4">
-          <TabsList className="inline-flex h-auto p-1 rounded-full bg-muted/50 backdrop-blur-sm border border-border/30">
-            <TabsTrigger value="calendar" className="px-4 py-1.5 text-sm h-auto rounded-full data-[state=active]:shadow-md">
+        <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+          <TabsList className="inline-flex h-auto p-1 rounded-full bg-muted/50 backdrop-blur-sm border border-border/30 w-full sm:w-auto">
+            <TabsTrigger value="calendar" className="px-4 py-1.5 text-sm h-auto rounded-full data-[state=active]:shadow-md w-1/2 sm:w-auto">
                 <CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar
             </TabsTrigger>
             <div className="w-px h-6 bg-border/50 self-center"></div>
-            <TabsTrigger value="list" className="px-4 py-1.5 text-sm h-auto rounded-full data-[state=active]:shadow-md">
+            <TabsTrigger value="list" className="px-4 py-1.5 text-sm h-auto rounded-full data-[state=active]:shadow-md w-1/2 sm:w-auto">
                 <List className="mr-2 h-4 w-4" /> List
             </TabsTrigger>
           </TabsList>
           
-          <Button onClick={() => handleOpenEditModal()} className="bg-accent hover:bg-accent/90 text-accent-foreground ml-4">
-            <PlusCircle className="mr-2 h-5 w-5" /> Add New Event
+          <Button onClick={() => handleOpenEditModal()} className="bg-accent hover:bg-accent/90 text-accent-foreground w-full sm:w-auto">
+            <PlusCircle className="h-5 w-5 md:mr-2" />
+            <span className="hidden md:inline">Add New Event</span>
           </Button>
         </div>
 
