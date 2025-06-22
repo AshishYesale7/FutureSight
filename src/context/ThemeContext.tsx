@@ -33,7 +33,7 @@ const BACKGROUND_COLOR_STORAGE_KEY = 'futuresight-background-color';
 const CUSTOM_THEME_STORAGE_KEY = 'futuresight-custom-theme';
 const GLASS_EFFECT_STORAGE_KEY = 'futuresight-glass-effect';
 const GLASS_SETTINGS_STORAGE_KEY = 'futuresight-glass-settings';
-const DEFAULT_BACKGROUND_IMAGE = 'https://img.freepik.com/premium-photo/abstract-holographic-defocused-foil-texture-background-with-frosted-glass-effect-background_1064085-619.jpg';
+const DEFAULT_BACKGROUND_IMAGE = 'https://r4.wallpaperflare.com/wallpaper/113/431/804/science-fiction-digital-art-concept-art-artwork-fantasy-art-hd-wallpaper-68368da8e0100c58d06ca1fec8e2e4fa.jpg';
 
 const DEFAULT_GLASS_EFFECT_SETTINGS: GlassEffectSettings = {
   frosted: { blur: 12 },
@@ -86,7 +86,7 @@ const getInitialState = <T,>(key: string, defaultValue: T): T => {
 
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [theme, setThemeState] = useState<Theme>(() => getInitialState<Theme>(THEME_STORAGE_KEY, 'light'));
+  const [theme, setThemeState] = useState<Theme>(() => getInitialState<Theme>(THEME_STORAGE_KEY, 'dark'));
   const [backgroundImage, setBackgroundImageState] = useState<string | null>(() => getInitialState<string | null>(BACKGROUND_IMAGE_STORAGE_KEY, DEFAULT_BACKGROUND_IMAGE));
   const [backgroundColor, setBackgroundColorState] = useState<string | null>(() => getInitialState<string | null>(BACKGROUND_COLOR_STORAGE_KEY, null));
   const [customTheme, setCustomThemeState] = useState<CustomTheme | null>(() => getInitialState<CustomTheme | null>(CUSTOM_THEME_STORAGE_KEY, null));
@@ -128,7 +128,9 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   const setBackgroundImage = useCallback((url: string | null) => {
     setBackgroundImageState(url);
-    setBackgroundColorState(null); // Always clear color when setting an image
+    if (url) {
+      setBackgroundColorState(null); // Always clear color when setting an image
+    }
   }, []);
   
   const setBackgroundColor = useCallback((color: string | null) => {
@@ -155,7 +157,6 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
 
   const resetCustomizations = useCallback(() => {
     setBackgroundImage(DEFAULT_BACKGROUND_IMAGE);
-    setBackgroundColor(null);
     setCustomTheme(null);
     setGlassEffect('grainyFrosted');
     setGlassEffectSettings(DEFAULT_GLASS_EFFECT_SETTINGS);
