@@ -30,7 +30,7 @@ interface CustomizeThemeModalProps {
 }
 
 const BACKGROUND_COLORS = [
-    { name: 'Default', value: null }, // Allows reverting to theme background
+    { name: 'Default', value: null },
     { name: 'Midnight Slate', value: 'hsl(220, 25%, 12%)' },
     { name: 'Deep Jungle', value: 'hsl(160, 30%, 10%)' },
     { name: 'Crimson Ember', value: 'hsl(350, 50%, 14%)' },
@@ -152,7 +152,6 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
 
   const handleBackgroundColorSelect = (colorValue: string | null) => {
     setBackgroundColor(colorValue);
-    // If a solid color is chosen (or 'Default' is chosen), remove the background image so the color is visible.
     if (colorValue) {
       setBackgroundImage(null);
     }
@@ -210,7 +209,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
                                  </div>
                                  <div className="grid gap-1">
                                      <div className="flex justify-between items-center"><Label htmlFor="gf-noise" className="text-xs">Noise Opacity</Label><span className="text-xs text-muted-foreground">{Math.round(glassEffectSettings.grainyFrosted.noiseOpacity * 100)}%</span></div>
-                                     <Slider id="gf-noise" min={0} max={0.2} step={0.01} value={[glassEffectSettings.grainyFrosted.noiseOpacity]} onValueChange={([v]) => setGlassEffectSettings({...glassEffectSettings, grainyFrosted: {...glassEffectSettings.grainyFrosted, noiseOpacity: v}})} />
+                                     <Slider id="gf-noise" min={0} max={1} step={0.01} value={[glassEffectSettings.grainyFrosted.noiseOpacity]} onValueChange={([v]) => setGlassEffectSettings({...glassEffectSettings, grainyFrosted: {...glassEffectSettings.grainyFrosted, noiseOpacity: v}})} />
                                  </div>
                                </div>
                             )}
@@ -355,4 +354,3 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     </Dialog>
   );
 }
-
