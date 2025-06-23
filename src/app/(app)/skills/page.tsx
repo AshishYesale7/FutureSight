@@ -1,5 +1,6 @@
+
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Skill } from '@/types';
 import { mockSkills } from '@/data/mock';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,23 +19,82 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import EditSkillModal from '@/components/skills/EditSkillModal';
+import { useToast } from '@/hooks/use-toast';
 
 const proficiencyColors: Record<Skill['proficiency'], string> = {
-  Beginner: 'bg-blue-500',
-  Intermediate: 'bg-yellow-500',
-  Advanced: 'bg-green-500',
-  Expert: 'bg-purple-500',
+  Beginner: 'bg-blue-500/80 border-blue-700 text-white',
+  Intermediate: 'bg-yellow-500/80 border-yellow-700 text-yellow-900',
+  Advanced: 'bg-green-500/80 border-green-700 text-white',
+  Expert: 'bg-purple-500/80 border-purple-700 text-white',
 };
 
+const SKILLS_STORAGE_KEY = 'futureSightSkills';
+
 export default function SkillsPage() {
-  const [skills, setSkills] = useState<Skill[]>(mockSkills);
-  // Add state and functions for CRUD operations later
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    try {
+      const storedSkills = localStorage.getItem(SKILLS_STORAGE_KEY);
+      if (storedSkills) {
+        const parsedSkills: (Omit<Skill, 'lastUpdated'> & { lastUpdated?: string })[] = JSON.parse(storedSkills);
+        setSkills(parsedSkills.map(s => ({...s, lastUpdated: s.lastUpdated ? new Date(s.lastUpdated) : new Date() })));
+      } else {
+        setSkills(mockSkills);
+      }
+    } catch (error) {
+      console.error("Failed to load skills from local storage", error);
+      setSkills(mockSkills);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+       const serializableSkills = skills.map(s => ({...s, lastUpdated: s.lastUpdated.toISOString() }));
+       localStorage.setItem(SKILLS_STORAGE_KEY, JSON.stringify(serializableSkills));
+    } catch (error) {
+      console.error("Failed to save skills to local storage", error);
+    }
+  }, [skills]);
+
+  const handleOpenModal = (skill: Skill | null) => {
+    setEditingSkill(skill);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteSkill = (skillId: string) => {
+    setSkills(prevSkills => prevSkills.filter(skill => skill.id !== skillId));
+    toast({
+      title: "Skill Deleted",
+      description: "The skill has been successfully removed.",
+    });
+  };
+
+  const handleSaveSkill = (skillToSave: Skill) => {
+    const now = new Date();
+    const skillWithDate = { ...skillToSave, lastUpdated: now };
+
+    const skillExists = skills.some(s => s.id === skillWithDate.id);
+    if (skillExists) {
+      setSkills(prevSkills => prevSkills.map(s => s.id === skillWithDate.id ? skillWithDate : s));
+      toast({ title: "Skill Updated", description: "Your skill has been successfully updated." });
+    } else {
+      setSkills(prevSkills => [...prevSkills, skillWithDate]);
+      toast({ title: "Skill Added", description: "A new skill has been successfully added." });
+    }
+    setIsModalOpen(false);
+    setEditingSkill(null);
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="font-headline text-3xl font-semibold text-primary">Skills Tracker</h1>
-        <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Button onClick={() => handleOpenModal(null)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
           <PlusCircle className="mr-2 h-5 w-5" /> Add New Skill
         </Button>
       </div>
@@ -51,7 +111,7 @@ export default function SkillsPage() {
                   <Brain className="mr-2 h-5 w-5 text-accent" /> {skill.name}
                 </CardTitle>
                  <div className="flex space-x-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenModal(skill)}>
                     <Edit3 className="h-4 w-4" />
                   </Button>
                   <AlertDialog>
@@ -71,7 +131,7 @@ export default function SkillsPage() {
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                           className="bg-destructive hover:bg-destructive/90"
-                          onClick={() => { /* Implement delete logic */ }}
+                          onClick={() => handleDeleteSkill(skill.id)}
                         >
                           Delete
                         </AlertDialogAction>
@@ -91,7 +151,7 @@ export default function SkillsPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-foreground/80">Proficiency:</span>
-                <Badge className={`${proficiencyColors[skill.proficiency]} text-white`}>{skill.proficiency}</Badge>
+                <Badge className={proficiencyColors[skill.proficiency]}>{skill.proficiency}</Badge>
               </div>
               {skill.learningResources && skill.learningResources.length > 0 && (
                 <div>
@@ -111,6 +171,12 @@ export default function SkillsPage() {
           </Card>
         ))}
       </div>
+       <EditSkillModal 
+        isOpen={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        skillToEdit={editingSkill}
+        onSave={handleSaveSkill}
+      />
     </div>
   );
 }
