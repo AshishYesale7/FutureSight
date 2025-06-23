@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { CareerGoal } from '@/types';
 import { mockCareerGoals } from '@/data/mock';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,16 +18,73 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import EditGoalModal from '@/components/career-goals/EditGoalModal';
+import { useToast } from '@/hooks/use-toast';
+
+const CAREER_GOALS_STORAGE_KEY = 'futureSightCareerGoals';
 
 export default function CareerGoalsPage() {
-  const [goals, setGoals] = useState<CareerGoal[]>(mockCareerGoals);
-  // Add state and functions for CRUD operations later
+  const [goals, setGoals] = useState<CareerGoal[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<CareerGoal | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    try {
+      const storedGoals = localStorage.getItem(CAREER_GOALS_STORAGE_KEY);
+      if (storedGoals) {
+        const parsedGoals: (Omit<CareerGoal, 'deadline'> & { deadline?: string })[] = JSON.parse(storedGoals);
+        setGoals(parsedGoals.map(g => ({...g, deadline: g.deadline ? new Date(g.deadline) : undefined})));
+      } else {
+        setGoals(mockCareerGoals);
+      }
+    } catch (error) {
+      console.error("Failed to load goals from local storage", error);
+      setGoals(mockCareerGoals);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const serializableGoals = goals.map(g => ({...g, deadline: g.deadline?.toISOString()}));
+      localStorage.setItem(CAREER_GOALS_STORAGE_KEY, JSON.stringify(serializableGoals));
+    } catch (error) {
+      console.error("Failed to save goals to local storage", error);
+    }
+  }, [goals]);
+
+  const handleOpenModal = (goal: CareerGoal | null) => {
+    setEditingGoal(goal);
+    setIsModalOpen(true);
+  };
+
+  const handleDeleteGoal = (goalId: string) => {
+    setGoals(prevGoals => prevGoals.filter(goal => goal.id !== goalId));
+    toast({
+      title: "Goal Deleted",
+      description: "The career goal has been successfully removed.",
+    });
+  };
+
+  const handleSaveGoal = (goalToSave: CareerGoal) => {
+    const goalExists = goals.some(g => g.id === goalToSave.id);
+    if (goalExists) {
+      setGoals(prevGoals => prevGoals.map(g => g.id === goalToSave.id ? goalToSave : g));
+      toast({ title: "Goal Updated", description: "Your career goal has been successfully updated." });
+    } else {
+      setGoals(prevGoals => [...prevGoals, goalToSave]);
+      toast({ title: "Goal Added", description: "A new career goal has been successfully added." });
+    }
+    setIsModalOpen(false);
+    setEditingGoal(null);
+  };
+
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="font-headline text-3xl font-semibold text-primary">Career Goals</h1>
-        <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+        <Button onClick={() => handleOpenModal(null)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
           <PlusCircle className="mr-2 h-5 w-5" /> Add New Goal
         </Button>
       </div>
@@ -44,7 +101,7 @@ export default function CareerGoalsPage() {
                   <Target className="mr-2 h-5 w-5 text-accent" /> {goal.title}
                 </CardTitle>
                 <div className="flex space-x-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenModal(goal)}>
                     <Edit3 className="h-4 w-4" />
                   </Button>
                   <AlertDialog>
@@ -64,7 +121,7 @@ export default function CareerGoalsPage() {
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                           className="bg-destructive hover:bg-destructive/90"
-                          onClick={() => { /* Implement delete logic */ }}
+                          onClick={() => handleDeleteGoal(goal.id)}
                         >
                           Delete
                         </AlertDialogAction>
@@ -93,6 +150,12 @@ export default function CareerGoalsPage() {
           </Card>
         ))}
       </div>
+      <EditGoalModal 
+        isOpen={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        goalToEdit={editingGoal}
+        onSave={handleSaveGoal}
+      />
     </div>
   );
 }
