@@ -153,10 +153,19 @@ export const mockSkills: Skill[] = [
   { id: '4', name: 'Machine Learning Fundamentals', category: 'AI', proficiency: 'Beginner', lastUpdated: new Date() },
 ];
 
-export const mockNewsArticles: NewsArticle[] = [
-  { id: '1', title: 'AI in Academia: New Trends for 2024', summary: 'Experts discuss the growing role of AI in university research and curriculum.', source: 'Tech Journal', url: '#', publishedDate: new Date(new Date().setDate(new Date().getDate() -1)), imageUrl: 'https://placehold.co/600x400.png?text=AI+Academia' },
-  { id: '2', title: 'GATE 2025 Application Window Announced', summary: 'The official dates for GATE 2025 applications have been released. Check eligibility and key deadlines.', source: 'Exam Times', url: '#', publishedDate: new Date(new Date().setDate(new Date().getDate() -2)), imageUrl: 'https://placehold.co/600x400.png?text=GATE+2025' },
+export const allMockNewsArticles: NewsArticle[] = [
+  { id: '1', title: 'AI in Academia: New Trends for 2024', summary: 'Experts discuss the growing role of AI in university research and curriculum.', source: 'Tech Journal', url: '#', publishedDate: new Date(new Date().setDate(today.getDate() - 1)), imageUrl: 'https://placehold.co/600x400.png?text=AI+Academia', tags: ['AI', 'Academia', 'Research'] },
+  { id: '2', title: 'GATE 2025 Application Window Announced', summary: 'The official dates for GATE 2025 applications have been released. Check eligibility and key deadlines.', source: 'Exam Times', url: '#', publishedDate: new Date(new Date().setDate(today.getDate() - 2)), imageUrl: 'https://placehold.co/600x400.png?text=GATE+2025', tags: ['GATE', 'Exams'] },
+  { id: '3', title: 'Top 5 Skills for Software Engineering Internships in 2025', summary: 'A deep dive into the technologies and skills that top companies are looking for in their interns.', source: 'DevCareers', url: '#', publishedDate: new Date(new Date().setDate(today.getDate() - 3)), imageUrl: 'https://placehold.co/600x400.png?text=SWE+Skills', tags: ['Software Engineering', 'Internships', 'Skills'] },
+  { id: '4', title: 'Google Opens Applications for Product Manager Roles', summary: 'The tech giant is hiring for several entry-level and experienced Product Manager positions.', source: 'Career Insights', url: '#', publishedDate: new Date(new Date().setDate(today.getDate() - 1)), imageUrl: 'https://placehold.co/600x400.png?text=Google+PM', tags: ['Product Management', 'Opportunities', 'Google'] },
+  { id: '5', title: 'The Impact of Quantum Computing on AI', summary: 'How quantum advancements could revolutionize machine learning models.', source: 'Future Tech', url: '#', publishedDate: new Date(new Date().setDate(today.getDate() - 5)), imageUrl: 'https://placehold.co/600x400.png?text=Quantum+AI', tags: ['AI', 'Quantum Computing', 'Research'] },
+  { id: '6', title: 'CAT 2024 Exam Dates & Pattern Changes', summary: 'The IIMs have announced the schedule for the Common Admission Test (CAT), with minor changes to the exam pattern.', source: 'MBA Universe', url: '#', publishedDate: new Date(new Date().setDate(today.getDate() - 4)), imageUrl: 'https://placehold.co/600x400.png?text=CAT+2024', tags: ['CAT', 'Exams', 'MBA'] },
+  { id: '7', title: 'Fall 2025 Internship Application Trackers Are Live', summary: 'Major tech companies like Microsoft, Amazon, and Meta have opened their internship portals for Fall 2025.', source: 'Internship Weekly', url: '#', publishedDate: new Date(new Date().setDate(today.getDate() - 2)), imageUrl: 'https://placehold.co/600x400.png?text=Internships+2025', tags: ['Internships', 'Opportunities'] },
 ];
+
+// For the news page, we can rename the export to avoid confusion if we want to filter it.
+export const mockNewsArticles: NewsArticle[] = allMockNewsArticles;
+
 
 export const mockResourceLinks: ResourceLink[] = [
   { id: '1', title: 'Cracking the Coding Interview', category: 'book', url: '#', description: 'Classic guide for technical interviews.'},

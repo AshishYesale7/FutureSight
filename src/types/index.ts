@@ -41,6 +41,7 @@ export interface NewsArticle {
   url: string;
   publishedDate: Date;
   imageUrl?: string;
+  tags?: string[];
 }
 
 export interface ResourceLink {
@@ -78,7 +79,7 @@ export interface RawGmailMessage {
 }
 
 export interface ActionableInsight {
-  id: string; // e.g., 'cal:original_event_id' or 'mail:original_message_id'
+  id:string; // e.g., 'cal:original_event_id' or 'mail:original_message_id'
   title: string;
   date: string; // ISO 8601 format, should include time (start time for events)
   endDate?: string; // ISO 8601 format, end time for events, optional
