@@ -50,7 +50,7 @@ export interface ResourceLink {
   url: string;
   description?: string;
   category: 'book' | 'course' | 'tool' | 'article' | 'website' | 'other';
-  isAIRec_om_mended?: boolean;
+  isAiRecommended?: boolean;
 }
 
 export interface TodaysPlan {

@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import type { ResourceLink } from '@/types';
@@ -22,13 +21,40 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import EditResourceModal from '@/components/resources/EditResourceModal';
 
+const RESOURCES_STORAGE_KEY = 'futureSightBookmarkedResources';
 
 export default function ResourcesPage() {
-  const [bookmarkedResources, setBookmarkedResources] = useState<ResourceLink[]>(mockResourceLinks);
+  const [bookmarkedResources, setBookmarkedResources] = useState<ResourceLink[]>([]);
   const [aiSuggestedResources, setAiSuggestedResources] = useState<ResourceLink[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingResource, setEditingResource] = useState<ResourceLink | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    try {
+      const storedResources = localStorage.getItem(RESOURCES_STORAGE_KEY);
+      if (storedResources) {
+        setBookmarkedResources(JSON.parse(storedResources));
+      } else {
+        setBookmarkedResources(mockResourceLinks);
+      }
+    } catch (error) {
+      console.error("Failed to load resources from local storage", error);
+      setBookmarkedResources(mockResourceLinks);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+       localStorage.setItem(RESOURCES_STORAGE_KEY, JSON.stringify(bookmarkedResources));
+    } catch (error) {
+      console.error("Failed to save resources to local storage", error);
+    }
+  }, [bookmarkedResources]);
+
 
   const fetchAiSuggestions = async () => {
     if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
@@ -45,32 +71,18 @@ export default function ResourcesPage() {
       const userInput: SuggestResourcesInput = {
         trackedSkills: mockSkills.map(skill => skill.name),
         careerGoals: mockCareerGoals.map(goal => goal.title).join(', '),
-        timelineEvents: mockTimelineEvents.map(event => `${event.title} on ${event.date.toDateString()}`).join('; '),
+        timelineEvents: mockTimelineEvents.map(event => `${event.title} on ${event.date instanceof Date ? event.date.toDateString() : event.date}`).join('; '),
       };
       const result = await suggestResources(userInput);
       
-      const newSuggestions: ResourceLink[] = result.suggestedResources.map((res, index) => {
-        // Try to parse title and URL if formatted like "Title (URL)" or "Title: URL"
-        let title = res;
-        let url = '#'; // Default URL
-        const urlMatch = res.match(/\((https?:\/\/[^\s)]+)\)/) || res.match(/:\s*(https?:\/\/[^\s]+)/);
-        if (urlMatch) {
-          url = urlMatch[1];
-          title = res.replace(urlMatch[0], '').trim();
-        }
-        
-        return {
+      const newSuggestions: ResourceLink[] = result.suggestedResources.map((res, index) => ({
           id: `ai-${Date.now()}-${index}`,
-          title,
-          url,
-          description: result.reasoning.split('\n')[index] || "AI Recommended Resource", // Basic split for reasoning
-          category: 'website', // Default category, can be improved
-          isAIRec_om_mended: true,
-        };
-      });
+          ...res,
+          isAiRecommended: true,
+      }));
       setAiSuggestedResources(newSuggestions);
       if(newSuggestions.length === 0) {
-        toast({ title: "AI Suggestions", description: "No new suggestions found at this time, or AI could not parse them." });
+        toast({ title: "AI Suggestions", description: "No new suggestions found at this time." });
       }
     } catch (error) {
       console.error('Error fetching AI suggestions:', error);
@@ -80,10 +92,31 @@ export default function ResourcesPage() {
     }
   };
 
-  useEffect(() => {
-    // Optionally fetch suggestions on load
-    // fetchAiSuggestions(); 
-  }, []);
+  const handleOpenModal = (resource: ResourceLink | null) => {
+    setEditingResource(resource);
+    setIsModalOpen(true);
+  };
+  
+  const handleDeleteResource = (resourceId: string) => {
+    setBookmarkedResources(prev => prev.filter(res => res.id !== resourceId));
+    toast({
+      title: "Resource Deleted",
+      description: "The bookmarked resource has been removed.",
+    });
+  };
+
+  const handleSaveResource = (resourceToSave: ResourceLink) => {
+    const resourceExists = bookmarkedResources.some(r => r.id === resourceToSave.id);
+    if (resourceExists) {
+      setBookmarkedResources(prev => prev.map(r => r.id === resourceToSave.id ? resourceToSave : r));
+      toast({ title: "Resource Updated", description: "Your bookmark has been successfully updated." });
+    } else {
+      setBookmarkedResources(prev => [...prev, resourceToSave]);
+      toast({ title: "Resource Added", description: "New resource bookmarked successfully." });
+    }
+    setIsModalOpen(false);
+    setEditingResource(null);
+  };
 
   const allResources = [...bookmarkedResources, ...aiSuggestedResources];
 
@@ -97,7 +130,7 @@ export default function ResourcesPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button onClick={() => handleOpenModal(null)} className="bg-accent hover:bg-accent/90 text-accent-foreground">
             <PlusCircle className="mr-2 h-5 w-5" /> Add Bookmark
           </Button>
           <Button onClick={fetchAiSuggestions} disabled={isLoadingSuggestions} variant="outline">
@@ -133,7 +166,7 @@ export default function ResourcesPage() {
             <CardHeader>
               <div className="flex justify-between items-start">
                 <CardTitle className="font-headline text-lg text-primary flex items-center">
-                  {resource.isAIRec_om_mended ? 
+                  {resource.isAiRecommended ? 
                     <Bot className="mr-2 h-5 w-5 text-accent flex-shrink-0" /> : 
                     <LinkIcon className="mr-2 h-5 w-5 text-accent flex-shrink-0" />
                   }
@@ -141,9 +174,9 @@ export default function ResourcesPage() {
                     {resource.title}
                   </a>
                 </CardTitle>
-                {!resource.isAIRec_om_mended && (
+                {!resource.isAiRecommended && (
                   <div className="flex space-x-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleOpenModal(resource)}>
                       <Edit3 className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
@@ -163,7 +196,7 @@ export default function ResourcesPage() {
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
                           <AlertDialogAction
                             className="bg-destructive hover:bg-destructive/90"
-                            onClick={() => { /* Implement delete logic */ }}
+                            onClick={() => handleDeleteResource(resource.id)}
                           >
                             Delete
                           </AlertDialogAction>
@@ -174,10 +207,10 @@ export default function ResourcesPage() {
                 )}
               </div>
               <CardDescription className="text-xs text-muted-foreground flex items-center gap-2">
-                <Badge variant={resource.isAIRec_om_mended ? "default" : "secondary"} className={resource.isAIRec_om_mended ? "bg-primary/80 text-primary-foreground" : ""}>
-                  {resource.isAIRec_om_mended ? 'AI Suggested' : 'Bookmarked'}
+                <Badge variant={resource.isAiRecommended ? "default" : "secondary"} className={resource.isAiRecommended ? "bg-primary/80 text-primary-foreground" : ""}>
+                  {resource.isAiRecommended ? 'AI Suggested' : 'Bookmarked'}
                 </Badge>
-                 <Badge variant="outline">{resource.category}</Badge>
+                 <Badge variant="outline" className="capitalize">{resource.category}</Badge>
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow">
@@ -193,6 +226,12 @@ export default function ResourcesPage() {
           </Card>
         ))}
       </div>
+      <EditResourceModal 
+        isOpen={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        resourceToEdit={editingResource}
+        onSave={handleSaveResource}
+      />
     </div>
   );
 }
