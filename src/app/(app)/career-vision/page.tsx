@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Eye, Sparkles, Bot } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
+import { generateCareerVision } from '@/ai/flows/career-vision-flow';
 
 export default function CareerVisionPage() {
   const [userInput, setUserInput] = useState('');
@@ -24,13 +25,31 @@ export default function CareerVisionPage() {
       return;
     }
 
-    if (!userInput.trim()) return;
+    if (!userInput.trim()) {
+        toast({
+            title: 'Input Required',
+            description: 'Please describe your passions or aspirations first.',
+            variant: 'destructive',
+        });
+        return;
+    }
+    
     setIsLoading(true);
-    // Mock AI interaction
-    setTimeout(() => {
-      setVisionStatement(`Based on your input about "${userInput}", a potential career vision could be: "To become a leading expert in leveraging AI for sustainable technology solutions, driving innovation and positive global impact." This vision emphasizes your interest in AI and a desire to contribute meaningfully.`);
+    setVisionStatement(''); // Clear previous vision
+    
+    try {
+      const result = await generateCareerVision({ aspirations: userInput });
+      setVisionStatement(result.visionStatement);
+    } catch (error) {
+      console.error('Error generating career vision:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate career vision. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   return (
