@@ -18,10 +18,9 @@ import { Edit, Github, Linkedin, Twitter } from 'lucide-react';
 interface ProfileModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onEditProfile: () => void;
 }
 
-const ProfileModal: FC<ProfileModalProps> = ({ isOpen, onOpenChange, onEditProfile }) => {
+const ProfileModal: FC<ProfileModalProps> = ({ isOpen, onOpenChange }) => {
   const { user } = useAuth();
   const { backgroundImage } = useTheme();
 
@@ -67,7 +66,7 @@ const ProfileModal: FC<ProfileModalProps> = ({ isOpen, onOpenChange, onEditProfi
                         {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
                     </AvatarFallback>
                 </Avatar>
-                <Button variant="outline" size="sm" className="mb-2" onClick={onEditProfile}>
+                <Button variant="outline" size="sm" className="mb-2" disabled>
                     <Edit className="mr-2 h-4 w-4"/> Edit Profile
                 </Button>
             </div>
