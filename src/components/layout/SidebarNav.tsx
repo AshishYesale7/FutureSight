@@ -37,6 +37,7 @@ import {
 import { useTheme } from '@/hooks/use-theme';
 import { useState, useEffect } from 'react'; 
 import CustomizeThemeModal from './CustomizeThemeModal';
+import ProfileModal from './ProfileModal';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -53,6 +54,7 @@ export default function SidebarNav() {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
@@ -132,6 +134,10 @@ export default function SidebarNav() {
                 <Palette className="mr-2 h-4 w-4" />
                 <span>Customize Theme</span>
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsProfileModalOpen(true)}>
+                <UserCircle className="mr-2 h-4 w-4" />
+                <span>View Profile</span>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleToggleFullScreen}>
                 {isFullScreen ? <Shrink className="mr-2 h-4 w-4" /> : <Expand className="mr-2 h-4 w-4" />}
                 <span>{isFullScreen ? 'Exit Fullscreen' : 'Go Fullscreen'}</span>
@@ -152,6 +158,10 @@ export default function SidebarNav() {
       <CustomizeThemeModal
         isOpen={isCustomizeModalOpen}
         onOpenChange={setIsCustomizeModalOpen}
+      />
+      <ProfileModal
+        isOpen={isProfileModalOpen}
+        onOpenChange={setIsProfileModalOpen}
       />
     </>
   );
