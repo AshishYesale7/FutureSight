@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -68,6 +67,11 @@ export default function Header() {
     }
   };
   
+  const handleEditProfile = () => {
+    setIsProfileModalOpen(false);
+    setIsCustomizeModalOpen(true);
+  };
+
   return (
     <>
       <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b bg-background/80 backdrop-blur-md px-6 md:hidden">
@@ -155,6 +159,7 @@ export default function Header() {
        <ProfileModal
         isOpen={isProfileModalOpen}
         onOpenChange={setIsProfileModalOpen}
+        onEditProfile={handleEditProfile}
       />
     </>
   );

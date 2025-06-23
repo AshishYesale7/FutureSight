@@ -12,15 +12,18 @@ import {
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/hooks/use-theme';
 import { Edit, Github, Linkedin, Twitter } from 'lucide-react';
 
 interface ProfileModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
+  onEditProfile: () => void;
 }
 
-const ProfileModal: FC<ProfileModalProps> = ({ isOpen, onOpenChange }) => {
+const ProfileModal: FC<ProfileModalProps> = ({ isOpen, onOpenChange, onEditProfile }) => {
   const { user } = useAuth();
+  const { backgroundImage } = useTheme();
 
   // Mock data for stats - in a real app, this would come from user data
   const stats = {
@@ -46,7 +49,7 @@ const ProfileModal: FC<ProfileModalProps> = ({ isOpen, onOpenChange }) => {
           {/* Cover Image */}
           <div className="h-32 w-full relative">
              <Image
-                src="https://images.unsplash.com/photo-1554147090-e1221a04a0625?q=80&w=2070&auto=format&fit=crop"
+                src={backgroundImage || "https://images.unsplash.com/photo-1554147090-e1221a04a0625?q=80&w=2070&auto=format&fit=crop"}
                 alt="Cover"
                 layout="fill"
                 objectFit="cover"
@@ -64,7 +67,7 @@ const ProfileModal: FC<ProfileModalProps> = ({ isOpen, onOpenChange }) => {
                         {user?.email ? user.email.charAt(0).toUpperCase() : 'U'}
                     </AvatarFallback>
                 </Avatar>
-                <Button variant="outline" size="sm" className="mb-2">
+                <Button variant="outline" size="sm" className="mb-2" onClick={onEditProfile}>
                     <Edit className="mr-2 h-4 w-4"/> Edit Profile
                 </Button>
             </div>

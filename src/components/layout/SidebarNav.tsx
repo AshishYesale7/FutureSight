@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -83,6 +82,11 @@ export default function SidebarNav() {
       console.error('Error signing out:', error);
     }
   };
+
+  const handleEditProfile = () => {
+    setIsProfileModalOpen(false);
+    setIsCustomizeModalOpen(true);
+  };
   
   return (
     <>
@@ -162,6 +166,7 @@ export default function SidebarNav() {
       <ProfileModal
         isOpen={isProfileModalOpen}
         onOpenChange={setIsProfileModalOpen}
+        onEditProfile={handleEditProfile}
       />
     </>
   );
