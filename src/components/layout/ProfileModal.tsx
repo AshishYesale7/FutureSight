@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { FC } from 'react';
@@ -6,6 +5,9 @@ import Image from 'next/image';
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -32,11 +34,19 @@ const ProfileModal: FC<ProfileModalProps> = ({ isOpen, onOpenChange }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md frosted-glass p-0 border-0 overflow-hidden">
+        {/* ADDED FOR ACCESSIBILITY */}
+        <DialogHeader className="sr-only">
+          <DialogTitle>User Profile</DialogTitle>
+          <DialogDescription>
+            This modal contains your profile information, stats, and social links.
+          </DialogDescription>
+        </DialogHeader>
+
         <div className="relative">
           {/* Cover Image */}
           <div className="h-32 w-full relative">
              <Image
-                src="https://images.unsplash.com/photo-1554147090-e1221a04a025?q=80&w=2070&auto=format&fit=crop"
+                src="https://images.unsplash.com/photo-1554147090-e1221a04a0625?q=80&w=2070&auto=format&fit=crop"
                 alt="Cover"
                 layout="fill"
                 objectFit="cover"
