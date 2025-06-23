@@ -334,6 +334,8 @@ export default function ActualDashboardPage() {
         </p>
       </div>
 
+      <TodaysPlanCard />
+
       <Tabs
         value={viewMode}
         onValueChange={(value) => handleViewModeChange(value as 'calendar' | 'list')}
@@ -394,9 +396,6 @@ export default function ActualDashboardPage() {
           </TabsContent>
         </div>
       </Tabs>
-
-
-      <TodaysPlanCard />
 
       <Card className="frosted-glass shadow-lg">
         <CardHeader>
