@@ -23,7 +23,7 @@ export type SuggestResourcesInput = z.infer<typeof SuggestResourcesInputSchema>;
 
 const ResourceSuggestionSchema = z.object({
     title: z.string().describe('The concise name of the resource (e.g., "Eloquent JavaScript").'),
-    url: z.string().url().describe('The direct URL to the resource.'),
+    url: z.string().describe('The direct URL to the resource.'),
     description: z.string().describe('A brief, one-sentence explanation of why this resource is useful for the user.'),
     category: z.enum(['book', 'course', 'tool', 'article', 'website', 'other']).describe('The category of the resource.'),
 });
