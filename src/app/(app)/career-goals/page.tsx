@@ -1,8 +1,9 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import type { CareerGoal } from '@/types';
 import { mockCareerGoals } from '@/data/mock';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Target, Edit3, PlusCircle, Trash2, CalendarDays } from 'lucide-react';
@@ -20,65 +21,125 @@ import {
 } from "@/components/ui/alert-dialog";
 import EditGoalModal from '@/components/career-goals/EditGoalModal';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+import { getCareerGoals, saveCareerGoal, deleteCareerGoal } from '@/services/careerGoalsService';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const CAREER_GOALS_STORAGE_KEY = 'futureSightCareerGoals';
 
 export default function CareerGoalsPage() {
+  const { user } = useAuth();
   const [goals, setGoals] = useState<CareerGoal[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<CareerGoal | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
+  const syncToLocalStorage = (data: CareerGoal[]) => {
     try {
-      const storedGoals = localStorage.getItem(CAREER_GOALS_STORAGE_KEY);
-      if (storedGoals) {
-        const parsedGoals: (Omit<CareerGoal, 'deadline'> & { deadline?: string })[] = JSON.parse(storedGoals);
-        setGoals(parsedGoals.map(g => ({...g, deadline: g.deadline ? new Date(g.deadline) : undefined})));
-      } else {
-        setGoals(mockCareerGoals);
-      }
-    } catch (error) {
-      console.error("Failed to load goals from local storage", error);
-      setGoals(mockCareerGoals);
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      const serializableGoals = goals.map(g => ({...g, deadline: g.deadline?.toISOString()}));
+      const serializableGoals = data.map(g => ({...g, deadline: g.deadline?.toISOString()}));
       localStorage.setItem(CAREER_GOALS_STORAGE_KEY, JSON.stringify(serializableGoals));
     } catch (error) {
       console.error("Failed to save goals to local storage", error);
     }
-  }, [goals]);
+  };
+
+  const loadFromLocalStorage = (): CareerGoal[] => {
+    try {
+      const storedGoals = localStorage.getItem(CAREER_GOALS_STORAGE_KEY);
+      if (storedGoals) {
+        const parsedGoals: (Omit<CareerGoal, 'deadline'> & { deadline?: string })[] = JSON.parse(storedGoals);
+        return parsedGoals.map(g => ({...g, deadline: g.deadline ? new Date(g.deadline) : undefined}));
+      }
+    } catch (error) {
+      console.error("Failed to load goals from local storage", error);
+    }
+    return mockCareerGoals;
+  };
+  
+  useEffect(() => {
+    const loadGoals = async () => {
+      setIsLoading(true);
+      if (user) {
+        try {
+          const firestoreGoals = await getCareerGoals(user.uid);
+          setGoals(firestoreGoals);
+          syncToLocalStorage(firestoreGoals);
+        } catch (error) {
+          console.error("Failed to fetch from Firestore, loading from local storage.", error);
+          setGoals(loadFromLocalStorage());
+          toast({ title: "Offline Mode", description: "Could not connect to the server. Displaying locally saved data.", variant: "destructive"});
+        }
+      } else {
+        // No user, load from local storage
+        setGoals(loadFromLocalStorage());
+      }
+      setIsLoading(false);
+    };
+
+    loadGoals();
+  }, [user]);
 
   const handleOpenModal = (goal: CareerGoal | null) => {
     setEditingGoal(goal);
     setIsModalOpen(true);
   };
 
-  const handleDeleteGoal = (goalId: string) => {
-    setGoals(prevGoals => prevGoals.filter(goal => goal.id !== goalId));
-    toast({
-      title: "Goal Deleted",
-      description: "The career goal has been successfully removed.",
-    });
+  const handleDeleteGoal = async (goalId: string) => {
+    const originalGoals = goals;
+    const newGoals = goals.filter(goal => goal.id !== goalId);
+    setGoals(newGoals); // Optimistic update
+    
+    toast({ title: "Goal Deleted", description: "The career goal has been successfully removed." });
+    
+    syncToLocalStorage(newGoals);
+
+    if (user) {
+      try {
+        await deleteCareerGoal(user.uid, goalId);
+      } catch (error) {
+        console.error("Failed to delete goal from Firestore", error);
+        setGoals(originalGoals); // Revert UI
+        syncToLocalStorage(originalGoals);
+        toast({ title: "Error", description: "Failed to delete goal from the server. Please try again.", variant: "destructive" });
+      }
+    }
   };
 
-  const handleSaveGoal = (goalToSave: CareerGoal) => {
+  const handleSaveGoal = async (goalToSave: CareerGoal) => {
+    const originalGoals = goals;
     const goalExists = goals.some(g => g.id === goalToSave.id);
+    let newGoals: CareerGoal[];
+
     if (goalExists) {
-      setGoals(prevGoals => prevGoals.map(g => g.id === goalToSave.id ? goalToSave : g));
+      newGoals = goals.map(g => g.id === goalToSave.id ? goalToSave : g);
       toast({ title: "Goal Updated", description: "Your career goal has been successfully updated." });
     } else {
-      setGoals(prevGoals => [...prevGoals, goalToSave]);
+      newGoals = [...goals, goalToSave];
       toast({ title: "Goal Added", description: "A new career goal has been successfully added." });
     }
+
+    setGoals(newGoals); // Optimistic update
     setIsModalOpen(false);
     setEditingGoal(null);
+
+    syncToLocalStorage(newGoals);
+
+    if (user) {
+        try {
+            await saveCareerGoal(user.uid, goalToSave);
+        } catch (error) {
+            console.error("Failed to save goal to Firestore", error);
+            setGoals(originalGoals); // Revert UI
+            syncToLocalStorage(originalGoals);
+            toast({ title: "Error", description: "Failed to save goal to the server. Your changes have been saved locally.", variant: "destructive" });
+        }
+    }
   };
 
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-full"><LoadingSpinner size="lg" /></div>;
+  }
 
   return (
     <div className="space-y-6">

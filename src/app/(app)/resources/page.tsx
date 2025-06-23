@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import type { ResourceLink } from '@/types';
@@ -22,47 +23,64 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import EditResourceModal from '@/components/resources/EditResourceModal';
+import { useAuth } from '@/context/AuthContext';
+import { getBookmarkedResources, saveBookmarkedResource, deleteBookmarkedResource } from '@/services/resourcesService';
 
 const RESOURCES_STORAGE_KEY = 'futureSightBookmarkedResources';
 
 export default function ResourcesPage() {
+  const { user } = useAuth();
   const [bookmarkedResources, setBookmarkedResources] = useState<ResourceLink[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [aiSuggestedResources, setAiSuggestedResources] = useState<ResourceLink[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<ResourceLink | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
+  const syncToLocalStorage = (data: ResourceLink[]) => {
     try {
-      const storedResources = localStorage.getItem(RESOURCES_STORAGE_KEY);
-      if (storedResources) {
-        setBookmarkedResources(JSON.parse(storedResources));
-      } else {
-        setBookmarkedResources(mockResourceLinks);
-      }
-    } catch (error) {
-      console.error("Failed to load resources from local storage", error);
-      setBookmarkedResources(mockResourceLinks);
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-       localStorage.setItem(RESOURCES_STORAGE_KEY, JSON.stringify(bookmarkedResources));
+      localStorage.setItem(RESOURCES_STORAGE_KEY, JSON.stringify(data));
     } catch (error) {
       console.error("Failed to save resources to local storage", error);
     }
-  }, [bookmarkedResources]);
+  };
 
+  const loadFromLocalStorage = (): ResourceLink[] => {
+    try {
+      const storedResources = localStorage.getItem(RESOURCES_STORAGE_KEY);
+      return storedResources ? JSON.parse(storedResources) : mockResourceLinks;
+    } catch (error) {
+      console.error("Failed to load resources from local storage", error);
+      return mockResourceLinks;
+    }
+  };
+
+  useEffect(() => {
+    const loadResources = async () => {
+      setIsLoadingData(true);
+      if (user) {
+        try {
+          const firestoreResources = await getBookmarkedResources(user.uid);
+          setBookmarkedResources(firestoreResources);
+          syncToLocalStorage(firestoreResources);
+        } catch (error) {
+          console.error("Failed to fetch resources from Firestore, loading from local storage.", error);
+          setBookmarkedResources(loadFromLocalStorage());
+          toast({ title: "Offline Mode", description: "Could not connect to the server. Displaying locally saved resources.", variant: "destructive"});
+        }
+      } else {
+        setBookmarkedResources(loadFromLocalStorage());
+      }
+      setIsLoadingData(false);
+    };
+
+    loadResources();
+  }, [user]);
 
   const fetchAiSuggestions = async () => {
     if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
-      toast({
-        title: 'Feature Unavailable',
-        description: 'AI features are disabled in this static version of the app.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Feature Unavailable', description: 'AI features are disabled in this static version of the app.', variant: 'destructive' });
       return;
     }
 
@@ -97,28 +115,61 @@ export default function ResourcesPage() {
     setIsModalOpen(true);
   };
   
-  const handleDeleteResource = (resourceId: string) => {
-    setBookmarkedResources(prev => prev.filter(res => res.id !== resourceId));
-    toast({
-      title: "Resource Deleted",
-      description: "The bookmarked resource has been removed.",
-    });
+  const handleDeleteResource = async (resourceId: string) => {
+    const originalResources = bookmarkedResources;
+    const newResources = bookmarkedResources.filter(res => res.id !== resourceId);
+    setBookmarkedResources(newResources);
+
+    toast({ title: "Resource Deleted", description: "The bookmarked resource has been removed." });
+    syncToLocalStorage(newResources);
+
+    if (user) {
+        try {
+            await deleteBookmarkedResource(user.uid, resourceId);
+        } catch (error) {
+            console.error("Failed to delete resource from Firestore", error);
+            setBookmarkedResources(originalResources); // Revert
+            syncToLocalStorage(originalResources);
+            toast({ title: "Error", description: "Failed to delete resource from the server. Please try again.", variant: "destructive" });
+        }
+    }
   };
 
-  const handleSaveResource = (resourceToSave: ResourceLink) => {
+  const handleSaveResource = async (resourceToSave: ResourceLink) => {
+    const originalResources = bookmarkedResources;
     const resourceExists = bookmarkedResources.some(r => r.id === resourceToSave.id);
+    let newResources: ResourceLink[];
+    
     if (resourceExists) {
-      setBookmarkedResources(prev => prev.map(r => r.id === resourceToSave.id ? resourceToSave : r));
+      newResources = bookmarkedResources.map(r => r.id === resourceToSave.id ? resourceToSave : r);
       toast({ title: "Resource Updated", description: "Your bookmark has been successfully updated." });
     } else {
-      setBookmarkedResources(prev => [...prev, resourceToSave]);
+      newResources = [...bookmarkedResources, resourceToSave];
       toast({ title: "Resource Added", description: "New resource bookmarked successfully." });
     }
+
+    setBookmarkedResources(newResources);
     setIsModalOpen(false);
     setEditingResource(null);
+    syncToLocalStorage(newResources);
+
+    if (user) {
+        try {
+            await saveBookmarkedResource(user.uid, resourceToSave);
+        } catch (error) {
+            console.error("Failed to save resource to Firestore", error);
+            setBookmarkedResources(originalResources); // Revert
+            syncToLocalStorage(originalResources);
+            toast({ title: "Error", description: "Failed to save resource to the server. Your changes have been saved locally.", variant: "destructive" });
+        }
+    }
   };
 
   const allResources = [...bookmarkedResources, ...aiSuggestedResources];
+
+  if (isLoadingData) {
+    return <div className="flex justify-center items-center h-full"><LoadingSpinner size="lg" /></div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -144,7 +195,7 @@ export default function ResourcesPage() {
         </div>
       </div>
 
-      {allResources.length === 0 && !isLoadingSuggestions && (
+      {(allResources.length === 0 && !isLoadingSuggestions) && (
         <Card className="frosted-glass text-center p-8">
           <CardHeader>
             <CardTitle className="font-headline text-xl text-primary">No Resources Yet</CardTitle>

@@ -21,6 +21,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import EditSkillModal from '@/components/skills/EditSkillModal';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+import { getSkills, saveSkill, deleteSkill } from '@/services/skillsService';
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const proficiencyColors: Record<Skill['proficiency'], string> = {
   Beginner: 'bg-blue-500/80 border-blue-700 text-white',
@@ -32,63 +35,118 @@ const proficiencyColors: Record<Skill['proficiency'], string> = {
 const SKILLS_STORAGE_KEY = 'futureSightSkills';
 
 export default function SkillsPage() {
+  const { user } = useAuth();
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
+  const syncToLocalStorage = (data: Skill[]) => {
+    try {
+      const serializableSkills = data.map(s => ({...s, lastUpdated: s.lastUpdated.toISOString() }));
+      localStorage.setItem(SKILLS_STORAGE_KEY, JSON.stringify(serializableSkills));
+    } catch (error) {
+      console.error("Failed to save skills to local storage", error);
+    }
+  };
+
+  const loadFromLocalStorage = (): Skill[] => {
     try {
       const storedSkills = localStorage.getItem(SKILLS_STORAGE_KEY);
       if (storedSkills) {
         const parsedSkills: (Omit<Skill, 'lastUpdated'> & { lastUpdated?: string })[] = JSON.parse(storedSkills);
-        setSkills(parsedSkills.map(s => ({...s, lastUpdated: s.lastUpdated ? new Date(s.lastUpdated) : new Date() })));
-      } else {
-        setSkills(mockSkills);
+        return parsedSkills.map(s => ({...s, lastUpdated: s.lastUpdated ? new Date(s.lastUpdated) : new Date() }));
       }
     } catch (error) {
       console.error("Failed to load skills from local storage", error);
-      setSkills(mockSkills);
     }
-  }, []);
+    return mockSkills;
+  };
 
   useEffect(() => {
-    try {
-       const serializableSkills = skills.map(s => ({...s, lastUpdated: s.lastUpdated.toISOString() }));
-       localStorage.setItem(SKILLS_STORAGE_KEY, JSON.stringify(serializableSkills));
-    } catch (error) {
-      console.error("Failed to save skills to local storage", error);
-    }
-  }, [skills]);
+    const loadSkills = async () => {
+      setIsLoading(true);
+      if (user) {
+        try {
+          const firestoreSkills = await getSkills(user.uid);
+          setSkills(firestoreSkills);
+          syncToLocalStorage(firestoreSkills);
+        } catch (error) {
+          console.error("Failed to fetch skills from Firestore, loading from local storage.", error);
+          setSkills(loadFromLocalStorage());
+          toast({ title: "Offline Mode", description: "Could not connect to the server. Displaying locally saved skills.", variant: "destructive"});
+        }
+      } else {
+        setSkills(loadFromLocalStorage());
+      }
+      setIsLoading(false);
+    };
+
+    loadSkills();
+  }, [user]);
 
   const handleOpenModal = (skill: Skill | null) => {
     setEditingSkill(skill);
     setIsModalOpen(true);
   };
 
-  const handleDeleteSkill = (skillId: string) => {
-    setSkills(prevSkills => prevSkills.filter(skill => skill.id !== skillId));
-    toast({
-      title: "Skill Deleted",
-      description: "The skill has been successfully removed.",
-    });
+  const handleDeleteSkill = async (skillId: string) => {
+    const originalSkills = skills;
+    const newSkills = skills.filter(skill => skill.id !== skillId);
+    setSkills(newSkills); // Optimistic update
+
+    toast({ title: "Skill Deleted", description: "The skill has been successfully removed." });
+    syncToLocalStorage(newSkills);
+
+    if (user) {
+      try {
+        await deleteSkill(user.uid, skillId);
+      } catch (error) {
+        console.error("Failed to delete skill from Firestore", error);
+        setSkills(originalSkills); // Revert
+        syncToLocalStorage(originalSkills);
+        toast({ title: "Error", description: "Failed to delete skill from the server. Please try again.", variant: "destructive" });
+      }
+    }
   };
 
-  const handleSaveSkill = (skillToSave: Skill) => {
+  const handleSaveSkill = async (skillToSave: Skill) => {
     const now = new Date();
     const skillWithDate = { ...skillToSave, lastUpdated: now };
-
+    
+    const originalSkills = skills;
     const skillExists = skills.some(s => s.id === skillWithDate.id);
+    let newSkills: Skill[];
+    
     if (skillExists) {
-      setSkills(prevSkills => prevSkills.map(s => s.id === skillWithDate.id ? skillWithDate : s));
+      newSkills = skills.map(s => s.id === skillWithDate.id ? skillWithDate : s);
       toast({ title: "Skill Updated", description: "Your skill has been successfully updated." });
     } else {
-      setSkills(prevSkills => [...prevSkills, skillWithDate]);
+      newSkills = [...skills, skillWithDate];
       toast({ title: "Skill Added", description: "A new skill has been successfully added." });
     }
+
+    setSkills(newSkills);
     setIsModalOpen(false);
     setEditingSkill(null);
+    syncToLocalStorage(newSkills);
+    
+    if (user) {
+      try {
+        await saveSkill(user.uid, skillWithDate);
+      } catch (error) {
+        console.error("Failed to save skill to Firestore", error);
+        setSkills(originalSkills); // Revert
+        syncToLocalStorage(originalSkills);
+        toast({ title: "Error", description: "Failed to save skill to the server. Your changes have been saved locally.", variant: "destructive" });
+      }
+    }
   };
+
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-full"><LoadingSpinner size="lg" /></div>;
+  }
 
   return (
     <div className="space-y-6">
