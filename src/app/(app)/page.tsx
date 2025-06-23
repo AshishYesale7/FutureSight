@@ -327,13 +327,7 @@ export default function ActualDashboardPage() {
 
   return (
     <div className={cn("space-y-8 h-full flex flex-col")}>
-      <div>
-        <h1 className="font-headline text-3xl font-semibold text-primary">Your Career Dashboard</h1>
-        <p className="text-foreground/80">
-          Visualize your milestones, track your progress, and plan your journey to success.
-        </p>
-      </div>
-
+      
       <TodaysPlanCard />
 
       <Tabs
