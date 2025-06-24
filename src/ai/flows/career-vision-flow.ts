@@ -15,8 +15,8 @@ const GenerateCareerVisionPayloadSchema = z.object({
   aspirations: z.string().describe("A description of the user's passions, interests, and what they want to solve or achieve."),
 });
 
-// The Zod schema for the full input to the exported function, including the optional API key.
-export const GenerateCareerVisionInputSchema = GenerateCareerVisionPayloadSchema.extend({
+// The Zod schema for the full input, which is now private to this file.
+const GenerateCareerVisionInputSchema = GenerateCareerVisionPayloadSchema.extend({
   apiKey: z.string().optional().describe("Optional user-provided Gemini API key."),
 });
 export type GenerateCareerVisionInput = z.infer<typeof GenerateCareerVisionInputSchema>;
