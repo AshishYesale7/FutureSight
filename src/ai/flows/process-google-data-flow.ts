@@ -10,7 +10,7 @@
  * - ProcessGoogleDataOutput - The return type for the processGoogleData function.
  */
 
-import {ai} from '@/ai/genkit';
+import { generateWithApiKey } from '@/ai/genkit';
 import {z} from 'genkit';
 
 // Schemas for Google API Data (adapt as needed for actual API responses)
@@ -20,7 +20,7 @@ const RawCalendarEventSchema = z.object({
   description: z.string().optional().describe("Detailed description of the event."),
   startDateTime: z.string().datetime().describe("Start date and time of the event (ISO 8601 format). For all-day events, this might be just the date part, ensure to handle as start of day if time is missing."),
   endDateTime: z.string().datetime().describe("End date and time of the event (ISO 8601 format). For all-day events, this might be the start of the next day, or just the date part."),
-  htmlLink: z.string().url().optional().describe("Link to the event in Google Calendar.")
+  htmlLink: z.string().optional().describe("Link to the event in Google Calendar.")
 });
 
 const RawGmailMessageSchema = z.object({
@@ -28,16 +28,20 @@ const RawGmailMessageSchema = z.object({
   subject: z.string().describe("Subject line of the email."),
   snippet: z.string().describe("A short snippet of the email content."),
   internalDate: z.string().describe("The internal SAPI date of the message as epoch milliseconds string."), // Gmail API often returns this as string of epoch ms
-  link: z.string().url().optional().describe("A link to open the email in Gmail.")
+  link: z.string().optional().describe("A link to open the email in Gmail.")
 });
 
-const ProcessGoogleDataInputSchema = z.object({
+const ProcessGoogleDataPayloadSchema = z.object({
   calendarEvents: z.array(RawCalendarEventSchema)
     .optional()
     .describe("A list of Google Calendar events for a relevant period. Can be empty."),
   gmailMessages: z.array(RawGmailMessageSchema)
     .optional()
     .describe("A list of potentially important Gmail messages for a relevant period. Can be empty.")
+});
+
+const ProcessGoogleDataInputSchema = ProcessGoogleDataPayloadSchema.extend({
+  apiKey: z.string().optional().describe("Optional user-provided Gemini API key."),
 });
 export type ProcessGoogleDataInput = z.infer<typeof ProcessGoogleDataInputSchema>;
 
@@ -62,46 +66,44 @@ export async function processGoogleData(input: ProcessGoogleDataInput): Promise<
   if ((!input.calendarEvents || input.calendarEvents.length === 0) && (!input.gmailMessages || input.gmailMessages.length === 0)) {
     return { insights: [] };
   }
-  return processGoogleDataFlow(input);
-}
 
-const processPrompt = ai.definePrompt({
-  name: 'processGoogleDataPrompt',
-  input: { schema: ProcessGoogleDataInputSchema.extend({ currentDate: z.string().datetime() }) },
-  output: { schema: ProcessGoogleDataOutputSchema },
-  prompt: `You are an expert personal assistant AI. Your task is to analyze a user's Google Calendar events and Gmail messages to identify important upcoming events, deadlines, tasks, and actionable information.
+  const currentDate = new Date().toISOString();
+
+  let calendarEventsSection = 'No calendar events provided.';
+  if (input.calendarEvents && input.calendarEvents.length > 0) {
+    calendarEventsSection = input.calendarEvents.map(event => `
+- Event ID: ${event.id}
+  Title: ${event.summary}
+  Description: ${event.description || ''}
+  Starts (ISO 8601): ${event.startDateTime}
+  Ends (ISO 8601): ${event.endDateTime}
+  Link: ${event.htmlLink || ''}
+`).join('');
+  }
+
+  let gmailMessagesSection = 'No Gmail messages provided.';
+  if (input.gmailMessages && input.gmailMessages.length > 0) {
+    gmailMessagesSection = input.gmailMessages.map(msg => `
+- Message ID: ${msg.id}
+  Subject: ${msg.subject}
+  Snippet: ${msg.snippet}
+  Received Date (Epoch MS): ${msg.internalDate}
+  Link: ${msg.link || ''}
+`).join('');
+  }
+
+  const promptText = `You are an expert personal assistant AI. Your task is to analyze a user's Google Calendar events and Gmail messages to identify important upcoming events, deadlines, tasks, and actionable information.
 
 Context:
-- Today's date is {{currentDate}}.
+- Today's date is ${currentDate}.
 - The user wants to track important items from their Google Calendar and Gmail.
 
 Provided Data:
-{{#if calendarEvents}}
 Google Calendar Events:
-{{#each calendarEvents}}
-- Event ID: {{{id}}}
-  Title: {{{summary}}}
-  Description: {{{description}}}
-  Starts (ISO 8601): {{{startDateTime}}}
-  Ends (ISO 8601): {{{endDateTime}}}
-  Link: {{{htmlLink}}}
-{{/each}}
-{{else}}
-No calendar events provided.
-{{/if}}
+${calendarEventsSection}
 
-{{#if gmailMessages}}
 Gmail Messages:
-{{#each gmailMessages}}
-- Message ID: {{{id}}}
-  Subject: {{{subject}}}
-  Snippet: {{{snippet}}}
-  Received Date (Epoch MS): {{{internalDate}}}
-  Link: {{{link}}}
-{{/each}}
-{{else}}
-No Gmail messages provided.
-{{/if}}
+${gmailMessagesSection}
 
 Instructions:
 1.  Review all provided calendar events and Gmail messages.
@@ -118,29 +120,25 @@ Instructions:
     b.  Gmail messages are not typically all-day events in this context; omit 'isAllDay' or set to false.
 7.  Create a brief 'summary' for each insight. For emails, summarize the key point from the subject and snippet. For calendar events, use the event description or summarize its purpose. If a specific time is crucial (e.g., "Deadline: Today 5:00 PM") and not adequately covered in the title, mention it in the summary.
 8.  Set the 'source' field to either 'google_calendar' or 'gmail'.
-9.  Construct the 'id' for each insight by prefixing the original ID with 'cal:' for calendar events (e.g., 'cal:{{{id}}}') or 'mail:' for Gmail messages (e.g., 'mail:{{{id}}}').
+9.  Construct the 'id' for each insight by prefixing the original ID with 'cal:' for calendar events or 'mail:' for Gmail messages.
 10. If an 'originalLink' is available in the source data (htmlLink for calendar, link for gmail), include it. Ensure it's a valid URL.
 11. If an email appears to be a newsletter, promotional content, or not directly actionable, you may choose to omit it or provide a very brief, low-priority insight. Focus on what helps the user manage their time and tasks.
 12. Structure your output according to the 'ActionableInsightSchema'.
 
 Generate the list of actionable insights.
-`,
-});
+`;
 
-const processGoogleDataFlow = ai.defineFlow(
-  {
-    name: 'processGoogleDataFlow',
-    inputSchema: ProcessGoogleDataInputSchema,
-    outputSchema: ProcessGoogleDataOutputSchema,
-  },
-  async (input) => {
-    const currentDate = new Date().toISOString();
-    const { output } = await processPrompt({ ...input, currentDate });
+  const { output } = await generateWithApiKey(input.apiKey, {
+    model: 'googleai/gemini-2.0-flash',
+    prompt: promptText,
+    output: {
+      schema: ProcessGoogleDataOutputSchema,
+    },
+  });
 
-    if (!output) {
-      console.warn('AI did not return expected output for processGoogleDataFlow.');
-      return { insights: [] };
-    }
-    return output;
+  if (!output) {
+    console.warn('AI did not return expected output for processGoogleDataFlow.');
+    return { insights: [] };
   }
-);
+  return output;
+}

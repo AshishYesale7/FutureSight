@@ -142,7 +142,7 @@ export default function ActualDashboardPage() {
     };
 
     fetchQuote();
-  }, []); // Empty dependency array ensures it runs only once on mount.
+  }, [apiKey]); // Added apiKey dependency
 
 
   useEffect(() => {
@@ -186,10 +186,10 @@ export default function ActualDashboardPage() {
   };
 
   const handleFetchAndProcessGoogleData = async () => {
-    if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+    if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
       toast({
         title: 'Feature Unavailable',
-        description: 'AI features are disabled in this static version of the app.',
+        description: 'AI features are disabled. Please provide an API key in settings to enable them.',
         variant: 'destructive',
       });
       return;
@@ -207,6 +207,7 @@ export default function ActualDashboardPage() {
       const input: ProcessGoogleDataInput = {
         calendarEvents: mockRawCalendarEvents,
         gmailMessages: mockRawGmailMessages,
+        apiKey,
       };
       const result = await processGoogleData(input);
 
