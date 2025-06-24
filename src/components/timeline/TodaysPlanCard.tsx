@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -14,11 +13,13 @@ import { generateMotivationalQuote } from '@/ai/flows/motivational-quote';
 import { mockTodaysPlan } from '@/data/mock';
 import type { TodaysPlan } from '@/types';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { useApiKey } from '@/hooks/use-api-key';
 
 export default function TodaysPlanCard() {
   const [quote, setQuote] = useState('');
   const [isLoadingQuote, setIsLoadingQuote] = useState(true);
   const [todaysPlan, setTodaysPlan] = useState<TodaysPlan>(mockTodaysPlan);
+  const { apiKey } = useApiKey();
 
   useEffect(() => {
     fetchQuote();
@@ -26,13 +27,16 @@ export default function TodaysPlanCard() {
 
   const fetchQuote = async () => {
     setIsLoadingQuote(true);
-    if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+    if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
       setQuote("The journey of a thousand miles begins with a single step.");
       setIsLoadingQuote(false);
       return;
     }
     try {
-      const result = await generateMotivationalQuote({ topic: 'achieving daily goals and academic success' });
+      const result = await generateMotivationalQuote({ 
+        topic: 'achieving daily goals and academic success',
+        apiKey
+      });
       setQuote(result.quote);
     } catch (error) {
       console.error('Error fetching motivational quote:', error);

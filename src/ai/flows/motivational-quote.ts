@@ -4,42 +4,42 @@
  * @fileOverview A motivational quote AI agent.
  *
  * - generateMotivationalQuote - A function that generates a motivational quote.
- * - MotivationalQuoteInput - The input type for the generateMotivationalQuote function.
- * - MotivationalQuoteOutput - The return type for the generateMotivationalQuote function.
+ * - GenerateMotivationalQuoteInput - The input type for the generateMotivationalQuote function.
+ * - GenerateMotivationalQuoteOutput - The return type for the generateMotivationalQuote function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { generateWithApiKey } from '@/ai/genkit';
+import { z } from 'genkit';
 
-const MotivationalQuoteInputSchema = z.object({
+const GenerateMotivationalQuotePayloadSchema = z.object({
   topic: z.string().describe('The topic to generate a motivational quote about.'),
 });
-export type MotivationalQuoteInput = z.infer<typeof MotivationalQuoteInputSchema>;
 
-const MotivationalQuoteOutputSchema = z.object({
+// Full input schema including optional API key
+const GenerateMotivationalQuoteInputSchema = GenerateMotivationalQuotePayloadSchema.extend({
+    apiKey: z.string().optional().describe("Optional user-provided Gemini API key."),
+});
+export type GenerateMotivationalQuoteInput = z.infer<typeof GenerateMotivationalQuoteInputSchema>;
+
+const GenerateMotivationalQuoteOutputSchema = z.object({
   quote: z.string().describe('A motivational quote.'),
 });
-export type MotivationalQuoteOutput = z.infer<typeof MotivationalQuoteOutputSchema>;
+export type GenerateMotivationalQuoteOutput = z.infer<typeof GenerateMotivationalQuoteOutputSchema>;
 
-export async function generateMotivationalQuote(input: MotivationalQuoteInput): Promise<MotivationalQuoteOutput> {
-  return motivationalQuoteFlow(input);
-}
+export async function generateMotivationalQuote(input: GenerateMotivationalQuoteInput): Promise<GenerateMotivationalQuoteOutput> {
+  const promptText = `You are a motivational speaker. Generate a short motivational quote about the following topic: ${input.topic}`;
 
-const prompt = ai.definePrompt({
-  name: 'motivationalQuotePrompt',
-  input: {schema: MotivationalQuoteInputSchema},
-  output: {schema: MotivationalQuoteOutputSchema},
-  prompt: `You are a motivational speaker. Generate a short motivational quote about the following topic: {{{topic}}}`,
-});
+  const { output } = await generateWithApiKey(input.apiKey, {
+    model: 'googleai/gemini-2.0-flash',
+    prompt: promptText,
+    output: {
+      schema: GenerateMotivationalQuoteOutputSchema,
+    },
+  });
 
-const motivationalQuoteFlow = ai.defineFlow(
-  {
-    name: 'motivationalQuoteFlow',
-    inputSchema: MotivationalQuoteInputSchema,
-    outputSchema: MotivationalQuoteOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  if (!output) {
+    throw new Error("The AI model did not return a valid quote.");
   }
-);
+  
+  return output;
+}

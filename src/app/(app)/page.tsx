@@ -21,6 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { generateMotivationalQuote } from '@/ai/flows/motivational-quote';
+import { useApiKey } from '@/hooks/use-api-key';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 
@@ -63,6 +64,7 @@ export default function ActualDashboardPage() {
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [todaysPlanQuote, setTodaysPlanQuote] = useState('');
   const [isLoadingQuote, setIsLoadingQuote] = useState(true);
+  const { apiKey } = useApiKey();
 
   const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(() => {
     if (typeof window === 'undefined') {
@@ -120,13 +122,16 @@ export default function ActualDashboardPage() {
 
     const fetchQuote = async () => {
       setIsLoadingQuote(true);
-      if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+      if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
           setTodaysPlanQuote("The journey of a thousand miles begins with a single step.");
           setIsLoadingQuote(false);
           return;
       }
       try {
-        const result = await generateMotivationalQuote({ topic: 'achieving daily goals and academic success' });
+        const result = await generateMotivationalQuote({ 
+          topic: 'achieving daily goals and academic success',
+          apiKey 
+        });
         setTodaysPlanQuote(result.quote);
       } catch (error) {
         console.error('Error fetching motivational quote:', error);
