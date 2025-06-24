@@ -8,6 +8,13 @@ import { auth } from '@/lib/firebase';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AlertCircle } from 'lucide-react';
 
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 const isFirebaseConfigured = !!auth;
 
 const MissingConfiguration = () => (
