@@ -6,32 +6,56 @@ import type { ReactNode } from 'react';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import { AlertCircle } from 'lucide-react';
 
-interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-}
+const isFirebaseConfigured = !!auth;
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const MissingConfiguration = () => (
+  <div className="flex items-center justify-center min-h-screen bg-background text-foreground p-8">
+    <div className="text-center max-w-2xl bg-card border border-destructive/50 p-8 rounded-lg shadow-lg">
+      <AlertCircle className="mx-auto h-12 w-12 text-destructive mb-4" />
+      <h1 className="text-2xl font-bold text-destructive mb-2">Configuration Error</h1>
+      <p className="mb-4 text-card-foreground/80">
+        The application cannot connect to Firebase. This is because one or more
+        required API keys are missing from your environment configuration.
+      </p>
+      <p className="mb-6 text-card-foreground/80">
+        Please copy your Firebase project credentials into the <strong>.env</strong> file at the root of this project to continue.
+      </p>
+      <div className="bg-muted text-left p-4 rounded-md text-sm text-muted-foreground overflow-x-auto">
+        <p className="font-mono">GEMINI_API_KEY=...</p>
+        <p className="font-mono">NEXT_PUBLIC_FIREBASE_API_KEY=...</p>
+        <p className="font-mono">NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...</p>
+        <p className="font-mono">NEXT_PUBLIC_FIREBASE_PROJECT_ID=...</p>
+        <p className="font-mono">NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...</p>
+        <p className="font-mono">NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...</p>
+        <p className="font-mono">NEXT_PUBLIC_FIREBASE_APP_ID=...</p>
+      </div>
+    </div>
+  </div>
+);
+
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true); // Firebase auth state is initially loading
-  const [mounted, setMounted] = useState(false); // Tracks if the component has mounted on the client
+  const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true); // Component has mounted
+    setMounted(true);
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      setLoading(false); // Firebase auth state has been determined
+      setLoading(false);
     });
     return () => unsubscribe();
   }, []);
 
-  // Before component is mounted on client, or while Firebase auth is loading, show spinner.
-  // This ensures server and initial client render are consistent.
-  if (!mounted || loading) {
+  if (!mounted) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <LoadingSpinner size="lg" />
@@ -39,9 +63,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
   }
 
-  // If mounted and Firebase auth is resolved, render the context provider and children
+  if (!isFirebaseConfigured) {
+    return <MissingConfiguration />;
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading: false }}> {/* Ensure loading is false here once resolved */}
+    <AuthContext.Provider value={{ user, loading }}>
       {children}
     </AuthContext.Provider>
   );
