@@ -1,11 +1,11 @@
 
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import type { NewsArticle } from '@/types';
 import { allMockNewsArticles } from '@/data/mock';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Newspaper, ExternalLink, Bot, Rss, Tags } from 'lucide-react';
+import { Newspaper, ExternalLink, Bot, Rss, Tags, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import Image from 'next/image';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { summarizeNews } from '@/ai/flows/summarize-news-flow';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useApiKey } from '@/hooks/use-api-key';
 
 const KEYWORDS_STORAGE_KEY = 'futureSightNewsKeywords';
 const ALL_KEYWORDS = ['AI', 'Software Engineering', 'GATE', 'CAT', 'Internships', 'Opportunities', 'Exams', 'Research', 'Skills', 'Google'];
@@ -24,6 +25,7 @@ export default function NewsPage() {
   const [summarizedContent, setSummarizedContent] = useState<Record<string, string>>({});
   const { toast } = useToast();
   const [isMounted, setIsMounted] = useState(false);
+  const { apiKey } = useApiKey();
 
   useEffect(() => {
     setIsMounted(true);
@@ -64,10 +66,10 @@ export default function NewsPage() {
   };
 
   const handleSummarize = async (article: NewsArticle) => {
-    if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+    if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
       toast({
         title: 'Feature Unavailable',
-        description: 'AI features are disabled in this static version of the app.',
+        description: 'AI features are disabled. Please provide an API key in settings to enable them.',
         variant: 'destructive',
       });
       return;
@@ -75,7 +77,11 @@ export default function NewsPage() {
 
     setSummarizingArticleId(article.id);
     try {
-      const result = await summarizeNews({ title: article.title, content: article.summary });
+      const result = await summarizeNews({ 
+          title: article.title, 
+          content: article.summary,
+          apiKey
+      });
       setSummarizedContent(prev => ({ ...prev, [article.id]: result.summary }));
     } catch (error) {
       console.error('Error summarizing article:', error);
@@ -88,6 +94,25 @@ export default function NewsPage() {
       setSummarizingArticleId(null);
     }
   };
+
+  const getSummarizeButtonContent = (articleId: string) => {
+      if(summarizingArticleId === articleId) {
+          return <>
+              <LoadingSpinner size="sm" className="mr-2"/>
+              Summarizing...
+          </>;
+      }
+      if(summarizedContent[articleId]) {
+          return <>
+              <CheckCircle className="mr-2 h-4 w-4"/>
+              Summarized
+          </>
+      }
+      return <>
+          <Bot className="mr-2 h-4 w-4" />
+          Summarize with AI
+      </>
+  }
 
   return (
     <div className="space-y-6">
@@ -118,7 +143,7 @@ export default function NewsPage() {
               variant={selectedKeywords.has(keyword) ? 'default' : 'secondary'}
               onClick={() => handleKeywordToggle(keyword)}
               className={cn(
-                "cursor-pointer transition-all text-sm py-1 px-3",
+                "cursor-pointer transition-all text-sm py-1.5 px-3",
                 selectedKeywords.has(keyword) ? 'bg-accent text-accent-foreground hover:bg-accent/90' : 'hover:bg-secondary/80'
               )}
             >
@@ -145,36 +170,35 @@ export default function NewsPage() {
             )}
             <CardHeader>
               <CardTitle className="font-headline text-xl text-primary">{article.title}</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground flex justify-between items-center">
+              <CardDescription className="text-xs text-muted-foreground flex justify-between items-center pt-1">
                 <span>{article.source} - {format(article.publishedDate, 'MMM d, yyyy')}</span>
                  <div className="flex gap-1">
                     {article.tags?.slice(0, 2).map(tag => (
-                      <Badge key={tag} variant="outline" className="px-1.5 py-0 text-[10px]">{tag}</Badge>
+                      <Badge key={tag} variant="outline" className="px-1.5 py-0.5 text-[10px]">{tag}</Badge>
                     ))}
                   </div>
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow space-y-3">
-              <p className="text-sm text-foreground/80 line-clamp-3">{article.summary}</p>
-              {summarizingArticleId === article.id && (
-                 <div className="flex items-center space-x-2 text-sm text-primary p-3 bg-primary/5 rounded-md">
-                  <LoadingSpinner size="sm" />
-                  <span>Generating AI summary...</span>
-                </div>
-              )}
+              <p className="text-sm text-foreground/80 line-clamp-4">{article.summary}</p>
+              
               {summarizedContent[article.id] && (
-                 <div className="mt-2 p-3 bg-primary/5 rounded-md border border-primary/20 animate-in fade-in duration-500">
-                    <h4 className="text-sm font-semibold text-primary flex items-center mb-1">
-                      <Bot className="mr-2 h-4 w-4 flex-shrink-0" /> AI Summary
+                 <div className="mt-2 p-4 bg-primary/5 rounded-md border border-primary/20 animate-in fade-in duration-500">
+                    <h4 className="text-base font-semibold text-primary flex items-center mb-2">
+                      <Bot className="mr-2 h-5 w-5 flex-shrink-0" /> AI-Generated Summary
                     </h4>
-                    <p className="text-sm text-foreground/90">{summarizedContent[article.id]}</p>
+                    <p className="text-sm text-foreground/90 leading-relaxed">{summarizedContent[article.id]}</p>
                  </div>
               )}
             </CardContent>
-            <CardFooter className="flex justify-between items-center bg-background/20 py-3 px-4 rounded-b-lg">
-              <Button variant="outline" size="sm" onClick={() => handleSummarize(article)} disabled={!!summarizingArticleId}>
-                <Bot className="mr-2 h-4 w-4" />
-                {summarizingArticleId === article.id ? 'Summarizing...' : 'Summarize with AI'}
+            <CardFooter className="flex justify-between items-center bg-background/20 py-3 px-4 rounded-b-lg mt-auto">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => handleSummarize(article)} 
+                disabled={!!summarizingArticleId || !!summarizedContent[article.id]}
+              >
+                {getSummarizeButtonContent(article.id)}
               </Button>
               <a href={article.url} target="_blank" rel="noopener noreferrer">
                 <Button variant="ghost" size="sm" className="text-accent hover:text-accent/80">
