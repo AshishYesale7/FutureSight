@@ -37,6 +37,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useState, useEffect } from 'react'; 
 import CustomizeThemeModal from './CustomizeThemeModal';
 import ProfileModal from './ProfileModal';
+import SettingsModal from './SettingsModal';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -54,6 +55,7 @@ export default function SidebarNav() {
   const { theme, toggleTheme } = useTheme();
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   useEffect(() => {
@@ -141,7 +143,7 @@ export default function SidebarNav() {
                 {isFullScreen ? <Shrink className="mr-2 h-4 w-4" /> : <Expand className="mr-2 h-4 w-4" />}
                 <span>{isFullScreen ? 'Exit Fullscreen' : 'Go Fullscreen'}</span>
               </DropdownMenuItem>
-              <DropdownMenuItem disabled>
+              <DropdownMenuItem onClick={() => setIsSettingsModalOpen(true)}>
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
@@ -161,6 +163,10 @@ export default function SidebarNav() {
       <ProfileModal
         isOpen={isProfileModalOpen}
         onOpenChange={setIsProfileModalOpen}
+      />
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onOpenChange={setIsSettingsModalOpen}
       />
     </>
   );

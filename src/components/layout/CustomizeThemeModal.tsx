@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, type ChangeEvent, useEffect } from 'react';
@@ -16,14 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTheme } from '@/hooks/use-theme';
 import { useToast } from '@/hooks/use-toast';
-import { ImageUp, Link, Trash2, Palette, Slash, Paintbrush, Text, Sparkles, Box, Droplets, Layers, KeyRound } from 'lucide-react';
+import { ImageUp, Link, Trash2, Palette, Slash, Paintbrush, Text, Sparkles, Box, Droplets, Layers } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { ColorPickerPopover } from '../ui/ColorPickerPopover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import type { GlassEffect } from '@/context/ThemeContext';
 import { Slider } from '@/components/ui/slider';
-import { useApiKey } from '@/hooks/use-api-key';
 
 interface CustomizeThemeModalProps {
   isOpen: boolean;
@@ -61,14 +59,12 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     glassEffectSettings,
     setGlassEffectSettings,
   } = useTheme();
-  const { apiKey: currentApiKey, setApiKey } = useApiKey();
   
   const { toast } = useToast();
   const [imageUrl, setImageUrl] = useState('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [initialThemeValues, setInitialThemeValues] = useState<Record<string, string>>({});
-  const [apiKeyInput, setApiKeyInput] = useState(currentApiKey || '');
 
   useEffect(() => {
     if (isOpen && isMounted) {
@@ -81,13 +77,6 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     }
   }, [isOpen, isMounted, currentThemeMode]);
 
-  useEffect(() => {
-    // Sync input field if modal opens and key has changed elsewhere
-    if (isOpen) {
-        setApiKeyInput(currentApiKey || '');
-    }
-  }, [currentApiKey, isOpen]);
-
   const handleUrlApply = () => {
     if (!imageUrl.trim()) {
       toast({ title: 'Error', description: 'Please enter an image URL.', variant: 'destructive' });
@@ -96,6 +85,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     try {
       new URL(imageUrl);
       setBackgroundImage(imageUrl);
+      setBackgroundColor(null); // Remove any solid color when applying an image
       toast({ title: 'Success', description: 'Background image updated from URL.' });
       onOpenChange(false);
       resetForm();
@@ -121,6 +111,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
   const handleFileUploadApply = () => {
     if (previewUrl) {
       setBackgroundImage(previewUrl);
+      setBackgroundColor(null); // Remove any solid color when applying an image
       toast({ title: 'Success', description: 'Background image uploaded.' });
       onOpenChange(false);
       resetForm();
@@ -129,8 +120,7 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
 
   const handleReset = () => {
     resetCustomizations();
-    setApiKey(null);
-    toast({ title: 'Success', description: 'All customizations have been reset to default.' });
+    toast({ title: 'Success', description: 'Theme customizations have been reset to default.' });
     onOpenChange(false);
     resetForm();
   };
@@ -151,18 +141,6 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
 
   const handleBackgroundColorSelect = (colorValue: string | null) => {
     setBackgroundColor(colorValue);
-  };
-  
-  const handleApiKeySave = () => {
-    const trimmedKey = apiKeyInput.trim();
-    setApiKey(trimmedKey ? trimmedKey : null);
-    toast({
-        title: trimmedKey ? 'API Key Saved' : 'API Key Cleared',
-        description: trimmedKey
-            ? 'Your custom Gemini API key has been saved.'
-            : 'The app will use its fallback key if available.',
-    });
-    onOpenChange(false);
   };
 
   const resetForm = () => {
@@ -342,36 +320,11 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
               Choose a custom color or click the slash icon to restore the default background image.
             </p>
           </div>
-          
-          <Separator />
-
-          {/* API Key Section */}
-          <div className="space-y-3">
-              <Label className="font-semibold text-base flex items-center text-primary">
-                  <KeyRound className="mr-2 h-4 w-4" /> Gemini API Key
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                  Provide your own Google Gemini API key. Your key is saved only in your browser and is never sent to our servers.
-              </p>
-              <div className="space-y-2">
-                  <Label htmlFor="geminiApiKey" className="text-sm">Your API Key</Label>
-                  <Input 
-                      id="geminiApiKey" 
-                      type="password" 
-                      placeholder="Enter your Gemini API key" 
-                      value={apiKeyInput} 
-                      onChange={(e) => setApiKeyInput(e.target.value)}
-                  />
-              </div>
-              <Button onClick={handleApiKeySave} className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                  Save API Key
-              </Button>
-          </div>
         </div>
 
         <DialogFooter className="p-4 pt-3 border-t border-border/30 flex-row justify-between w-full">
            <Button onClick={handleReset} variant="destructive" size="sm">
-            <Trash2 className="mr-2 h-4 w-4" /> Reset All
+            <Trash2 className="mr-2 h-4 w-4" /> Reset Theme
           </Button>
           <DialogClose asChild>
             <Button type="button" variant="outline" size="sm" onClick={resetForm}>
