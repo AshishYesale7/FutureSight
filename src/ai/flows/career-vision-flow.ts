@@ -8,13 +8,19 @@
  * - GenerateCareerVisionOutput - The return type for the generateCareerVision function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { ai, generateWithApiKey } from '@/ai/genkit';
+import { z } from 'genkit';
 
-const GenerateCareerVisionInputSchema = z.object({
+const GenerateCareerVisionPayloadSchema = z.object({
   aspirations: z.string().describe("A description of the user's passions, interests, and what they want to solve or achieve."),
 });
+
+// The Zod schema for the full input to the exported function, including the optional API key.
+export const GenerateCareerVisionInputSchema = GenerateCareerVisionPayloadSchema.extend({
+  apiKey: z.string().optional().describe("Optional user-provided Gemini API key."),
+});
 export type GenerateCareerVisionInput = z.infer<typeof GenerateCareerVisionInputSchema>;
+
 
 const GenerateCareerVisionOutputSchema = z.object({
   visionStatement: z.string().describe("A compelling, single-paragraph career vision statement based on the user's input."),
@@ -25,27 +31,34 @@ export async function generateCareerVision(input: GenerateCareerVisionInput): Pr
   return careerVisionFlow(input);
 }
 
-const prompt = ai.definePrompt({
-  name: 'careerVisionPrompt',
-  input: {schema: GenerateCareerVisionInputSchema},
-  output: {schema: GenerateCareerVisionOutputSchema},
-  prompt: `You are an expert career coach. A user has provided a description of their passions and aspirations. Your task is to synthesize this into a single, compelling career vision statement. The statement should be inspiring, concise, and professional.
-
-User's Aspirations:
-{{{aspirations}}}
-
-Generate the career vision statement.
-`,
-});
-
 const careerVisionFlow = ai.defineFlow(
   {
     name: 'careerVisionFlow',
-    inputSchema: GenerateCareerVisionInputSchema,
+    inputSchema: GenerateCareerVisionInputSchema, // Flow now accepts the key
     outputSchema: GenerateCareerVisionOutputSchema,
   },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  async (input) => {
+    // Construct the prompt string manually
+    const promptText = `You are an expert career coach. A user has provided a description of their passions and aspirations. Your task is to synthesize this into a single, compelling career vision statement. The statement should be inspiring, concise, and professional.
+
+User's Aspirations:
+${input.aspirations}
+
+Generate the career vision statement.`;
+    
+    // Call the helper with the key and the generate request
+    const { output } = await generateWithApiKey(input.apiKey, {
+      model: ai.model('googleai/gemini-2.0-flash'), // Use the default model from the ai instance
+      prompt: promptText,
+      output: {
+        schema: GenerateCareerVisionOutputSchema,
+      },
+    });
+    
+    if (!output) {
+      throw new Error("The AI model did not return a valid vision statement.");
+    }
+    
+    return output;
   }
 );
