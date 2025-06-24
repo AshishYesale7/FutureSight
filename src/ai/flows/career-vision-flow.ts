@@ -34,7 +34,7 @@ const GenerateCareerVisionOutputSchema = z.object({
   })).describe("A 3-5 step actionable roadmap to start working towards the vision."),
   suggestedResources: z.array(z.object({
     title: z.string().describe("The name of the resource."),
-    url: z.string().url().describe("A direct URL to the resource."),
+    url: z.string().describe("A direct URL to the resource."),
     type: z.enum(['Course', 'Book', 'Community', 'Tool', 'Website']).describe("The type of resource.")
   })).describe("A list of 2-4 highly relevant online resources, like courses, communities, or tools."),
   diagramSuggestion: z.object({
