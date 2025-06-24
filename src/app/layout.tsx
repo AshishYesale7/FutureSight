@@ -10,6 +10,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { usePathname } from 'next/navigation';
 import type { ReactNode} from 'react';
 import { useEffect } from 'react';
+import { ApiKeyProvider } from '@/context/ApiKeyContext';
 
 function AppThemeApplicator({ children }: { children: ReactNode }) {
   const { 
@@ -122,10 +123,12 @@ export default function RootLayout({
       <body className="font-body antialiased">
         <AuthProvider>
           <ThemeProvider>
-            <AppThemeApplicator>
-              {children}
-              <Toaster />
-            </AppThemeApplicator>
+            <ApiKeyProvider>
+              <AppThemeApplicator>
+                {children}
+                <Toaster />
+              </AppThemeApplicator>
+            </ApiKeyProvider>
           </ThemeProvider>
         </AuthProvider>
         <SpeedInsights />
