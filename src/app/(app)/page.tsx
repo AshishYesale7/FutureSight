@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import EventCalendarView from '@/components/timeline/EventCalendarView';
@@ -6,6 +5,7 @@ import SlidingTimelineView from '@/components/timeline/SlidingTimelineView';
 import TimelineListView from '@/components/timeline/TimelineListView';
 import DayTimetableView from '@/components/timeline/DayTimetableView';
 import EditEventModal from '@/components/timeline/EditEventModal';
+import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -358,6 +358,7 @@ export default function ActualDashboardPage() {
 
   return (
     <div className={cn("space-y-8 h-full flex flex-col")}>
+      <TodaysPlanCard />
       
       <Tabs
         value={viewMode}
@@ -580,4 +581,3 @@ export default function ActualDashboardPage() {
     </div>
   );
 }
-
