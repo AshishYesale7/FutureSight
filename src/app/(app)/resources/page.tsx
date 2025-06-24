@@ -25,6 +25,7 @@ import {
 import EditResourceModal from '@/components/resources/EditResourceModal';
 import { useAuth } from '@/context/AuthContext';
 import { getBookmarkedResources, saveBookmarkedResource, deleteBookmarkedResource } from '@/services/resourcesService';
+import { useApiKey } from '@/hooks/use-api-key';
 
 const RESOURCES_STORAGE_KEY = 'futureSightBookmarkedResources';
 
@@ -37,6 +38,7 @@ export default function ResourcesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingResource, setEditingResource] = useState<ResourceLink | null>(null);
   const { toast } = useToast();
+  const { apiKey } = useApiKey();
 
   const syncToLocalStorage = (data: ResourceLink[]) => {
     try {
@@ -79,8 +81,8 @@ export default function ResourcesPage() {
   }, [user]);
 
   const fetchAiSuggestions = async () => {
-    if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
-      toast({ title: 'Feature Unavailable', description: 'AI features are disabled in this static version of the app.', variant: 'destructive' });
+    if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+      toast({ title: 'Feature Unavailable', description: 'AI features are disabled. Please provide an API key in settings to enable them.', variant: 'destructive' });
       return;
     }
 
@@ -90,6 +92,7 @@ export default function ResourcesPage() {
         trackedSkills: mockSkills.map(skill => skill.name),
         careerGoals: mockCareerGoals.map(goal => goal.title).join(', '),
         timelineEvents: mockTimelineEvents.map(event => `${event.title} on ${event.date instanceof Date ? event.date.toDateString() : event.date}`).join('; '),
+        apiKey,
       };
       const result = await suggestResources(userInput);
       

@@ -1,5 +1,4 @@
 'use server';
-
 /**
  * @fileOverview A resource suggestion AI agent.
  *
@@ -8,10 +7,10 @@
  * - SuggestResourcesOutput - The return type for the suggestResources function.
  */
 
-import {ai} from '@/ai/genkit';
-import {z} from 'genkit';
+import { generateWithApiKey } from '@/ai/genkit';
+import { z } from 'genkit';
 
-const SuggestResourcesInputSchema = z.object({
+const SuggestResourcesPayloadSchema = z.object({
   trackedSkills: z
     .array(z.string())
     .describe('List of skills the user is currently tracking.'),
@@ -19,6 +18,10 @@ const SuggestResourcesInputSchema = z.object({
   timelineEvents: z.string().describe('Description of the events in the timeline.'),
 });
 
+// Full input schema including optional API key
+const SuggestResourcesInputSchema = SuggestResourcesPayloadSchema.extend({
+    apiKey: z.string().optional().describe("Optional user-provided Gemini API key."),
+});
 export type SuggestResourcesInput = z.infer<typeof SuggestResourcesInputSchema>;
 
 const ResourceSuggestionSchema = z.object({
@@ -33,29 +36,19 @@ const SuggestResourcesOutputSchema = z.object({
     .array(ResourceSuggestionSchema)
     .describe('A list of 3-5 highly relevant learning resources based on the user\'s profile.'),
 });
-
 export type SuggestResourcesOutput = z.infer<typeof SuggestResourcesOutputSchema>;
 
 export async function suggestResources(input: SuggestResourcesInput): Promise<SuggestResourcesOutput> {
-  return suggestResourcesFlow(input);
-}
-
-const prompt = ai.definePrompt({
-  name: 'suggestResourcesPrompt',
-  input: {schema: SuggestResourcesInputSchema},
-  output: {schema: SuggestResourcesOutputSchema},
-  prompt: `You are an expert AI career coach for computer science students. Your task is to recommend highly relevant learning resources based on the user's skills and goals.
+  const promptText = `You are an expert AI career coach for computer science students. Your task is to recommend highly relevant learning resources based on the user's skills and goals.
 
 User's Tracked Skills:
-{{#each trackedSkills}}
-- {{this}}
-{{/each}}
+${input.trackedSkills.map(skill => `- ${skill}`).join('\n')}
 
 User's Career Goals:
-{{{careerGoals}}}
+${input.careerGoals}
 
 User's Timeline Events:
-{{{timelineEvents}}}
+${input.timelineEvents}
 
 Instructions:
 1.  Analyze the user's skills, goals, and timeline to understand their learning needs.
@@ -63,17 +56,19 @@ Instructions:
 3.  For each resource, provide a title, a direct URL, a concise one-sentence description explaining its relevance, and assign it to a category.
 4.  Ensure the URLs are valid and direct links to the resource, not search pages.
 5.  Format your output strictly according to the provided JSON schema.
-  `,
-});
+`;
 
-const suggestResourcesFlow = ai.defineFlow(
-  {
-    name: 'suggestResourcesFlow',
-    inputSchema: SuggestResourcesInputSchema,
-    outputSchema: SuggestResourcesOutputSchema,
-  },
-  async input => {
-    const {output} = await prompt(input);
-    return output!;
+  const { output } = await generateWithApiKey(input.apiKey, {
+    model: 'googleai/gemini-2.0-flash',
+    prompt: promptText,
+    output: {
+      schema: SuggestResourcesOutputSchema,
+    },
+  });
+
+  if (!output) {
+    return { suggestedResources: [] };
   }
-);
+  
+  return output;
+}
