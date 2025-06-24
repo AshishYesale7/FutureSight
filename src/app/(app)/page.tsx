@@ -5,13 +5,12 @@ import EventCalendarView from '@/components/timeline/EventCalendarView';
 import SlidingTimelineView from '@/components/timeline/SlidingTimelineView';
 import TimelineListView from '@/components/timeline/TimelineListView';
 import DayTimetableView from '@/components/timeline/DayTimetableView';
-import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import EditEventModal from '@/components/timeline/EditEventModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { AlertCircle, Bot, Brain, Calendar, CheckSquare, Inbox, ExternalLink, List, CalendarDays as CalendarIconLucide, Edit3, PlusCircle } from 'lucide-react';
+import { AlertCircle, Bot, Brain, Calendar, CheckSquare, Inbox, ExternalLink, List, CalendarDays as CalendarIconLucide, Edit3, PlusCircle, Quote, Lightbulb } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
 import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents, mockTodaysPlan } from '@/data/mock';
@@ -20,6 +19,8 @@ import { format, parseISO, addMonths, subMonths, startOfMonth, isSameDay, startO
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { generateMotivationalQuote } from '@/ai/flows/motivational-quote';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 
@@ -58,6 +59,10 @@ export default function ActualDashboardPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [eventBeingEdited, setEventBeingEdited] = useState<TimelineEvent | null>(null);
   const [isAddingNewEvent, setIsAddingNewEvent] = useState(false);
+  
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [todaysPlanQuote, setTodaysPlanQuote] = useState('');
+  const [isLoadingQuote, setIsLoadingQuote] = useState(true);
 
   const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(() => {
     if (typeof window === 'undefined') {
@@ -110,47 +115,30 @@ export default function ActualDashboardPage() {
   });
 
   useEffect(() => {
-    const todaysPlan = mockTodaysPlan;
-    toast({
-      title: (
-        <div className="flex items-center">
-          <Calendar className="mr-2 h-5 w-5 text-accent" /> Today's Plan
-        </div>
-      ),
-      description: (
-        <div className="mt-2 space-y-3">
-          <div>
-            <h4 className="font-semibold text-sm flex items-center">
-              <Brain className="mr-2 h-4 w-4" />
-              Micro-Goals
-            </h4>
-            <ul className="mt-1 space-y-1 text-xs text-foreground/80">
-              {todaysPlan.microGoals.map((goal, i) => (
-                <li key={i} className="flex items-start">
-                  <CheckSquare className="h-3 w-3 mr-2 mt-0.5 text-green-500 shrink-0" />
-                  <span>{goal}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold text-sm flex items-center">
-              <Calendar className="mr-2 h-4 w-4" />
-              Schedule
-            </h4>
-            <ul className="mt-1 space-y-1 text-xs text-foreground/80">
-              {todaysPlan.schedule.map((item, i) => (
-                <li key={i}>
-                  <span className="font-medium text-accent/90 w-16 inline-block">{item.time}</span>
-                  {item.activity}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      ),
-    });
-  }, [toast]);
+    // Show modal on initial load.
+    setIsPlanModalOpen(true);
+
+    const fetchQuote = async () => {
+      setIsLoadingQuote(true);
+      if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+          setTodaysPlanQuote("The journey of a thousand miles begins with a single step.");
+          setIsLoadingQuote(false);
+          return;
+      }
+      try {
+        const result = await generateMotivationalQuote({ topic: 'achieving daily goals and academic success' });
+        setTodaysPlanQuote(result.quote);
+      } catch (error) {
+        console.error('Error fetching motivational quote:', error);
+        setTodaysPlanQuote("Remember, every small step counts towards your big goals!"); // Fallback quote
+      } finally {
+        setIsLoadingQuote(false);
+      }
+    };
+
+    fetchQuote();
+  }, []); // Empty dependency array ensures it runs only once on mount.
+
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -371,8 +359,6 @@ export default function ActualDashboardPage() {
   return (
     <div className={cn("space-y-8 h-full flex flex-col")}>
       
-      <TodaysPlanCard />
-
       <Tabs
         value={viewMode}
         onValueChange={(value) => handleViewModeChange(value as 'calendar' | 'list')}
@@ -529,6 +515,69 @@ export default function ActualDashboardPage() {
           isAddingNewEvent={isAddingNewEvent}
         />
       )}
+      
+      <Dialog open={isPlanModalOpen} onOpenChange={setIsPlanModalOpen}>
+        <DialogContent className="sm:max-w-md frosted-glass">
+          <DialogHeader>
+            <DialogTitle className="font-headline text-xl text-primary flex items-center">
+              <Calendar className="mr-2 h-5 w-5 text-accent" /> Today's Plan
+            </DialogTitle>
+            <DialogDescription>
+              Your schedule and goals for today. Let's make it productive!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-6">
+            <div>
+              <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
+                <Brain className="mr-2 h-5 w-5 text-accent" /> Micro-Goals
+              </h3>
+              <ul className="space-y-1.5 pl-1">
+                {mockTodaysPlan.microGoals.map((goal, index) => (
+                  <li key={index} className="text-sm text-foreground/90 flex items-start">
+                    <CheckSquare className="h-4 w-4 mr-3 mt-0.5 text-green-500 shrink-0" />
+                    <span>{goal}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
+                <Calendar className="mr-2 h-5 w-5 text-accent" /> Schedule
+              </h3>
+              <ul className="space-y-2.5 pl-1">
+                {mockTodaysPlan.schedule.map((item, index) => (
+                  <li key={index} className="text-sm text-foreground/90 flex items-baseline">
+                    <span className="font-medium w-24 text-accent/90 shrink-0">{item.time}</span>
+                    <span>{item.activity}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
+                <Lightbulb className="mr-2 h-5 w-5 text-accent" /> Motivational Spark
+              </h3>
+              {isLoadingQuote ? (
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Generating...
+                </div>
+              ) : (
+                <blockquote className="border-l-2 border-accent pl-3 italic text-sm text-foreground/80 flex">
+                  <Quote className="inline h-4 w-4 mr-2 shrink-0 text-accent/80" />
+                  <p>{todaysPlanQuote}</p>
+                </blockquote>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsPlanModalOpen(false)} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
+              Got it!
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
