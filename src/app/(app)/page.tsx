@@ -11,10 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { AlertCircle, Bot, Calendar, Inbox, ExternalLink, List, CalendarDays as CalendarIconLucide, Edit3, PlusCircle } from 'lucide-react';
+import { AlertCircle, Bot, Brain, Calendar, CheckSquare, Inbox, ExternalLink, List, CalendarDays as CalendarIconLucide, Edit3, PlusCircle } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
-import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents } from '@/data/mock';
+import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents, mockTodaysPlan } from '@/data/mock';
 import type { TimelineEvent } from '@/types';
 import { format, parseISO, addMonths, subMonths, startOfMonth, isSameDay, startOfDay as dfnsStartOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -108,6 +108,49 @@ export default function ActualDashboardPage() {
       };
     }).filter(event => event !== null) as TimelineEvent[];
   });
+
+  useEffect(() => {
+    const todaysPlan = mockTodaysPlan;
+    toast({
+      title: (
+        <div className="flex items-center">
+          <Calendar className="mr-2 h-5 w-5 text-accent" /> Today's Plan
+        </div>
+      ),
+      description: (
+        <div className="mt-2 space-y-3">
+          <div>
+            <h4 className="font-semibold text-sm flex items-center">
+              <Brain className="mr-2 h-4 w-4" />
+              Micro-Goals
+            </h4>
+            <ul className="mt-1 space-y-1 text-xs text-foreground/80">
+              {todaysPlan.microGoals.map((goal, i) => (
+                <li key={i} className="flex items-start">
+                  <CheckSquare className="h-3 w-3 mr-2 mt-0.5 text-green-500 shrink-0" />
+                  <span>{goal}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-semibold text-sm flex items-center">
+              <Calendar className="mr-2 h-4 w-4" />
+              Schedule
+            </h4>
+            <ul className="mt-1 space-y-1 text-xs text-foreground/80">
+              {todaysPlan.schedule.map((item, i) => (
+                <li key={i}>
+                  <span className="font-medium text-accent/90 w-16 inline-block">{item.time}</span>
+                  {item.activity}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      ),
+    });
+  }, [toast]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
