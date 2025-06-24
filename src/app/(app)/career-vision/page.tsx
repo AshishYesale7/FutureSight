@@ -8,18 +8,20 @@ import { Eye, Sparkles, Bot } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { generateCareerVision } from '@/ai/flows/career-vision-flow';
+import { useApiKey } from '@/hooks/use-api-key';
 
 export default function CareerVisionPage() {
   const [userInput, setUserInput] = useState('');
   const [visionStatement, setVisionStatement] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { apiKey } = useApiKey();
 
   const handleGenerateVision = async () => {
-    if (process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+    if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
       toast({
         title: 'Feature Unavailable',
-        description: 'AI features are disabled in this static version of the app.',
+        description: 'AI features are disabled. Please provide an API key in settings to enable them.',
         variant: 'destructive',
       });
       return;
@@ -38,7 +40,7 @@ export default function CareerVisionPage() {
     setVisionStatement(''); // Clear previous vision
     
     try {
-      const result = await generateCareerVision({ aspirations: userInput });
+      const result = await generateCareerVision({ aspirations: userInput, apiKey });
       setVisionStatement(result.visionStatement);
     } catch (error) {
       console.error('Error generating career vision:', error);
