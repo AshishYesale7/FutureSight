@@ -42,14 +42,18 @@ export default function NewsPage() {
     if (isMounted) {
       localStorage.setItem(KEYWORDS_STORAGE_KEY, JSON.stringify(Array.from(selectedKeywords)));
       
+      let filteredArticles: NewsArticle[];
       if (selectedKeywords.size === 0) {
-        setArticles(allMockNewsArticles);
+        filteredArticles = [...allMockNewsArticles];
       } else {
-        const filteredArticles = allMockNewsArticles.filter(article => 
+        filteredArticles = allMockNewsArticles.filter(article => 
           article.tags?.some(tag => selectedKeywords.has(tag))
         );
-        setArticles(filteredArticles);
       }
+      
+      // Sort by most recent date
+      const sortedArticles = filteredArticles.sort((a, b) => b.publishedDate.getTime() - a.publishedDate.getTime());
+      setArticles(sortedArticles);
     }
   }, [selectedKeywords, isMounted]);
 
@@ -153,11 +157,11 @@ export default function NewsPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {articles.map((article) => (
           <Card key={article.id} className="frosted-glass shadow-lg flex flex-col">
             {article.imageUrl && (
-              <div className="relative h-48 w-full">
+              <div className="relative h-40 w-full">
                 <Image 
                   src={article.imageUrl} 
                   alt={article.title} 
@@ -169,7 +173,7 @@ export default function NewsPage() {
               </div>
             )}
             <CardHeader>
-              <CardTitle className="font-headline text-xl text-primary">{article.title}</CardTitle>
+              <CardTitle className="font-headline text-lg text-primary">{article.title}</CardTitle>
               <CardDescription className="text-xs text-muted-foreground flex justify-between items-center pt-1">
                 <span>{article.source} - {format(article.publishedDate, 'MMM d, yyyy')}</span>
                  <div className="flex gap-1">
@@ -180,7 +184,7 @@ export default function NewsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-grow space-y-3">
-              <p className="text-sm text-foreground/80 line-clamp-4">{article.summary}</p>
+              <p className="text-sm text-foreground/80 line-clamp-3">{article.summary}</p>
               
               {summarizedContent[article.id] && (
                  <div className="mt-2 p-4 bg-primary/5 rounded-md border border-primary/20 animate-in fade-in duration-500">
@@ -210,7 +214,7 @@ export default function NewsPage() {
         ))}
       </div>
        {articles.length === 0 && isMounted && (
-        <Card className="frosted-glass text-center p-8 md:col-span-2">
+        <Card className="frosted-glass text-center p-8 md:col-span-3">
             <CardHeader>
                 <CardTitle className="font-headline text-xl text-primary">No Articles Found</CardTitle>
             </CardHeader>
