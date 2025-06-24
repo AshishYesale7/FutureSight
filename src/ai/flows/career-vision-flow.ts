@@ -48,7 +48,7 @@ Generate the career vision statement.`;
     
     // Call the helper with the key and the generate request
     const { output } = await generateWithApiKey(input.apiKey, {
-      model: ai.model('googleai/gemini-2.0-flash'), // Use the default model from the ai instance
+      model: 'googleai/gemini-2.0-flash', // Use the default model from the ai instance
       prompt: promptText,
       output: {
         schema: GenerateCareerVisionOutputSchema,
