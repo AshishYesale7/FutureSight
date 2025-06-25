@@ -1,3 +1,4 @@
+
 'use server';
 
 import { google } from 'googleapis';
@@ -50,7 +51,7 @@ export async function getTokensFromCode(code: string): Promise<Credentials> {
     return tokens;
 }
 
-export function saveTokens(tokens: Credentials): void {
+export async function saveTokens(tokens: Credentials): Promise<void> {
     cookies().set(GOOGLE_TOKEN_COOKIE, JSON.stringify(tokens), {
         httpOnly: true,
         secure: process.env.NODE_ENV !== 'development',
@@ -59,7 +60,7 @@ export function saveTokens(tokens: Credentials): void {
     });
 }
 
-export function getTokens(): Credentials | null {
+export async function getTokens(): Promise<Credentials | null> {
     const tokenCookie = cookies().get(GOOGLE_TOKEN_COOKIE);
     if (tokenCookie) {
         try {
@@ -72,12 +73,12 @@ export function getTokens(): Credentials | null {
     return null;
 }
 
-export function clearTokens(): void {
+export async function clearTokens(): Promise<void> {
     cookies().delete(GOOGLE_TOKEN_COOKIE);
 }
 
 export async function getAuthenticatedClient() {
-    const tokens = getTokens();
+    const tokens = await getTokens();
     if (!tokens) {
         return null;
     }
@@ -91,11 +92,11 @@ export async function getAuthenticatedClient() {
         try {
             const { credentials } = await client.refreshAccessToken();
             client.setCredentials(credentials);
-            saveTokens(credentials); // Save the new tokens
+            await saveTokens(credentials); // Save the new tokens
             console.log("Google access token refreshed successfully.");
         } catch (error) {
             console.error("Error refreshing access token:", error);
-            clearTokens(); // The refresh token might be invalid, clear everything.
+            await clearTokens(); // The refresh token might be invalid, clear everything.
             return null;
         }
     }

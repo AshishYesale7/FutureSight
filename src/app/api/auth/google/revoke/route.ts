@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 
 export async function POST() {
     try {
-        const tokens = getTokens();
+        const tokens = await getTokens();
         // Attempt to revoke the token with Google first
         if (tokens && tokens.access_token) {
             const oauth2Client = new google.auth.OAuth2();
@@ -17,7 +17,7 @@ export async function POST() {
             }
         }
 
-        clearTokens();
+        await clearTokens();
         return NextResponse.json({ success: true, message: 'Google session cleared.' });
     } catch (error) {
         console.error('Error revoking Google session:', error);

@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     try {
         const tokens = await getTokensFromCode(code);
-        saveTokens(tokens);
+        await saveTokens(tokens);
         redirectUrl.searchParams.set('google_auth_success', 'true');
     } catch (err: any) {
         console.error("Failed to exchange code for tokens:", err.message);
