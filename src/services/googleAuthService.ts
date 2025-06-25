@@ -1,4 +1,3 @@
-
 'use server';
 
 import { google } from 'googleapis';
@@ -11,8 +10,6 @@ const NEXT_PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 const GOOGLE_TOKEN_COOKIE = 'google_auth_tokens';
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !NEXT_PUBLIC_BASE_URL) {
-    // This check is primarily for build-time safety.
-    // A more robust runtime check might be needed depending on deployment strategy.
     console.error("Missing Google OAuth credentials or base URL in environment variables.");
 }
 
@@ -37,7 +34,7 @@ export async function getGoogleAuthUrl(): Promise<string> {
 
     return oauth2Client.generateAuthUrl({
         access_type: 'offline',
-        prompt: 'consent', // Force refresh token to be sent every time
+        prompt: 'consent',
         scope: scopes,
     });
 }
