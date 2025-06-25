@@ -125,18 +125,21 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const setBackgroundImage = useCallback((url: string | null) => {
-    setBackgroundImageState(url);
+    // If a URL is provided, set it as the background image and clear any background color.
+    // If the URL is cleared (by passing null), revert to the default image.
+    setBackgroundImageState(url || DEFAULT_BACKGROUND_IMAGE);
     if (url) {
-      setBackgroundColorState(null); // An image is being set, so clear the color.
+      setBackgroundColorState(null);
     }
   }, []);
   
   const setBackgroundColor = useCallback((color: string | null) => {
     setBackgroundColorState(color);
+    // If a color is provided, clear any background image to make the color visible.
     if (color) {
-      setBackgroundImageState(null); // A color is being set, so clear the image.
+      setBackgroundImageState(null);
     } else {
-      // If the color is cleared, restore the default image.
+      // If the color is cleared, revert to the default background image.
       setBackgroundImageState(DEFAULT_BACKGROUND_IMAGE);
     }
   }, []);
