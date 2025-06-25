@@ -123,25 +123,19 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const toggleTheme = useCallback(() => {
     setThemeState((prevTheme) => (prevTheme === 'light' ? 'dark' : 'light'));
   }, []);
-
+  
   const setBackgroundImage = useCallback((url: string | null) => {
-    // If a URL is provided, set it as the background image and clear any background color.
-    // If the URL is cleared (by passing null), revert to the default image.
-    setBackgroundImageState(url || DEFAULT_BACKGROUND_IMAGE);
-    if (url) {
-      setBackgroundColorState(null);
-    }
+    // When a new image is set, it becomes the source of truth.
+    // The color must be cleared to allow the image to be visible.
+    setBackgroundImageState(url);
+    setBackgroundColorState(null);
   }, []);
   
   const setBackgroundColor = useCallback((color: string | null) => {
+    // When a color is set, it becomes the source of truth.
+    // The image must be cleared to allow the color to be visible.
     setBackgroundColorState(color);
-    // If a color is provided, clear any background image to make the color visible.
-    if (color) {
-      setBackgroundImageState(null);
-    } else {
-      // If the color is cleared, revert to the default background image.
-      setBackgroundImageState(DEFAULT_BACKGROUND_IMAGE);
-    }
+    setBackgroundImageState(null);
   }, []);
   
   const setCustomTheme = useCallback((theme: CustomTheme | null) => {
@@ -157,6 +151,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const resetCustomizations = useCallback(() => {
+    // Reset restores the default image and clears any custom color.
     setBackgroundImageState(DEFAULT_BACKGROUND_IMAGE);
     setBackgroundColorState(null);
     setCustomThemeState(null);
@@ -179,3 +174,4 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     </ThemeContext.Provider>
   );
 };
+
