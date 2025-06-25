@@ -72,8 +72,6 @@ const getInitialState = <T,>(key: string, defaultValue: T): T => {
       return defaultValue;
     }
     const parsedValue = JSON.parse(storedValue);
-    // If the default value is an object, merge it with the stored value
-    // This ensures new settings are added without losing user's old settings
     if (typeof defaultValue === 'object' && defaultValue !== null && typeof parsedValue === 'object' && parsedValue !== null) {
       return { ...defaultValue, ...parsedValue };
     }
@@ -129,17 +127,17 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const setBackgroundImage = useCallback((url: string | null) => {
     setBackgroundImageState(url);
     if (url) {
-      setBackgroundColorState(null); // Always clear color when setting an image
+      setBackgroundColorState(null); // An image is being set, so clear the color.
     }
   }, []);
   
   const setBackgroundColor = useCallback((color: string | null) => {
     setBackgroundColorState(color);
     if (color) {
-      setBackgroundImageState(null); // Clear image if setting a color
+      setBackgroundImageState(null); // A color is being set, so clear the image.
     } else {
-      // If color is cleared, restore the default image.
-      setBackgroundImageState(DEFAULT_BACKGROUND_IMAGE); 
+      // If the color is cleared, restore the default image.
+      setBackgroundImageState(DEFAULT_BACKGROUND_IMAGE);
     }
   }, []);
   
@@ -156,11 +154,12 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const resetCustomizations = useCallback(() => {
-    setBackgroundImage(DEFAULT_BACKGROUND_IMAGE);
-    setCustomTheme(null);
-    setGlassEffect('grainyFrosted');
-    setGlassEffectSettings(DEFAULT_GLASS_EFFECT_SETTINGS);
-  }, [setBackgroundImage]);
+    setBackgroundImageState(DEFAULT_BACKGROUND_IMAGE);
+    setBackgroundColorState(null);
+    setCustomThemeState(null);
+    setGlassEffectState('grainyFrosted');
+    setGlassEffectSettingsState(DEFAULT_GLASS_EFFECT_SETTINGS);
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ 
