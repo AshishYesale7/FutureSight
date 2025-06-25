@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
     try {
-        const url = getGoogleAuthUrl();
+        const url = await getGoogleAuthUrl();
         return NextResponse.redirect(url);
     } catch (error: any) {
         console.error("Failed to get Google Auth URL:", error.message);

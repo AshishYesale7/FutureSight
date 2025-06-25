@@ -27,7 +27,7 @@ function getOAuth2Client() {
     );
 }
 
-export function getGoogleAuthUrl(): string {
+export async function getGoogleAuthUrl(): Promise<string> {
     const oauth2Client = getOAuth2Client();
     const scopes = [
         'https://www.googleapis.com/auth/calendar.readonly',
