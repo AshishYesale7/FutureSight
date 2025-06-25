@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import EventCalendarView from '@/components/timeline/EventCalendarView';
@@ -24,6 +25,7 @@ import { generateMotivationalQuote } from '@/ai/flows/motivational-quote';
 import { useApiKey } from '@/hooks/use-api-key';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
+const QUOTE_STORAGE_KEY = 'futureSightTodaysQuote';
 
 const parseDatePreservingTime = (dateInput: string | Date | undefined): Date | undefined => {
   if (!dateInput) return undefined;
@@ -122,19 +124,49 @@ export default function ActualDashboardPage() {
 
     const fetchQuote = async () => {
       setIsLoadingQuote(true);
-      if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
-          setTodaysPlanQuote("The journey of a thousand miles begins with a single step.");
-          setIsLoadingQuote(false);
-          return;
+      const todayString = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+      // 1. Try to get the quote from local storage
+      try {
+        const cachedQuoteData = localStorage.getItem(QUOTE_STORAGE_KEY);
+        if (cachedQuoteData) {
+          const { quote, date } = JSON.parse(cachedQuoteData);
+          if (date === todayString) {
+            setTodaysPlanQuote(quote);
+            setIsLoadingQuote(false);
+            return; // Use cached quote and exit
+          }
+        }
+      } catch (e) {
+        console.error("Could not read cached quote", e);
       }
+
+      // 2. If no valid cached quote, fetch a new one
+      if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
+        setTodaysPlanQuote("The journey of a thousand miles begins with a single step.");
+        setIsLoadingQuote(false);
+        return;
+      }
+
       try {
         const result = await generateMotivationalQuote({ 
           topic: 'achieving daily goals and academic success',
           apiKey 
         });
         setTodaysPlanQuote(result.quote);
+        // 3. Cache the newly fetched quote
+        try {
+          localStorage.setItem(QUOTE_STORAGE_KEY, JSON.stringify({ quote: result.quote, date: todayString }));
+        } catch (e) {
+          console.error("Could not cache new quote", e);
+        }
       } catch (error) {
         console.error('Error fetching motivational quote:', error);
+        toast({
+          title: "AI Quote Error",
+          description: "Could not fetch a new motivational quote. You may have exceeded the daily API limit.",
+          variant: "destructive",
+        });
         setTodaysPlanQuote("Remember, every small step counts towards your big goals!"); // Fallback quote
       } finally {
         setIsLoadingQuote(false);
@@ -142,7 +174,7 @@ export default function ActualDashboardPage() {
     };
 
     fetchQuote();
-  }, [apiKey]); // Added apiKey dependency
+  }, [apiKey, toast]);
 
 
   useEffect(() => {
