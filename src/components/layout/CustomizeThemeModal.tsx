@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, type ChangeEvent, useEffect } from 'react';
@@ -85,7 +86,6 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
     try {
       new URL(imageUrl);
       setBackgroundImage(imageUrl);
-      setBackgroundColor(null); // Remove any solid color when applying an image
       toast({ title: 'Success', description: 'Background image updated from URL.' });
       onOpenChange(false);
       resetForm();
@@ -111,7 +111,6 @@ export default function CustomizeThemeModal({ isOpen, onOpenChange }: CustomizeT
   const handleFileUploadApply = () => {
     if (previewUrl) {
       setBackgroundImage(previewUrl);
-      setBackgroundColor(null); // Remove any solid color when applying an image
       toast({ title: 'Success', description: 'Background image uploaded.' });
       onOpenChange(false);
       resetForm();
