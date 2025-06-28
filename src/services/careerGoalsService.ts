@@ -6,6 +6,9 @@ import type { CareerGoal } from '@/types';
 import { collection, getDocs, doc, setDoc, deleteDoc, Timestamp } from 'firebase/firestore';
 
 const getGoalsCollection = (userId: string) => {
+  if (!db) {
+    throw new Error("Firestore is not initialized.");
+  }
   return collection(db, 'users', userId, 'careerGoals');
 };
 
@@ -38,7 +41,7 @@ export const saveCareerGoal = async (userId: string, goal: CareerGoal): Promise<
     deadline: goal.deadline ? Timestamp.fromDate(goal.deadline) : null,
   };
 
-  await setDoc(goalDocRef, dataToSave);
+  await setDoc(goalDocRef, dataToSave, { merge: true });
 };
 
 export const deleteCareerGoal = async (userId: string, goalId: string): Promise<void> => {

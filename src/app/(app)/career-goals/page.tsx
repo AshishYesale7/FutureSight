@@ -78,7 +78,7 @@ export default function CareerGoalsPage() {
     };
 
     loadGoals();
-  }, [user]);
+  }, [user, toast]);
 
   const handleOpenModal = (goal: CareerGoal | null) => {
     setEditingGoal(goal);
