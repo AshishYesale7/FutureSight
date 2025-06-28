@@ -19,6 +19,7 @@ import {
   Palette,
   Expand,
   Shrink,
+  FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from 'firebase/auth';
@@ -39,6 +40,7 @@ import { useState, useEffect } from 'react';
 import CustomizeThemeModal from './CustomizeThemeModal';
 import ProfileModal from './ProfileModal';
 import SettingsModal from './SettingsModal';
+import LegalModal from './LegalModal';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -57,6 +59,7 @@ export default function SidebarNav() {
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   const stripeSrc = `https://climate.stripe.com/badge/qBqsdE?theme=${theme}&size=small&locale=en-IN`;
@@ -118,7 +121,7 @@ export default function SidebarNav() {
           ))}
         </nav>
         <div className="mt-auto p-4">
-          {/* <a href="https://climate.stripe.com/EYRGZr" target="_blank" rel="noopener noreferrer" className="block mb-4 h-[75px]">
+          {/* <a href="https://climate.stripe.com/EYRGZr" target="_blank" rel="noopener noreferrer" className="block mb-4 h-[38px]">
              <iframe
               src={stripeSrc}
               frameBorder="0"
@@ -163,6 +166,10 @@ export default function SidebarNav() {
                 <Settings className="mr-2 h-4 w-4" />
                 <span>Settings</span>
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsLegalModalOpen(true)}>
+                <FileText className="mr-2 h-4 w-4" />
+                <span>Terms & Policies</span>
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleSignOut}>
                 <LogOut className="mr-2 h-4 w-4" />
@@ -183,6 +190,10 @@ export default function SidebarNav() {
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onOpenChange={setIsSettingsModalOpen}
+      />
+      <LegalModal
+        isOpen={isLegalModalOpen}
+        onOpenChange={setIsLegalModalOpen}
       />
     </>
   );
