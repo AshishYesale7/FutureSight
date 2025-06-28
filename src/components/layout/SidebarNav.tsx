@@ -58,6 +58,8 @@ export default function SidebarNav() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
+  const stripeSrc = `https://climate.stripe.com/badge/qBqsdE?theme=${theme}&size=small&locale=en-IN`;
+
   useEffect(() => {
     const handleFullScreenChange = () => {
       setIsFullScreen(!!document.fullscreenElement);
@@ -154,6 +156,15 @@ export default function SidebarNav() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <div className="mt-4 flex justify-center">
+            <iframe
+              src={stripeSrc}
+              frameBorder="0"
+              scrolling="no"
+              style={{ width: '100%', height: '56px', maxHeight: '56px' }}
+              title="Stripe Climate Badge"
+            ></iframe>
+          </div>
         </div>
       </div>
       <CustomizeThemeModal

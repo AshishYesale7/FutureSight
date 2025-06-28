@@ -42,6 +42,8 @@ export default function Header() {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
+  const stripeSrc = `https://climate.stripe.com/badge/qBqsdE?theme=${theme}&size=small&locale=en-IN`;
+
   useEffect(() => {
     const handleFullScreenChange = () => {
       setIsFullScreen(!!document.fullscreenElement);
@@ -79,7 +81,7 @@ export default function Header() {
               <span className="sr-only">Toggle navigation menu</span>
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-64 p-0 frosted-glass text-sidebar-foreground bg-sidebar">
+          <SheetContent side="left" className="w-64 p-0 frosted-glass text-sidebar-foreground bg-sidebar flex flex-col">
             <div className="flex h-16 items-center justify-center border-b border-sidebar-border px-6">
               <Link href="/" className="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-8 w-8 text-white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
@@ -104,6 +106,15 @@ export default function Header() {
                 {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
                 <span>{theme === 'dark' ? "Light Mode" : "Dark Mode"}</span>
               </Button>
+               <div className="mt-2 flex justify-center">
+                <iframe
+                  src={stripeSrc}
+                  frameBorder="0"
+                  scrolling="no"
+                  style={{ width: '100%', height: '56px', maxHeight: '56px' }}
+                  title="Stripe Climate Badge"
+                ></iframe>
+              </div>
             </div>
           </SheetContent>
         </Sheet>
