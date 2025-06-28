@@ -69,9 +69,9 @@ export default function LegalModal({ isOpen, onOpenChange }: LegalModalProps) {
 
                                 <p><strong>6. Governing Law:</strong> These Terms shall be governed and construed in accordance with the laws of [Your Jurisdiction], without regard to its conflict of law provisions.</p>
                                 
-                                <p><strong>Contact Us:</strong> If you have any questions about these Terms, please contact us at [your-contact-email@example.com].</p>
+                                <p><strong>Contact Us:</strong> If you have any questions about these Terms, please contact us at hyper4stream@gmail.com.</p>
 
-                                <p><em>This is a template. Please consult a legal professional to customize this for your specific needs.</em></p>
+                                <p><em></em></p>
                             </LegalModalContent>
                         </TabsContent>
                         <TabsContent value="privacy">
@@ -87,9 +87,9 @@ export default function LegalModal({ isOpen, onOpenChange }: LegalModalProps) {
                                 
                                 <p><strong>4. User Rights:</strong> You have the right to access, update or to delete the information we have on you. You can do this at any time by accessing your account settings or by contacting us.</p>
 
-                                <p><strong>Contact Us:</strong> If you have any questions about this Privacy Policy, please contact us at [your-contact-email@example.com].</p>
+                                <p><strong>Contact Us:</strong> If you have any questions about this Privacy Policy, please contact us at hyper4stream@gmail.com.</p>
 
-                                <p><em>This is a template. Please consult a legal professional to customize this for your specific needs.</em></p>
+                                <p><em>  </em></p>
                             </LegalModalContent>
                         </TabsContent>
                         <TabsContent value="refund">
@@ -103,9 +103,9 @@ export default function LegalModal({ isOpen, onOpenChange }: LegalModalProps) {
 
                                 <p><strong>3. No Refunds for Renewals:</strong> We do not offer refunds for subscription renewals. It is your responsibility to cancel your subscription before the renewal date if you do not wish to continue using the service. We will send a reminder email before your subscription renews.</p>
 
-                                <p><strong>4. How to Request a Refund:</strong> To request a refund, please contact our support team at [your-support-email@example.com] with your account details and the reason for your request.</p>
+                                <p><strong>4. How to Request a Refund:</strong> To request a refund, please contact our support team at hyper4stream@gmail.com with your account details and the reason for your request.</p>
 
-                                <p><em>This is a template. Please consult a legal professional to customize this for your specific needs.</em></p>
+                                <p><em></em></p>
                             </LegalModalContent>
                         </TabsContent>
                          <TabsContent value="shipping">
@@ -119,7 +119,7 @@ export default function LegalModal({ isOpen, onOpenChange }: LegalModalProps) {
                                 
                                 <p><strong>3. No Shipping:</strong> As our product is digital, there are no shipping fees, delivery times, or physical items involved. All services are accessible online through your web browser.</p>
 
-                                <p>If you have any questions regarding your access to the service, please contact us at [your-support-email@example.com].</p>
+                                <p>If you have any questions regarding your access to the service, please contact us at hyper4stream@gmail.com.</p>
                             </LegalModalContent>
                         </TabsContent>
                     </div>

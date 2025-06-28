@@ -92,3 +92,12 @@ export interface ActionableInsight {
   source: 'google_calendar' | 'gmail';
   originalLink?: string;
 }
+
+export type SubscriptionStatus = 'active' | 'inactive' | 'cancelled';
+
+export interface UserSubscription {
+  plan: 'monthly' | 'yearly';
+  status: SubscriptionStatus;
+  endDate: Date;
+  razorpaySubscriptionId: string;
+}

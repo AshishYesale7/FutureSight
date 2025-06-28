@@ -20,6 +20,7 @@ import {
   Expand,
   Shrink,
   FileText,
+  Crown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from 'firebase/auth';
@@ -49,6 +50,7 @@ const navItems = [
   { href: '/career-vision', label: 'Career Vision', icon: Eye },
   { href: '/news', label: 'News', icon: Newspaper },
   { href: '/resources', label: 'Resources', icon: Lightbulb },
+  { href: '/subscription', label: 'Subscription', icon: Crown },
 ];
 
 export default function SidebarNav() {
@@ -62,7 +64,7 @@ export default function SidebarNav() {
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
-  const stripeSrc = `https://climate.stripe.com/badge/qBqsdE?theme=${theme}&size=small&locale=en-IN`;
+  // const stripeSrc = `https://climate.stripe.com/badge/qBqsdE?theme=${theme}&size=small&locale=en-IN`;
 
   useEffect(() => {
     const handleFullScreenChange = () => {
@@ -121,15 +123,17 @@ export default function SidebarNav() {
           ))}
         </nav>
         <div className="mt-auto p-4">
-          {/* <a href="https://climate.stripe.com/EYRGZr" target="_blank" rel="noopener noreferrer" className="block mb-4 h-[38px]">
-             <iframe
-              src={stripeSrc}
-              frameBorder="0"
-              scrolling="no"
-              style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
-              title="Stripe Climate Badge"
-            ></iframe>
-          </a>
+          {/* <div className="p-4 pt-0">
+              <a href="https://climate.stripe.com/EYRGZr" target="_blank" rel="noopener noreferrer" className="block mb-4 h-[38px]">
+                <iframe
+                  src={stripeSrc}
+                  frameBorder="0"
+                  scrolling="no"
+                  style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
+                  title="Stripe Climate Badge"
+                ></iframe>
+              </a>
+          </div>
           <div className="border-t border-sidebar-border -mx-4 mb-4" /> */}
           <Button variant="ghost" onClick={toggleTheme} className="w-full justify-start gap-3 mb-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}

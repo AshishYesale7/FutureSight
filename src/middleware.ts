@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 
 const AUTH_ROUTES = ['/auth/signin', '/auth/signup'];
-const PROTECTED_ROUTES = ['/', '/career-goals', '/skills', '/career-vision', '/news', '/resources']; // Add all your app routes here
+const PROTECTED_ROUTES = ['/', '/career-goals', '/skills', '/career-vision', '/news', '/resources', '/subscription']; // Add all your app routes here
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
