@@ -103,12 +103,12 @@ export default function Header() {
               ))}
             </nav>
             <div className="mt-auto p-4">
-              <a href="https://climate.stripe.com/EYRGZr" target="_blank" rel="noopener noreferrer" className="block mb-4">
+              <a href="https://climate.stripe.com/EYRGZr" target="_blank" rel="noopener noreferrer" className="block mb-4 h-[56px]">
                  <iframe
                   src={stripeSrc}
                   frameBorder="0"
                   scrolling="no"
-                  style={{ width: '100%', height: '56px', maxHeight: '56px' }}
+                  style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
                   title="Stripe Climate Badge"
                 ></iframe>
               </a>
