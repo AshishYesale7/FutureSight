@@ -12,6 +12,7 @@
 
 import { generateWithApiKey } from '@/ai/genkit';
 import {z} from 'genkit';
+import type { TimelineEvent } from '@/types';
 
 // Schemas for Google API Data (adapt as needed for actual API responses)
 const RawCalendarEventSchema = z.object({

@@ -8,7 +8,11 @@ export interface TimelineEvent {
   title: string;
   type: 'exam' | 'deadline' | 'goal' | 'project' | 'application' | 'custom' | 'ai_suggestion';
   notes?: string;
-  links?: { title: string; url: string }[];
+  url?: string; // Main URL for the event
+  tags?: string; // Space-separated list of tags, e.g., "#internship #dsa"
+  location?: string;
+  priority?: 'None' | 'Low' | 'Medium' | 'High';
+  imageUrl?: string;
   status?: 'pending' | 'in-progress' | 'completed' | 'missed';
   icon?: LucideIcon | React.ElementType;
   isDeletable?: boolean;

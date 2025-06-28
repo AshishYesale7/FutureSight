@@ -1,9 +1,10 @@
+
 'use client';
 
 import type { TimelineEvent } from '@/types';
 import { useMemo, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, Bot, Trash2, Clock, ExternalLink as LinkIcon, Edit3, Info, History } from 'lucide-react';
+import { CalendarDays, Bot, Trash2, Clock, ExternalLink as LinkIcon, Edit3, Info, History, Hash } from 'lucide-react';
 import { format, parseISO, startOfDay, isSameDay, formatDistanceToNowStrict, isFuture, isPast, isToday as dfnsIsToday } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -200,30 +201,31 @@ export default function TimelineListView({ events: allEventsFromProps, onDeleteE
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-3 pt-1 text-sm">
-              {event.notes && <p className="text-foreground/80 mb-2 line-clamp-3">{event.notes}</p>}
-              {event.status && (
-                  <div className="text-xs mb-1 flex items-center">
-                      Status:
-                      <Badge variant={statusBadge.variant} className={cn("capitalize ml-1.5", statusBadge.className)}>
-                      {event.status.replace(/-/g, ' ')}
-                      </Badge>
+            <CardContent className="p-3 pt-1 text-sm space-y-2">
+              {event.notes && <p className="text-foreground/80 line-clamp-3">{event.notes}</p>}
+              <div className="space-y-1">
+                {event.status && (
+                    <div className="text-xs mb-1 flex items-center">
+                        Status:
+                        <Badge variant={statusBadge.variant} className={cn("capitalize ml-1.5", statusBadge.className)}>
+                        {event.status.replace(/-/g, ' ')}
+                        </Badge>
+                    </div>
+                )}
+                 {event.tags && (
+                  <div className="text-xs text-primary/90 flex items-center gap-1.5">
+                    <Hash size={12}/>
+                    <span>{event.tags}</span>
                   </div>
-              )}
-              {event.links && event.links.length > 0 && (
-                <div>
-                  <h5 className="text-xs font-medium text-primary mb-0.5">Related Links:</h5>
-                  <ul className="space-y-0.5">
-                    {event.links.map(link => (
-                      <li key={link.url} className="text-xs">
-                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline flex items-center gap-1">
-                          <LinkIcon size={12}/> {link.title}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                )}
+                {event.url && (
+                  <div className="text-xs">
+                    <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline flex items-center gap-1 truncate">
+                      <LinkIcon size={12}/> <span className="truncate">{event.url}</span>
+                    </a>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
           );

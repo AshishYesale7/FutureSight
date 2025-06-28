@@ -6,7 +6,6 @@ import SlidingTimelineView from '@/components/timeline/SlidingTimelineView';
 import TimelineListView from '@/components/timeline/TimelineListView';
 import DayTimetableView from '@/components/timeline/DayTimetableView';
 import EditEventModal from '@/components/timeline/EditEventModal';
-import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +13,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AlertCircle, Bot, Brain, Calendar, CheckSquare, Inbox, ExternalLink, List, CalendarDays as CalendarIconLucide, Edit3, PlusCircle, Quote, Lightbulb } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
-import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents, mockTodaysPlan } from '@/data/mock';
+import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents } from '@/data/mock';
 import type { TimelineEvent } from '@/types';
 import { format, parseISO, addMonths, subMonths, startOfMonth, isSameDay, startOfDay as dfnsStartOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { generateMotivationalQuote } from '@/ai/flows/motivational-quote';
 import { useApiKey } from '@/hooks/use-api-key';
+import { mockTodaysPlan } from '@/data/mock';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 const QUOTE_STORAGE_KEY = 'futureSightTodaysQuote';
@@ -208,12 +208,12 @@ export default function ActualDashboardPage() {
       title: insight.title,
       type: 'ai_suggestion',
       notes: insight.summary,
-      links: insight.originalLink ? [{ title: `View Original ${insight.source === 'gmail' ? 'Email' : 'Event'}`, url: insight.originalLink }] : [],
+      url: insight.originalLink,
       status: 'pending',
       icon: Bot,
       isDeletable: true,
       isAllDay: insight.isAllDay || false,
-      color: undefined, 
+      priority: 'None',
     };
   };
 
@@ -329,7 +329,7 @@ export default function ActualDashboardPage() {
     return displayedTimelineEvents.filter(event =>
         event.date instanceof Date && !isNaN(event.date.valueOf()) &&
         isSameDay(dfnsStartOfDay(event.date), dfnsStartOfDay(selectedDateForDayView))
-    ).sort((a,b) => a.date.getTime() - b.date.getTime());
+    ).sort((a,b) => a.date.getTime() - a.date.getTime());
   }, [displayedTimelineEvents, selectedDateForDayView]);
 
   const handleViewModeChange = (newMode: 'calendar' | 'list') => {
@@ -359,7 +359,7 @@ export default function ActualDashboardPage() {
         notes: '',
         isAllDay: false,
         isDeletable: true,
-        color: undefined,
+        priority: 'None',
         status: 'pending',
         icon: CalendarIconLucide,
       });
@@ -398,7 +398,67 @@ export default function ActualDashboardPage() {
 
   return (
     <div className={cn("space-y-8 h-full flex flex-col")}>
-      <TodaysPlanCard />
+      <Dialog open={isPlanModalOpen} onOpenChange={setIsPlanModalOpen}>
+        <DialogContent className="sm:max-w-md frosted-glass">
+          <DialogHeader>
+            <DialogTitle className="font-headline text-xl text-primary flex items-center">
+              <Calendar className="mr-2 h-5 w-5 text-accent" /> Today's Plan
+            </DialogTitle>
+            <DialogDescription>
+              Your schedule and goals for today. Let's make it productive!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-6">
+            <div>
+              <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
+                <Brain className="mr-2 h-5 w-5 text-accent" /> Micro-Goals
+              </h3>
+              <ul className="space-y-1.5 pl-1">
+                {mockTodaysPlan.microGoals.map((goal, index) => (
+                  <li key={index} className="text-sm text-foreground/90 flex items-start">
+                    <CheckSquare className="h-4 w-4 mr-3 mt-0.5 text-green-500 shrink-0" />
+                    <span>{goal}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
+                <Calendar className="mr-2 h-5 w-5 text-accent" /> Schedule
+              </h3>
+              <ul className="space-y-2.5 pl-1">
+                {mockTodaysPlan.schedule.map((item, index) => (
+                  <li key={index} className="text-sm text-foreground/90 flex items-baseline">
+                    <span className="font-medium w-24 text-accent/90 shrink-0">{item.time}</span>
+                    <span>{item.activity}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
+                <Lightbulb className="mr-2 h-5 w-5 text-accent" /> Motivational Spark
+              </h3>
+              {isLoadingQuote ? (
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Generating...
+                </div>
+              ) : (
+                <blockquote className="border-l-2 border-accent pl-3 italic text-sm text-foreground/80 flex">
+                  <Quote className="inline h-4 w-4 mr-2 shrink-0 text-accent/80" />
+                  <p>{todaysPlanQuote}</p>
+                </blockquote>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsPlanModalOpen(false)} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
+              Got it!
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <Tabs
         value={viewMode}
@@ -440,7 +500,6 @@ export default function ActualDashboardPage() {
                 onClose={closeDayTimetableView}
                 onDeleteEvent={handleDeleteTimelineEvent}
                 onEditEvent={handleOpenEditModal}
-                onSaveEvent={handleSaveEditedEvent}
               />
             ) : (
               <SlidingTimelineView
@@ -557,68 +616,6 @@ export default function ActualDashboardPage() {
           isAddingNewEvent={isAddingNewEvent}
         />
       )}
-      
-      <Dialog open={isPlanModalOpen} onOpenChange={setIsPlanModalOpen}>
-        <DialogContent className="sm:max-w-md frosted-glass">
-          <DialogHeader>
-            <DialogTitle className="font-headline text-xl text-primary flex items-center">
-              <Calendar className="mr-2 h-5 w-5 text-accent" /> Today's Plan
-            </DialogTitle>
-            <DialogDescription>
-              Your schedule and goals for today. Let's make it productive!
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-6">
-            <div>
-              <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
-                <Brain className="mr-2 h-5 w-5 text-accent" /> Micro-Goals
-              </h3>
-              <ul className="space-y-1.5 pl-1">
-                {mockTodaysPlan.microGoals.map((goal, index) => (
-                  <li key={index} className="text-sm text-foreground/90 flex items-start">
-                    <CheckSquare className="h-4 w-4 mr-3 mt-0.5 text-green-500 shrink-0" />
-                    <span>{goal}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
-                <Calendar className="mr-2 h-5 w-5 text-accent" /> Schedule
-              </h3>
-              <ul className="space-y-2.5 pl-1">
-                {mockTodaysPlan.schedule.map((item, index) => (
-                  <li key={index} className="text-sm text-foreground/90 flex items-baseline">
-                    <span className="font-medium w-24 text-accent/90 shrink-0">{item.time}</span>
-                    <span>{item.activity}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
-                <Lightbulb className="mr-2 h-5 w-5 text-accent" /> Motivational Spark
-              </h3>
-              {isLoadingQuote ? (
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Generating...
-                </div>
-              ) : (
-                <blockquote className="border-l-2 border-accent pl-3 italic text-sm text-foreground/80 flex">
-                  <Quote className="inline h-4 w-4 mr-2 shrink-0 text-accent/80" />
-                  <p>{todaysPlanQuote}</p>
-                </blockquote>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setIsPlanModalOpen(false)} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
-              Got it!
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

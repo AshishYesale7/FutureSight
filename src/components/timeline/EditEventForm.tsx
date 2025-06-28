@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { FC} from 'react';
@@ -47,6 +48,12 @@ const eventStatuses: Exclude<TimelineEvent['status'], undefined>[] = [
   'missed',
 ];
 
+const eventPriorities: Exclude<TimelineEvent['priority'], undefined>[] = [
+  'None',
+  'Low',
+  'Medium',
+  'High',
+];
 
 const PREDEFINED_COLORS = [
   { name: 'Default', value: undefined },
@@ -73,6 +80,11 @@ const editEventFormSchema = z.object({
   isAllDay: z.boolean().optional(),
   color: z.string().optional(),
   status: z.enum(eventStatuses).optional(),
+  tags: z.string().optional(),
+  location: z.string().optional(),
+  priority: z.enum(eventPriorities).optional(),
+  url: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  imageUrl: z.string().url({ message: 'Please enter a valid image URL.' }).optional().or(z.literal('')),
 }).refine(data => {
   if (data.startDateTime && data.endDateTime) {
     return new Date(data.endDateTime) >= new Date(data.startDateTime);
@@ -116,14 +128,18 @@ const EditEventForm: FC<EditEventFormProps> = ({
   const form = useForm<EditEventFormValues>({
     resolver: zodResolver(editEventFormSchema),
     defaultValues: {
-      title: eventToEdit.title || '',
-      notes: eventToEdit.notes || '',
-      startDateTime: formatDateForInput(eventToEdit.date),
-      endDateTime: formatDateForInput(eventToEdit.endDate),
-      type: eventToEdit.type || 'custom',
-      isAllDay: eventToEdit.isAllDay || false,
-      color: eventToEdit.color || undefined,
-      status: eventToEdit.status || 'pending',
+      title: '',
+      notes: '',
+      startDateTime: '',
+      endDateTime: '',
+      type: 'custom',
+      isAllDay: false,
+      status: 'pending',
+      priority: 'None',
+      tags: '',
+      location: '',
+      url: '',
+      imageUrl: '',
     },
   });
 
@@ -137,6 +153,11 @@ const EditEventForm: FC<EditEventFormProps> = ({
       isAllDay: eventToEdit.isAllDay || false,
       color: eventToEdit.color || undefined,
       status: eventToEdit.status || 'pending',
+      tags: eventToEdit.tags || '',
+      location: eventToEdit.location || '',
+      priority: eventToEdit.priority || 'None',
+      url: eventToEdit.url || '',
+      imageUrl: eventToEdit.imageUrl || '',
     });
   }, [eventToEdit, form]);
 
@@ -161,6 +182,11 @@ const EditEventForm: FC<EditEventFormProps> = ({
       isAllDay: values.isAllDay || false,
       color: values.color,
       status: values.status || 'pending',
+      tags: values.tags || '',
+      location: values.location || '',
+      priority: values.priority || 'None',
+      url: values.url || '',
+      imageUrl: values.imageUrl || '',
     };
     onSubmit(updatedEvent);
   };
@@ -248,34 +274,103 @@ const EditEventForm: FC<EditEventFormProps> = ({
             </FormItem>
           )}
         />
+        
+        <FormField
+          control={form.control}
+          name="url"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>URL</FormLabel>
+              <FormControl>
+                <Input placeholder="https://example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <FormField
-            control={form.control}
-            name="type"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Type</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+             <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Location</FormLabel>
                     <FormControl>
-                    <SelectTrigger>
-                        <SelectValue placeholder="Select event type" />
-                    </SelectTrigger>
+                        <Input placeholder="e.g., Online or Library" {...field} />
                     </FormControl>
-                    <SelectContent>
-                    {eventTypes.map((type) => (
-                        <SelectItem key={type} value={type} className="capitalize">
-                        {type.replace(/_/g, ' ')}
-                        </SelectItem>
-                    ))}
-                    </SelectContent>
-                </Select>
-                <FormMessage />
-                </FormItem>
-            )}
+                    <FormMessage />
+                    </FormItem>
+                )}
             />
-
             <FormField
+                control={form.control}
+                name="tags"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Tags</FormLabel>
+                    <FormControl>
+                        <Input placeholder="#internship #exam" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Type / List</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select event type" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        {eventTypes.map((type) => (
+                            <SelectItem key={type} value={type} className="capitalize">
+                            {type.replace(/_/g, ' ')}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
+             <FormField
+                control={form.control}
+                name="priority"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Priority</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || 'None'}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select priority" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        {eventPriorities.map((p) => (
+                            <SelectItem key={p} value={p} className="capitalize">
+                            {p}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
+
+
+        <FormField
             control={form.control}
             name="status"
             render={({ field }) => (
@@ -298,8 +393,7 @@ const EditEventForm: FC<EditEventFormProps> = ({
                 <FormMessage />
                 </FormItem>
             )}
-            />
-        </div>
+        />
 
 
         <FormField
@@ -334,6 +428,20 @@ const EditEventForm: FC<EditEventFormProps> = ({
               <FormMessage />
             </FormItem>
           )}
+        />
+        
+        <FormField
+            control={form.control}
+            name="imageUrl"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Image URL (Optional)</FormLabel>
+                <FormControl>
+                    <Input placeholder="https://example.com/image.png" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
         />
         
         <div className="flex justify-end space-x-3 pt-4">

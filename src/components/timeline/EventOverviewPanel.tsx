@@ -1,14 +1,16 @@
+
 'use client';
 
 import type { TimelineEvent } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
-import { X, Clock, FileText, Link as LinkIcon, Edit3, Calendar, Tag, Activity, Flag } from 'lucide-react';
+import { X, Clock, FileText, Link as LinkIcon, Edit3, Calendar, Tag, Activity, Flag, MapPin, Hash, Image as ImageIcon } from 'lucide-react';
 import { ScrollArea } from '../ui/scroll-area';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 import { Label } from '../ui/label';
+import Image from 'next/image';
 
 interface EventOverviewPanelProps {
   event: TimelineEvent | null;
@@ -39,6 +41,15 @@ const getStatusBadgeVariant = (status?: TimelineEvent['status']): { variant: "de
     case 'pending':
     default:
       return { variant: 'secondary', className: 'bg-yellow-500/80 border-yellow-700 text-yellow-900 hover:bg-yellow-600/80' };
+  }
+};
+
+const getPriorityBadgeStyle = (priority?: TimelineEvent['priority']) => {
+  switch (priority) {
+    case 'High': return 'bg-red-500/80 border-red-700 text-white';
+    case 'Medium': return 'bg-yellow-500/80 border-yellow-700 text-yellow-900';
+    case 'Low': return 'bg-blue-500/80 border-blue-700 text-white';
+    default: return 'bg-gray-500/80 border-gray-700 text-white';
   }
 };
 
@@ -85,10 +96,16 @@ export default function EventOverviewPanel({ event, onClose, onEdit }: EventOver
       {/* Panel Content */}
       <ScrollArea className="flex-1 min-h-0">
          <div className="p-4 space-y-5">
+            {event.imageUrl && (
+              <div className="relative h-32 w-full rounded-md overflow-hidden border">
+                <Image src={event.imageUrl} alt={event.title} layout="fill" objectFit="cover" data-ai-hint="event cover" />
+              </div>
+            )}
+            
             {event.notes && (
                 <div>
                     <Label className="text-xs text-muted-foreground flex items-center mb-1"><FileText className="h-3.5 w-3.5 mr-2" /> Notes</Label>
-                    <p className="text-sm text-foreground/90 pl-1">{event.notes}</p>
+                    <p className="text-sm text-foreground/90 pl-1 whitespace-pre-wrap">{event.notes}</p>
                 </div>
             )}
             
@@ -111,6 +128,15 @@ export default function EventOverviewPanel({ event, onClose, onEdit }: EventOver
                         </div>
                     </div>
                  )}
+                 {event.location && (
+                    <div className="flex items-start">
+                        <MapPin className="h-4 w-4 mt-1 mr-3 text-muted-foreground" />
+                        <div>
+                            <Label className="text-xs text-muted-foreground">Location</Label>
+                            <p className="text-sm">{event.location}</p>
+                        </div>
+                    </div>
+                 )}
             </div>
 
             <Separator />
@@ -119,7 +145,7 @@ export default function EventOverviewPanel({ event, onClose, onEdit }: EventOver
                 <div className="flex items-start">
                     <Tag className="h-4 w-4 mt-1 mr-3 text-muted-foreground" />
                     <div>
-                        <Label className="text-xs text-muted-foreground">Type</Label>
+                        <Label className="text-xs text-muted-foreground">Type / List</Label>
                         <Badge variant="outline" className={cn("capitalize text-xs", getEventTypeStyle(event.type))}>
                             {event.type.replace(/_/g, ' ')}
                         </Badge>
@@ -136,26 +162,43 @@ export default function EventOverviewPanel({ event, onClose, onEdit }: EventOver
                         </div>
                     </div>
                 )}
+                 {event.priority && (
+                    <div className="flex items-start">
+                        <Flag className="h-4 w-4 mt-1 mr-3 text-muted-foreground" />
+                         <div>
+                            <Label className="text-xs text-muted-foreground">Priority</Label>
+                            <Badge variant="outline" className={cn("capitalize text-xs", getPriorityBadgeStyle(event.priority))}>
+                                {event.priority}
+                            </Badge>
+                        </div>
+                    </div>
+                )}
             </div>
 
-            {event.links && event.links.length > 0 && (
-                <>
-                <Separator />
-                <div>
-                    <Label className="text-xs text-muted-foreground flex items-center mb-2"><LinkIcon className="h-3.5 w-3.5 mr-2" /> Links</Label>
-                    <div className="space-y-2">
-                        {event.links.map(link => (
-                            <Button key={link.url} asChild variant="outline" className="w-full justify-start h-auto py-2">
-                                <a href={link.url} target="_blank" rel="noopener noreferrer" className="truncate">
-                                    <p className="text-sm font-medium">{link.title}</p>
-                                    <p className="text-xs text-muted-foreground truncate">{link.url}</p>
-                                </a>
-                            </Button>
-                        ))}
-                    </div>
-                </div>
-                </>
-            )}
+            {(event.url || event.tags) && <Separator />}
+
+            <div className="space-y-3">
+              {event.tags && (
+                  <div className="flex items-start">
+                      <Hash className="h-4 w-4 mt-1 mr-3 text-muted-foreground" />
+                      <div>
+                          <Label className="text-xs text-muted-foreground">Tags</Label>
+                          <p className="text-sm text-primary">{event.tags}</p>
+                      </div>
+                  </div>
+              )}
+              {event.url && (
+                  <div className="flex items-start">
+                      <LinkIcon className="h-4 w-4 mt-1 mr-3 text-muted-foreground" />
+                      <div>
+                          <Label className="text-xs text-muted-foreground">URL</Label>
+                           <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline block truncate">
+                              {event.url}
+                           </a>
+                      </div>
+                  </div>
+              )}
+            </div>
          </div>
       </ScrollArea>
     </div>
