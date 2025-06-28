@@ -1,7 +1,6 @@
-
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -45,6 +44,7 @@ export default function SignInForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
     try {
+      if (!auth) throw new Error("Firebase Auth is not initialized.");
       await signInWithEmailAndPassword(auth, values.email, values.password);
       toast({ title: 'Success', description: 'Signed in successfully.' });
       router.push('/');
@@ -58,6 +58,26 @@ export default function SignInForm() {
       setLoading(false);
     }
   }
+
+  const handleGoogleSignIn = async () => {
+    setLoading(true);
+    try {
+      if (!auth) throw new Error("Firebase Auth is not initialized.");
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      toast({ title: 'Success', description: 'Signed in with Google successfully.' });
+      router.push('/');
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to sign in with Google.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   return (
     <Card className="frosted-glass p-6 md:p-8">
@@ -123,6 +143,20 @@ export default function SignInForm() {
             </Button>
           </form>
         </Form>
+        <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                Or continue with
+                </span>
+            </div>
+        </div>
+        <Button variant="outline" type="button" className="w-full" onClick={handleGoogleSignIn} disabled={loading}>
+            <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4"><title>Google</title><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.3 1.63-4.5 1.63-5.42 0-9.82-4.4-9.82-9.82s4.4-9.82 9.82-9.82c3.1 0 5.14 1.25 6.32 2.39l2.44-2.44C20.44 1.89 17.13 0 12.48 0 5.88 0 0 5.88 0 12.48s5.88 12.48 12.48 12.48c6.92 0 12.04-4.82 12.04-12.04 0-.82-.07-1.62-.2-2.4z" fill="currentColor"/></svg>
+            Sign in with Google
+        </Button>
         <div className="mt-6 text-center">
           <Link href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">
             Forgot Password?
