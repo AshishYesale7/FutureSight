@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -101,20 +102,21 @@ export default function Header() {
                 </Link>
               ))}
             </nav>
-            <div className="mt-auto border-t border-sidebar-border p-4">
-              <Button variant="ghost" onClick={toggleTheme} className="w-full justify-start gap-3 mb-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-                <span>{theme === 'dark' ? "Light Mode" : "Dark Mode"}</span>
-              </Button>
-               <div className="mt-2 flex justify-center">
-                <iframe
+            <div className="mt-auto p-4">
+              <a href="https://climate.stripe.com/EYRGZr" target="_blank" rel="noopener noreferrer" className="block mb-4">
+                 <iframe
                   src={stripeSrc}
                   frameBorder="0"
                   scrolling="no"
                   style={{ width: '100%', height: '56px', maxHeight: '56px' }}
                   title="Stripe Climate Badge"
                 ></iframe>
-              </div>
+              </a>
+              <div className="border-t border-sidebar-border -mx-4 mb-4" />
+              <Button variant="ghost" onClick={toggleTheme} className="w-full justify-start gap-3 mb-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+                <span>{theme === 'dark' ? "Light Mode" : "Dark Mode"}</span>
+              </Button>
             </div>
           </SheetContent>
         </Sheet>

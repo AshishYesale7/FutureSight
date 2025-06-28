@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -113,7 +114,17 @@ export default function SidebarNav() {
             </Link>
           ))}
         </nav>
-        <div className="mt-auto border-t border-sidebar-border p-4">
+        <div className="mt-auto p-4">
+          <a href="https://climate.stripe.com/EYRGZr" target="_blank" rel="noopener noreferrer" className="block mb-4">
+             <iframe
+              src={stripeSrc}
+              frameBorder="0"
+              scrolling="no"
+              style={{ width: '100%', height: '56px', maxHeight: '56px' }}
+              title="Stripe Climate Badge"
+            ></iframe>
+          </a>
+          <div className="border-t border-sidebar-border -mx-4 mb-4" />
           <Button variant="ghost" onClick={toggleTheme} className="w-full justify-start gap-3 mb-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             <span>{theme === 'dark' ? "Light Mode" : "Dark Mode"}</span>
@@ -156,15 +167,6 @@ export default function SidebarNav() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <div className="mt-4 flex justify-center">
-            <iframe
-              src={stripeSrc}
-              frameBorder="0"
-              scrolling="no"
-              style={{ width: '100%', height: '56px', maxHeight: '56px' }}
-              title="Stripe Climate Badge"
-            ></iframe>
-          </div>
         </div>
       </div>
       <CustomizeThemeModal
