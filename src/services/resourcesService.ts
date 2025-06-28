@@ -6,6 +6,9 @@ import type { ResourceLink } from '@/types';
 import { collection, getDocs, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
 const getResourcesCollection = (userId: string) => {
+  if (!db) {
+    throw new Error("Firestore is not initialized.");
+  }
   return collection(db, 'users', userId, 'resources');
 };
 

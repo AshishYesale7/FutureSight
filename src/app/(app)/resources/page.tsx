@@ -78,7 +78,7 @@ export default function ResourcesPage() {
     };
 
     loadResources();
-  }, [user]);
+  }, [user, toast]);
 
   const fetchAiSuggestions = async () => {
     if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
