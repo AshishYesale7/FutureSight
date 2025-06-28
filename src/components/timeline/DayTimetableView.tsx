@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { TimelineEvent } from '@/types';
@@ -214,9 +215,10 @@ interface DayTimetableViewProps {
   onClose: () => void;
   onDeleteEvent?: (eventId: string) => void;
   onEditEvent?: (event: TimelineEvent) => void;
+  onSaveEvent: (event: TimelineEvent) => void;
 }
 
-export default function DayTimetableView({ date, events, onClose, onDeleteEvent, onEditEvent }: DayTimetableViewProps) {
+export default function DayTimetableView({ date, events, onClose, onDeleteEvent, onEditEvent, onSaveEvent }: DayTimetableViewProps) {
   const { toast } = useToast();
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -311,12 +313,14 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
             <div
               key={event.id}
               className={cn(
-                "rounded-md p-1.5 text-xs flex justify-between items-center transition-opacity",
+                "rounded-md p-1.5 text-xs flex justify-between items-center transition-opacity cursor-pointer hover:bg-muted/50",
                 !event.color && getEventTypeStyleClasses(event.type),
-                isDayInPast && "opacity-60 hover:opacity-100 focus-within:opacity-100"
+                isDayInPast && "opacity-60 hover:opacity-100 focus-within:opacity-100",
+                selectedEvent?.id === event.id && "ring-2 ring-accent ring-offset-2 ring-offset-background"
               )}
               style={event.color ? getCustomColorStyles(event.color) : {}}
               title={getEventTooltip(event)}
+              onClick={() => handleEventClick(event)}
             >
               <div className="font-medium flex items-center">
                 {getEventTypeIcon(event)} {event.title}
@@ -328,15 +332,10 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                         {event.status.replace(/-/g, ' ')}
                     </Badge>
                 )}
-                {onEditEvent && (
-                  <Button variant="ghost" size="icon" className="h-5 w-5 text-primary/70 hover:text-primary hover:bg-primary/10 opacity-70 hover:opacity-100" onClick={() => onEditEvent(event)}>
-                      <Edit3 className="h-3 w-3" />
-                  </Button>
-                )}
                 {event.isDeletable && onDeleteEvent && (
                   <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:text-destructive/80 hover:bg-destructive/10 opacity-70 hover:opacity-100">
+                        <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive hover:text-destructive/80 hover:bg-destructive/10 opacity-70 hover:opacity-100" onClick={(e) => e.stopPropagation()}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </AlertDialogTrigger>
@@ -440,11 +439,6 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                                   )}
                               </div>
                               <div className={cn("mt-auto flex-shrink-0 flex items-center space-x-0.5", isSmallWidth ? "justify-center" : "justify-end")}>
-                                  {onEditEvent && (
-                                  <Button variant="ghost" size="icon" className="h-5 w-5 text-primary/70 hover:text-primary hover:bg-primary/10 opacity-70 hover:opacity-100" onClick={(e) => {e.stopPropagation(); onEditEvent(event);}}>
-                                      <Edit3 className="h-3 w-3" />
-                                  </Button>
-                                  )}
                                   {event.isDeletable && onDeleteEvent && (
                                       <AlertDialog>
                                           <AlertDialogTrigger asChild>
@@ -472,7 +466,11 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
         </CardContent>
         
         {selectedEvent && (
-          <EventOverviewPanel event={selectedEvent} onClose={handleCloseOverview} />
+          <EventOverviewPanel
+            event={selectedEvent}
+            onClose={handleCloseOverview}
+            onSave={onSaveEvent}
+          />
         )}
       </div>
     </Card>

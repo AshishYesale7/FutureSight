@@ -386,6 +386,8 @@ export default function ActualDashboardPage() {
         });
       }
     });
+    // This toast is now handled within the EventEditorPanel, so we can remove it here to avoid duplicates.
+    // However, for the modal, it's still needed. Let's keep it for now.
     toast({
       title: isAddingNewEvent ? "Event Added" : "Event Updated",
       description: `"${updatedEvent.title}" has been successfully ${isAddingNewEvent ? "added" : "updated"}.`
@@ -438,6 +440,7 @@ export default function ActualDashboardPage() {
                 onClose={closeDayTimetableView}
                 onDeleteEvent={handleDeleteTimelineEvent}
                 onEditEvent={handleOpenEditModal}
+                onSaveEvent={handleSaveEditedEvent}
               />
             ) : (
               <SlidingTimelineView

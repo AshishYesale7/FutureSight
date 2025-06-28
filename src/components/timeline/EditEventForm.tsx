@@ -92,6 +92,8 @@ interface EditEventFormProps {
   onCancel: () => void;
   className?: string;
   isAddingNewEvent?: boolean;
+  formId?: string;
+  hideButtons?: boolean;
 }
 
 const formatDateForInput = (date?: Date): string => {
@@ -113,6 +115,8 @@ const EditEventForm: FC<EditEventFormProps> = ({
   onSubmit,
   onCancel,
   className,
+  formId = 'edit-event-form',
+  hideButtons = false,
 }) => {
   const form = useForm<EditEventFormValues>({
     resolver: zodResolver(editEventFormSchema),
@@ -168,7 +172,7 @@ const EditEventForm: FC<EditEventFormProps> = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className={cn('space-y-6', className)}>
+      <form id={formId} onSubmit={form.handleSubmit(handleSubmit)} className={cn('space-y-6', className)}>
         <FormField
           control={form.control}
           name="title"
@@ -336,14 +340,15 @@ const EditEventForm: FC<EditEventFormProps> = ({
             </FormItem>
           )}
         />
-
-
-        <div className="flex justify-end space-x-3 pt-4">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">Save Changes</Button>
-        </div>
+        
+        {!hideButtons && (
+            <div className="flex justify-end space-x-3 pt-4">
+            <Button type="button" variant="outline" onClick={onCancel}>
+                Cancel
+            </Button>
+            <Button type="submit" className="bg-accent hover:bg-accent/90 text-accent-foreground">Save Changes</Button>
+            </div>
+        )}
       </form>
     </Form>
   );
