@@ -14,14 +14,14 @@ const plans = {
     monthly: {
         id: 'monthly',
         title: 'Monthly Plan',
-        price: '₹499',
+        price: '₹ 59',
         priceSuffix: '/ month',
         features: ['Access to all AI features', 'Unlimited timeline events', 'Personalized news feed', 'Email support'],
     },
     yearly: {
         id: 'yearly',
         title: 'Yearly Plan',
-        price: '₹4999',
+        price: '₹ 599',
         priceSuffix: '/ year',
         features: ['All features from Monthly', 'Save 20% with annual billing', 'Priority support', 'Early access to new features'],
     },
