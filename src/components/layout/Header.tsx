@@ -103,7 +103,7 @@ export default function Header() {
               ))}
             </nav>
             <div className="mt-auto p-4">
-              <a href="https://climate.stripe.com/EYRGZr" target="_blank" rel="noopener noreferrer" className="block mb-4 h-[56px]">
+              <a href="https://climate.stripe.com/EYRGZr" target="_blank" rel="noopener noreferrer" className="block mb-4 h-[38px]">
                  <iframe
                   src={stripeSrc}
                   frameBorder="0"
