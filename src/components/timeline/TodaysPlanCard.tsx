@@ -69,7 +69,7 @@ export default function TodaysPlanCard() {
 
   return (
     <Card className="frosted-glass shadow-lg">
-      <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
+      <Accordion type="single" collapsible className="w-full">
         <AccordionItem value="item-1" className="border-b-0">
             <AccordionTrigger className="p-6 hover:no-underline">
               <div className="flex flex-col items-start text-left flex-1">
