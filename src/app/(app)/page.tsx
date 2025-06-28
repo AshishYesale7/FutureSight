@@ -1,6 +1,7 @@
 
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import EventCalendarView from '@/components/timeline/EventCalendarView';
 import SlidingTimelineView from '@/components/timeline/SlidingTimelineView';
 import TimelineListView from '@/components/timeline/TimelineListView';
@@ -10,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { AlertCircle, Bot, Brain, Calendar, CheckSquare, Inbox, ExternalLink, List, CalendarDays as CalendarIconLucide, Edit3, PlusCircle, Quote, Lightbulb } from 'lucide-react';
+import { AlertCircle, Bot, Calendar, Inbox, ExternalLink, List, CalendarDays as CalendarIconLucide, Edit3, PlusCircle } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
 import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents } from '@/data/mock';
@@ -19,13 +20,9 @@ import { format, parseISO, addMonths, subMonths, startOfMonth, isSameDay, startO
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { generateMotivationalQuote } from '@/ai/flows/motivational-quote';
 import { useApiKey } from '@/hooks/use-api-key';
-import { mockTodaysPlan } from '@/data/mock';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
-const QUOTE_STORAGE_KEY = 'futureSightTodaysQuote';
 
 const parseDatePreservingTime = (dateInput: string | Date | undefined): Date | undefined => {
   if (!dateInput) return undefined;
@@ -63,9 +60,6 @@ export default function ActualDashboardPage() {
   const [eventBeingEdited, setEventBeingEdited] = useState<TimelineEvent | null>(null);
   const [isAddingNewEvent, setIsAddingNewEvent] = useState(false);
   
-  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
-  const [todaysPlanQuote, setTodaysPlanQuote] = useState('');
-  const [isLoadingQuote, setIsLoadingQuote] = useState(true);
   const { apiKey } = useApiKey();
 
   const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(() => {
@@ -117,65 +111,6 @@ export default function ActualDashboardPage() {
       };
     }).filter(event => event !== null) as TimelineEvent[];
   });
-
-  useEffect(() => {
-    // Show modal on initial load.
-    setIsPlanModalOpen(true);
-
-    const fetchQuote = async () => {
-      setIsLoadingQuote(true);
-      const todayString = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
-      // 1. Try to get the quote from local storage
-      try {
-        const cachedQuoteData = localStorage.getItem(QUOTE_STORAGE_KEY);
-        if (cachedQuoteData) {
-          const { quote, date } = JSON.parse(cachedQuoteData);
-          if (date === todayString) {
-            setTodaysPlanQuote(quote);
-            setIsLoadingQuote(false);
-            return; // Use cached quote and exit
-          }
-        }
-      } catch (e) {
-        console.error("Could not read cached quote", e);
-      }
-
-      // 2. If no valid cached quote, fetch a new one
-      if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
-        setTodaysPlanQuote("The journey of a thousand miles begins with a single step.");
-        setIsLoadingQuote(false);
-        return;
-      }
-
-      try {
-        const result = await generateMotivationalQuote({ 
-          topic: 'achieving daily goals and academic success',
-          apiKey 
-        });
-        setTodaysPlanQuote(result.quote);
-        // 3. Cache the newly fetched quote
-        try {
-          localStorage.setItem(QUOTE_STORAGE_KEY, JSON.stringify({ quote: result.quote, date: todayString }));
-        } catch (e) {
-          console.error("Could not cache new quote", e);
-        }
-      } catch (error) {
-        console.error('Error fetching motivational quote:', error);
-        toast({
-          title: "AI Quote Error",
-          description: "Could not fetch a new motivational quote. You may have exceeded the daily API limit.",
-          variant: "destructive",
-        });
-        setTodaysPlanQuote("Remember, every small step counts towards your big goals!"); // Fallback quote
-      } finally {
-        setIsLoadingQuote(false);
-      }
-    };
-
-    fetchQuote();
-  }, [apiKey, toast]);
-
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -329,7 +264,7 @@ export default function ActualDashboardPage() {
     return displayedTimelineEvents.filter(event =>
         event.date instanceof Date && !isNaN(event.date.valueOf()) &&
         isSameDay(dfnsStartOfDay(event.date), dfnsStartOfDay(selectedDateForDayView))
-    ).sort((a,b) => a.date.getTime() - a.date.getTime());
+    ).sort((a,b) => a.date.getTime() - b.date.getTime());
   }, [displayedTimelineEvents, selectedDateForDayView]);
 
   const handleViewModeChange = (newMode: 'calendar' | 'list') => {
@@ -398,67 +333,7 @@ export default function ActualDashboardPage() {
 
   return (
     <div className={cn("space-y-8 h-full flex flex-col")}>
-      <Dialog open={isPlanModalOpen} onOpenChange={setIsPlanModalOpen}>
-        <DialogContent className="sm:max-w-md frosted-glass">
-          <DialogHeader>
-            <DialogTitle className="font-headline text-xl text-primary flex items-center">
-              <Calendar className="mr-2 h-5 w-5 text-accent" /> Today's Plan
-            </DialogTitle>
-            <DialogDescription>
-              Your schedule and goals for today. Let's make it productive!
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-6">
-            <div>
-              <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
-                <Brain className="mr-2 h-5 w-5 text-accent" /> Micro-Goals
-              </h3>
-              <ul className="space-y-1.5 pl-1">
-                {mockTodaysPlan.microGoals.map((goal, index) => (
-                  <li key={index} className="text-sm text-foreground/90 flex items-start">
-                    <CheckSquare className="h-4 w-4 mr-3 mt-0.5 text-green-500 shrink-0" />
-                    <span>{goal}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
-                <Calendar className="mr-2 h-5 w-5 text-accent" /> Schedule
-              </h3>
-              <ul className="space-y-2.5 pl-1">
-                {mockTodaysPlan.schedule.map((item, index) => (
-                  <li key={index} className="text-sm text-foreground/90 flex items-baseline">
-                    <span className="font-medium w-24 text-accent/90 shrink-0">{item.time}</span>
-                    <span>{item.activity}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
-                <Lightbulb className="mr-2 h-5 w-5 text-accent" /> Motivational Spark
-              </h3>
-              {isLoadingQuote ? (
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Generating...
-                </div>
-              ) : (
-                <blockquote className="border-l-2 border-accent pl-3 italic text-sm text-foreground/80 flex">
-                  <Quote className="inline h-4 w-4 mr-2 shrink-0 text-accent/80" />
-                  <p>{todaysPlanQuote}</p>
-                </blockquote>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setIsPlanModalOpen(false)} className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground">
-              Got it!
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TodaysPlanCard />
       
       <Tabs
         value={viewMode}
