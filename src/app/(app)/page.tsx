@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';

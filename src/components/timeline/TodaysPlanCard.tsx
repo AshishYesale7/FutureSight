@@ -8,24 +8,33 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { CheckSquare, Calendar, Quote, Brain, Lightbulb } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { generateMotivationalQuote } from '@/ai/flows/motivational-quote';
 import { mockTodaysPlan } from '@/data/mock';
 import type { TodaysPlan } from '@/types';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { useApiKey } from '@/hooks/use-api-key';
+import { useToast } from '@/hooks/use-toast';
+import { TodaysPlanContent } from './TodaysPlanContent';
 
 export default function TodaysPlanCard() {
   const [quote, setQuote] = useState('');
   const [isLoadingQuote, setIsLoadingQuote] = useState(true);
-  const [todaysPlan, setTodaysPlan] = useState<TodaysPlan>(mockTodaysPlan);
+  const [todaysPlan] = useState<TodaysPlan>(mockTodaysPlan);
   const { apiKey } = useApiKey();
-
-  useEffect(() => {
-    fetchQuote();
-  }, []);
+  const { toast } = useToast();
 
   const fetchQuote = async () => {
+    const cachedQuoteData = localStorage.getItem('motivationalQuote');
+    if (cachedQuoteData) {
+      const { quote: cachedQuote, date } = JSON.parse(cachedQuoteData);
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (date === todayStr) {
+        setQuote(cachedQuote);
+        setIsLoadingQuote(false);
+        return;
+      }
+    }
+
     setIsLoadingQuote(true);
     if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
       setQuote("The journey of a thousand miles begins with a single step.");
@@ -37,18 +46,30 @@ export default function TodaysPlanCard() {
         topic: 'achieving daily goals and academic success',
         apiKey
       });
-      setQuote(result.quote);
-    } catch (error) {
+      const newQuote = result.quote;
+      setQuote(newQuote);
+      const todayStr = new Date().toISOString().split('T')[0];
+      localStorage.setItem('motivationalQuote', JSON.stringify({ quote: newQuote, date: todayStr }));
+    } catch (error: any) {
       console.error('Error fetching motivational quote:', error);
-      setQuote("Remember, every small step counts towards your big goals!"); // Fallback quote
+      setQuote("Remember, every small step counts towards your big goals!");
+      toast({
+        title: "Could not fetch quote",
+        description: error.message || "Using a fallback quote.",
+        variant: "destructive"
+      });
     } finally {
       setIsLoadingQuote(false);
     }
   };
 
+  useEffect(() => {
+    fetchQuote();
+  }, [apiKey]);
+
   return (
     <Card className="frosted-glass shadow-lg">
-      <Accordion type="single" collapsible className="w-full">
+      <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
         <AccordionItem value="item-1" className="border-b-0">
             <AccordionTrigger className="p-6 hover:no-underline">
               <div className="flex flex-col items-start text-left flex-1">
@@ -61,50 +82,12 @@ export default function TodaysPlanCard() {
               </div>
             </AccordionTrigger>
           <AccordionContent>
-            <CardContent className="pt-0 space-y-6">
-                <div>
-                <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
-                    <Brain className="mr-2 h-5 w-5 text-accent" /> Micro-Goals
-                </h3>
-                <ul className="space-y-1 list-disc list-inside_ pl-0">
-                    {todaysPlan.microGoals.map((goal, index) => (
-                    <li key={index} className="text-sm text-foreground/90 flex items-start">
-                        <CheckSquare className="h-4 w-4 mr-2 mt-0.5 text-green-500 shrink-0" /> 
-                        <span>{goal}</span>
-                    </li>
-                    ))}
-                </ul>
-                </div>
-
-                <div>
-                <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
-                    <Calendar className="mr-2 h-5 w-5 text-accent" /> Schedule
-                </h3>
-                <ul className="space-y-2">
-                    {todaysPlan.schedule.map((item, index) => (
-                    <li key={index} className="text-sm text-foreground/90 flex items-center">
-                        <span className="font-medium w-24 text-accent/90">{item.time}</span>
-                        <span>{item.activity}</span>
-                    </li>
-                    ))}
-                </ul>
-                </div>
-                
-                <div>
-                <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
-                    <Lightbulb className="mr-2 h-5 w-5 text-accent" /> Motivational Spark
-                </h3>
-                {isLoadingQuote ? (
-                    <div className="flex items-center justify-center h-16">
-                    <LoadingSpinner size="sm" />
-                    </div>
-                ) : (
-                    <blockquote className="border-l-4 border-accent pl-4 italic text-sm text-foreground/90">
-                    <Quote className="inline h-4 w-4 mr-1 -mt-1 text-accent/80" />
-                    {quote}
-                    </blockquote>
-                )}
-                </div>
+            <CardContent className="pt-0">
+               <TodaysPlanContent 
+                 todaysPlan={todaysPlan}
+                 quote={quote}
+                 isLoadingQuote={isLoadingQuote}
+               />
             </CardContent>
           </AccordionContent>
         </AccordionItem>
