@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { TimelineEvent } from '@/types';
@@ -215,10 +214,9 @@ interface DayTimetableViewProps {
   onClose: () => void;
   onDeleteEvent?: (eventId: string) => void;
   onEditEvent?: (event: TimelineEvent) => void;
-  onSaveEvent: (event: TimelineEvent) => void;
 }
 
-export default function DayTimetableView({ date, events, onClose, onDeleteEvent, onEditEvent, onSaveEvent }: DayTimetableViewProps) {
+export default function DayTimetableView({ date, events, onClose, onDeleteEvent, onEditEvent }: DayTimetableViewProps) {
   const { toast } = useToast();
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -469,7 +467,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
           <EventOverviewPanel
             event={selectedEvent}
             onClose={handleCloseOverview}
-            onSave={onSaveEvent}
+            onEdit={onEditEvent}
           />
         )}
       </div>
