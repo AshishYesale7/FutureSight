@@ -167,13 +167,18 @@ export default function SubscriptionPage() {
                                 <CardFooter>
                                     <Button
                                         className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                                        disabled={isLoading !== null}
+                                        disabled={isLoading !== null || !isScriptLoaded}
                                         onClick={() => handleSubscribe(planId)}
                                     >
                                         {isLoading === planId ? (
                                             <>
                                                 <LoadingSpinner size="sm" className="mr-2"/>
                                                 Processing...
+                                            </>
+                                        ) : !isScriptLoaded ? (
+                                            <>
+                                                <LoadingSpinner size="sm" className="mr-2"/>
+                                                Loading...
                                             </>
                                         ) : 'Subscribe Now'}
                                     </Button>
