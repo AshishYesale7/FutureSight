@@ -18,6 +18,9 @@ import { KeyRound, Globe, Unplug, CheckCircle } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
+import { auth } from '@/lib/firebase';
+import { GoogleAuthProvider, linkWithPopup } from 'firebase/auth';
+
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -64,13 +67,38 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     onOpenChange(false);
   };
   
-  const handleConnectGoogle = () => {
-    if (!user) {
+  const handleConnectGoogle = async () => {
+    if (!user || !auth?.currentUser) {
         toast({ title: 'Error', description: 'You must be logged in to connect a Google account.', variant: 'destructive' });
         return;
     }
-    const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
-    window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
+
+    const provider = new GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+    provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
+    provider.addScope('https://www.googleapis.com/auth/calendar.events');
+
+    try {
+        await linkWithPopup(auth.currentUser, provider);
+        setIsGoogleConnected(true);
+        toast({ title: 'Success!', description: 'Your Google account has been successfully connected.' });
+    } catch (error: any) {
+        if (error.code === 'auth/credential-already-in-use') {
+            toast({
+                title: 'Account Already Exists',
+                description: "This Google account is already linked to another user. Please sign out and sign in with Google to merge accounts.",
+                variant: 'destructive',
+                duration: 10000,
+            });
+        } else {
+            console.error("Google link error:", error);
+            toast({
+                title: 'Connection Failed',
+                description: error.message || 'An unknown error occurred while connecting your Google account.',
+                variant: 'destructive',
+            });
+        }
+    }
   };
 
   const handleDisconnectGoogle = async () => {
