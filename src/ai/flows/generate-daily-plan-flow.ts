@@ -107,7 +107,7 @@ Today's date is: ${currentDateStr}
 
 **1. CRITICAL: User's Fixed Schedule for Today**
 These are the user's fixed, non-negotiable activities and appointments for today. The times provided are in 24-hour format.
-You MUST include every single one of these items in the final schedule at their specified times. These blocks of time are UNAVAILABLE for any other task.
+You MUST include every single one of these items in the final schedule at their specified times, WITH THE EXCEPTION of any activity named 'Sleep'. The 'Sleep' activity is handled separately in the instructions below.
 ${fixedScheduleText}
 
 **2. User's Long-Term Goals & Vision:**
@@ -126,13 +126,13 @@ Analyze all the provided information and generate a complete daily plan. Follow 
 1.  **Create Daily Micro-Goals:** Based on the user's goals, skills, and any upcoming deadlines, generate 2-4 specific, achievable "micro-goals" for today.
 
 2.  **Build the Schedule:**
-    a.  The schedule must start from the user's first waking activity.
-    b.  First, place all items from the "CRITICAL: User's Fixed Schedule for Today" into the timetable.
+    a.  The schedule must start from the user's first waking activity. Do not include a sleep block at the beginning of the day.
+    b.  First, place all items from the "CRITICAL: User's Fixed Schedule for Today" section (except for 'Sleep') into the timetable.
     c.  Then, intelligently fill the remaining empty time slots with tasks to achieve the micro-goals. Mix focused work with short breaks.
     d.  **IMPORTANT OUTPUT FORMATTING:** When creating the final 'schedule' array, follow this rule:
         - For any activity block (either from the fixed schedule or one you plan) that is **4 hours or longer** (like 'Sleep'), you MUST create a **single entry** with a time range. Example: \`{"time": "11:00 PM - 07:00 AM", "activity": "Sleep"}\`.
         - For any activity block that is **shorter than 4 hours** (like a 2-hour 'College' block or a 1-hour 'Study' block), you MUST create **individual hourly entries**. For example, a 'Study' block from 9 AM to 11 AM must be represented as two separate entries: one for \`{"time": "09:00 AM", "activity": "Study"}\` and another for \`{"time": "10:00 AM", "activity": "Study"}\`.
-    e.  The sleep block for the upcoming night should be placed at the very end of the schedule.
+    e.  The sleep block for the upcoming night should be placed at the very end of the schedule. This should be the ONLY 'Sleep' activity in the entire schedule.
     f.  All times in the final 'schedule' output must use a 12-hour clock with AM/PM (e.g., '09:00 AM').
 
 3.  **Generate Critical Reminders:** Create a list of 1-3 important reminders for today or tomorrow.
