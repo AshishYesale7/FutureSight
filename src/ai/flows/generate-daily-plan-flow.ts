@@ -43,83 +43,6 @@ const GenerateDailyPlanOutputSchema = z.object({
 export type GenerateDailyPlanOutput = z.infer<typeof GenerateDailyPlanOutputSchema>;
 
 
-// Define the input schema for the prompt itself
-const DailyPlanPromptInputSchema = z.object({
-  currentDate: z.string(),
-  fixedSchedule: z.array(z.object({
-    title: z.string(),
-    startTime: z.string(),
-    endTime: z.string(),
-  })).describe("A list of fixed, non-negotiable activities and events for today. The AI must schedule around these."),
-  careerGoals: z.array(z.object({
-      id: z.string(),
-      title: z.string(),
-      progress: z.number(),
-      deadline: z.date().optional(),
-  })),
-  skills: z.array(z.object({
-      id: z.string(),
-      name: z.string(),
-      proficiency: z.string(),
-      lastUpdated: z.date(),
-  })),
-  // All timeline events for context on upcoming deadlines
-  timelineEvents: z.array(z.object({
-      id: z.string(),
-      title: z.string(),
-      date: z.date(),
-      notes: z.string().optional(),
-  }))
-});
-
-// Define the prompt using ai.definePrompt for better structure
-const dailyPlanPrompt = ai.definePrompt({
-  name: 'dailyPlanPrompt',
-  input: { schema: DailyPlanPromptInputSchema },
-  output: { schema: GenerateDailyPlanOutputSchema },
-  prompt: `You are an expert productivity and career coach AI named 'FutureSight'. 
-Your goal is to create a highly personalized, actionable, and motivating daily plan for a user.
-
-Today's date is: {{{currentDate}}}
-
-**1. CRITICAL: User's Fixed Schedule for Today**
-These are the user's fixed, non-negotiable activities and appointments for today.
-You MUST include every single one of these items in the final schedule at their specified times. These blocks of time are UNAVAILABLE for any other task.
-{{#if fixedSchedule}}
-  {{#each fixedSchedule}}
-  - Activity: "{{this.title}}" from {{this.startTime}} to {{this.endTime}}
-  {{/each}}
-{{else}}
-- The user has no fixed activities scheduled for today.
-{{/if}}
-
-**2. User's Long-Term Goals & Vision:**
-- Career Goals:
-{{#each careerGoals}} - {{this.title}} (Progress: {{this.progress}}%{{#if this.deadline}}, Deadline: {{this.deadline}}{{/if}}). {{/each}}
-- Skills to Develop:
-{{#each skills}} - {{this.name}} (Proficiency: {{this.proficiency}}). {{/each}}
-
-**3. All Upcoming Events (for context):**
-{{#each timelineEvents}}
-- Event: "{{this.title}}" on {{this.date}}.
-{{/each}}
-
----
-**YOUR TASK**
-Analyze all the provided information and generate a complete daily plan. Follow these instructions precisely:
-
-1.  **Prioritize Upcoming Deadlines:** Look at all upcoming events. If a major exam or deadline (e.g., "GATE Exam") is in the next 1-2 weeks, you MUST dedicate study/prep time for it in today's free slots. This is your top priority.
-2.  **Create Daily Micro-Goals:** Based on the user's goals, skills, and prioritized deadlines, generate 2-4 specific, achievable "micro-goals" for today. These should be tasks that fit into the available free time.
-3.  **Build the Schedule:**
-    a.  Start by creating a schedule that includes *all* items from the "CRITICAL: User's Fixed Schedule for Today".
-    b.  Then, intelligently fill the remaining empty time slots with tasks to achieve the micro-goals. Mix focused work with short breaks. Be realistic about what can be achieved.
-4.  **Generate Critical Reminders:** Create a list of 1-3 important reminders for events happening today or tomorrow.
-5.  **Find a Motivational Quote:** Provide one short, inspiring quote related to productivity or learning.
-
-Your entire output MUST be a single, valid JSON object that adheres to the output schema.`,
-});
-
-
 // This is the main exported function now.
 export async function generateDailyPlan(input: GenerateDailyPlanInput): Promise<GenerateDailyPlanOutput> {
   // Fetch all necessary data *inside* the flow.
@@ -134,9 +57,8 @@ export async function generateDailyPlan(input: GenerateDailyPlanInput): Promise<
     throw new Error("User preferences (routine) could not be loaded.");
   }
 
-  // Pre-process the data for the prompt template
+  // Pre-process the data for the prompt
   const today = new Date(input.currentDate);
-  const startOfToday = new Date(today.setHours(0, 0, 0, 0));
 
   // Filter routine items for today
   const todaysRoutineBlocks = userPreferences.routine.filter(item => 
@@ -151,7 +73,7 @@ export async function generateDailyPlan(input: GenerateDailyPlanInput): Promise<
   const todaysTimelineBlocks = timelineEvents.filter(event => {
       if (!event.date) return false;
       const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
-      return isSameDay(eventDate, startOfToday);
+      return isSameDay(eventDate, today);
   }).map(event => {
       const eventDate = event.date instanceof Date ? event.date : new Date(event.date);
       const eventEndDate = event.endDate instanceof Date ? event.endDate : (event.endDate ? new Date(event.endDate) : addHours(eventDate, 1));
@@ -165,21 +87,59 @@ export async function generateDailyPlan(input: GenerateDailyPlanInput): Promise<
   // Combine both into a single list of fixed schedule items
   const fixedScheduleForToday = [...todaysRoutineBlocks, ...todaysTimelineBlocks];
 
-  // Prepare the input for the structured prompt
-  const promptInput = {
-    currentDate: format(today, 'PPPP'),
-    fixedSchedule: fixedScheduleForToday,
-    careerGoals: careerGoals.map(g => ({ ...g, deadline: g.deadline })),
-    skills: skills.map(s => ({ ...s, lastUpdated: s.lastUpdated })),
-    // Pass ALL timeline events so AI can see future deadlines
-    timelineEvents: timelineEvents.map(e => ({ ...e, date: e.date, notes: e.notes })),
-  };
+  // Manually construct the prompt string
+  const currentDateStr = format(today, 'PPPP');
 
-  // Use the generateWithApiKey helper, but now with a defined prompt and structured input
+  const fixedScheduleText = fixedScheduleForToday.length > 0 
+    ? fixedScheduleForToday.map(item => `  - Activity: "${item.title}" from ${item.startTime} to ${item.endTime}`).join('\n')
+    : '- The user has no fixed activities scheduled for today.';
+
+  const careerGoalsText = careerGoals.map(g => ` - ${g.title} (Progress: ${g.progress}%${g.deadline ? `, Deadline: ${format(g.deadline, 'PPP')}` : ''}).`).join('\n');
+  
+  const skillsText = skills.map(s => ` - ${s.name} (Proficiency: ${s.proficiency}).`).join('\n');
+  
+  const timelineEventsText = timelineEvents.map(e => `- Event: "${e.title}" on ${format(e.date, 'PPP')}.`).join('\n');
+
+  const promptText = `You are an expert productivity and career coach AI named 'FutureSight'. 
+Your goal is to create a highly personalized, actionable, and motivating daily plan for a user.
+
+Today's date is: ${currentDateStr}
+
+**1. CRITICAL: User's Fixed Schedule for Today**
+These are the user's fixed, non-negotiable activities and appointments for today.
+You MUST include every single one of these items in the final schedule at their specified times. These blocks of time are UNAVAILABLE for any other task.
+${fixedScheduleText}
+
+**2. User's Long-Term Goals & Vision:**
+- Career Goals:
+${careerGoalsText}
+- Skills to Develop:
+${skillsText}
+
+**3. All Upcoming Events (for context):**
+${timelineEventsText}
+
+---
+**YOUR TASK**
+Analyze all the provided information and generate a complete daily plan. Follow these instructions precisely:
+
+1.  **Prioritize Upcoming Deadlines:** Look at all upcoming events. If a major exam or deadline (e.g., "GATE Exam") is in the next 1-2 weeks, you MUST dedicate study/prep time for it in today's free slots. This is your top priority.
+2.  **Create Daily Micro-Goals:** Based on the user's goals, skills, and prioritized deadlines, generate 2-4 specific, achievable "micro-goals" for today. These should be tasks that fit into the available free time.
+3.  **Build the Schedule:**
+    a.  Start by creating a schedule that includes *all* items from the "CRITICAL: User's Fixed Schedule for Today".
+    b.  Then, intelligently fill the remaining empty time slots with tasks to achieve the micro-goals. Mix focused work with short breaks. Be realistic about what can be achieved.
+4.  **Generate Critical Reminders:** Create a list of 1-3 important reminders for events happening today or tomorrow.
+5.  **Find a Motivational Quote:** Provide one short, inspiring quote related to productivity or learning.
+
+Your entire output MUST be a single, valid JSON object that adheres to the output schema.`;
+  
+  // Use the generateWithApiKey helper with the constructed prompt string
   const { output } = await generateWithApiKey(input.apiKey, {
     model: 'googleai/gemini-2.0-flash',
-    prompt: dailyPlanPrompt, // Use the defined prompt object
-    input: promptInput, // Pass the structured, pre-processed input
+    prompt: promptText,
+    output: {
+      schema: GenerateDailyPlanOutputSchema,
+    },
   });
 
   if (!output) {
