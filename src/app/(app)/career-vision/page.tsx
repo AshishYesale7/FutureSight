@@ -1,4 +1,3 @@
-
 'use client';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -30,15 +29,6 @@ export default function CareerVisionPage() {
   const { apiKey } = useApiKey();
 
   const handleGenerateVision = async () => {
-    if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
-      toast({
-        title: 'Feature Unavailable',
-        description: 'AI features are disabled. Please provide an API key in settings to enable them.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     if (!userInput.trim()) {
         toast({
             title: 'Input Required',

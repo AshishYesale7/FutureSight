@@ -1,4 +1,3 @@
-
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
@@ -26,6 +25,7 @@ import { Label } from '@/components/ui/label';
 
 import 'react-phone-number-input/style.css';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import { getGoogleTokensFromFirestore } from '@/services/googleAuthService';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -125,18 +125,24 @@ export default function SignUpForm() {
     try {
       if (!auth) throw new Error("Firebase Auth is not initialized.");
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-      toast({ title: 'Success', description: 'Signed in with Google successfully.' });
-      router.push('/');
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // After sign-up, start the authorization flow immediately.
+      // The user will be redirected to Google to grant permissions for Calendar/Gmail.
+      toast({ title: 'Account Created! Connecting Google...', description: 'Please authorize access to your Google Calendar and Gmail.' });
+      const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
+      window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
+
     } catch (error: any) {
       toast({
         title: 'Error',
         description: error.message || 'Failed to sign in with Google.',
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
+      setLoading(false); // Only set loading to false on error
     }
+    // Do not set loading to false on success because of the redirect.
   };
 
   const handleSendOtp = async () => {

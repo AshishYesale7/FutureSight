@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
@@ -194,14 +193,6 @@ export default function ActualDashboardPage() {
     }
     if (!isGoogleConnected) {
       toast({ title: "Not Connected", description: "Please connect your Google account in Settings to sync data.", variant: "destructive" });
-      return;
-    }
-    if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
-      toast({
-        title: 'Feature Unavailable',
-        description: 'AI features are disabled. Please provide an API key in settings to enable them.',
-        variant: 'destructive',
-      });
       return;
     }
     if (!user) {

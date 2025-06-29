@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import type { NewsArticle } from '@/types';
@@ -70,15 +69,6 @@ export default function NewsPage() {
   };
 
   const handleSummarize = async (article: NewsArticle) => {
-    if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
-      toast({
-        title: 'Feature Unavailable',
-        description: 'AI features are disabled. Please provide an API key in settings to enable them.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setSummarizingArticleId(article.id);
     try {
       const result = await summarizeNews({ 
