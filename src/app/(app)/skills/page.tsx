@@ -129,7 +129,11 @@ export default function SkillsPage() {
     
     if (user) {
       try {
-        await saveSkill(user.uid, skillWithDate);
+        const payload = {
+          ...skillWithDate,
+          lastUpdated: skillWithDate.lastUpdated.toISOString(),
+        };
+        await saveSkill(user.uid, payload);
       } catch (error) {
         console.error("Failed to save skill to Firestore", error);
         // DO NOT REVERT.

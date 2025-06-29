@@ -27,14 +27,14 @@ export const getSkills = async (userId: string): Promise<Skill[]> => {
   return snapshot.docs.map(fromFirestore);
 };
 
-export const saveSkill = async (userId: string, skill: Skill): Promise<void> => {
+export const saveSkill = async (userId: string, skill: Omit<Skill, 'lastUpdated'> & { lastUpdated: string }): Promise<void> => {
   const skillsCollection = getSkillsCollection(userId);
   const skillDocRef = doc(skillsCollection, skill.id);
   const dataToSave = {
       ...skill,
-      lastUpdated: Timestamp.fromDate(skill.lastUpdated),
+      lastUpdated: Timestamp.fromDate(new Date(skill.lastUpdated)),
   };
-  await setDoc(skillDocRef, dataToSave);
+  await setDoc(skillDocRef, dataToSave, { merge: true });
 };
 
 export const deleteSkill = async (userId: string, skillId: string): Promise<void> => {

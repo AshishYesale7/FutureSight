@@ -244,7 +244,15 @@ export default function ActualDashboardPage() {
             syncToLocalStorage(updatedEvents);
 
             // Save each new event to Firestore
-            await Promise.all(uniqueNewEventsToAdd.map(event => saveTimelineEvent(user.uid, event)));
+            for (const event of uniqueNewEventsToAdd) {
+              const { icon, ...data } = event;
+              const payload = {
+                ...data,
+                date: data.date.toISOString(),
+                endDate: data.endDate ? data.endDate.toISOString() : null,
+              };
+              await saveTimelineEvent(user.uid, payload);
+            }
             
             toastTitle = "Timeline Updated";
             toastDescription = `${uniqueNewEventsToAdd.length} new item(s) have been synced from your Google account and added to your timeline.`;
@@ -391,7 +399,13 @@ export default function ActualDashboardPage() {
     
     if (user) {
         try {
-            await saveTimelineEvent(user.uid, updatedEvent);
+            const { icon, ...data } = updatedEvent;
+            const payload = {
+                ...data,
+                date: data.date.toISOString(),
+                endDate: data.endDate ? data.endDate.toISOString() : null,
+            };
+            await saveTimelineEvent(user.uid, payload);
         } catch (error) {
             console.error("Failed to save event to Firestore", error);
             // DO NOT REVERT UI. The changes are saved locally.

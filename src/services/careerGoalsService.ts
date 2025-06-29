@@ -31,14 +31,14 @@ export const getCareerGoals = async (userId: string): Promise<CareerGoal[]> => {
   return snapshot.docs.map(fromFirestore);
 };
 
-export const saveCareerGoal = async (userId: string, goal: CareerGoal): Promise<void> => {
+export const saveCareerGoal = async (userId: string, goal: Omit<CareerGoal, 'deadline'> & { deadline?: string | null }): Promise<void> => {
   const goalsCollection = getGoalsCollection(userId);
   const goalDocRef = doc(goalsCollection, goal.id);
   
   // Convert JS Date back to Firestore Timestamp for storing
   const dataToSave = {
     ...goal,
-    deadline: goal.deadline ? Timestamp.fromDate(goal.deadline) : null,
+    deadline: goal.deadline ? Timestamp.fromDate(new Date(goal.deadline)) : null,
   };
 
   await setDoc(goalDocRef, dataToSave, { merge: true });

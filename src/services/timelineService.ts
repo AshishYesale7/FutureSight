@@ -33,16 +33,15 @@ export const getTimelineEvents = async (userId: string): Promise<TimelineEvent[]
   return snapshot.docs.map(fromFirestore);
 };
 
-export const saveTimelineEvent = async (userId: string, event: TimelineEvent): Promise<void> => {
+export const saveTimelineEvent = async (userId: string, event: Omit<TimelineEvent, 'icon' | 'date' | 'endDate'> & { date: string; endDate?: string | null }): Promise<void> => {
   const eventsCollection = getTimelineEventsCollection(userId);
   const eventDocRef = doc(eventsCollection, event.id);
   
-  // Convert JS Date back to Firestore Timestamp for storing
-  const { icon, ...rest } = event; // Exclude icon component from being stored
+  // The event object is already serializable, we just need to convert date strings to Timestamps
   const dataToSave = {
-    ...rest,
-    date: Timestamp.fromDate(event.date),
-    endDate: event.endDate ? Timestamp.fromDate(event.endDate) : null,
+    ...event,
+    date: Timestamp.fromDate(new Date(event.date)),
+    endDate: event.endDate ? Timestamp.fromDate(new Date(event.endDate)) : null,
   };
 
   await setDoc(eventDocRef, dataToSave, { merge: true });

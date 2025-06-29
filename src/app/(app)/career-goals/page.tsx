@@ -122,7 +122,11 @@ export default function CareerGoalsPage() {
 
     if (user) {
         try {
-            await saveCareerGoal(user.uid, goalToSave);
+            const payload = {
+              ...goalToSave,
+              deadline: goalToSave.deadline ? goalToSave.deadline.toISOString() : null,
+            };
+            await saveCareerGoal(user.uid, payload);
         } catch (error) {
             console.error("Failed to save goal to Firestore", error);
             // DO NOT REVERT UI. The changes are saved locally.
