@@ -53,7 +53,6 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   const isGoogleProviderLinked = user?.providerData.some(p => p.providerId === GoogleAuthProvider.PROVIDER_ID);
 
   useEffect(() => {
-    // This cleanup runs when the component unmounts.
     return () => {
         if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
@@ -79,7 +78,6 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
             });
         }
     } else {
-       // Clean up when modal is closed
        if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
             pollIntervalRef.current = null;
@@ -92,26 +90,44 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   }, [currentApiKey, isOpen, toast, user]);
 
   useEffect(() => {
-    let verifier: RecaptchaVerifier | undefined;
-    if (isOpen && linkingPhoneState === 'input') {
-        const recaptchaContainer = document.getElementById('recaptcha-container-settings');
-        if (recaptchaContainer && !window.recaptchaVerifierSettings) {
-            verifier = new RecaptchaVerifier(auth, 'recaptcha-container-settings', {
-                'size': 'invisible',
-                'callback': () => console.log('reCAPTCHA for settings verified'),
-            });
-            verifier.render().then(() => {
-              window.recaptchaVerifierSettings = verifier;
-            });
+    const recaptchaContainer = document.getElementById('recaptcha-container-settings');
+
+    const cleanup = () => {
+        if (window.recaptchaVerifierSettings) {
+            window.recaptchaVerifierSettings.clear();
+            window.recaptchaVerifierSettings = undefined;
         }
-    }
-    return () => {
-      if (window.recaptchaVerifierSettings) {
-        window.recaptchaVerifierSettings.clear();
-        window.recaptchaVerifierSettings = undefined;
-      }
+        if (recaptchaContainer) {
+            recaptchaContainer.innerHTML = '';
+        }
     };
-  }, [isOpen, linkingPhoneState]);
+
+    if (!isOpen || linkingPhoneState !== 'input' || !auth) {
+        cleanup();
+        return;
+    }
+
+    if (!recaptchaContainer) return;
+    
+    cleanup();
+
+    try {
+        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container-settings', {
+            'size': 'invisible',
+            'callback': () => console.log('reCAPTCHA for settings verified'),
+            'expired-callback': () => {
+                toast({ title: 'reCAPTCHA Expired', description: 'Please try again.', variant: 'destructive' });
+                cleanup();
+            }
+        });
+        window.recaptchaVerifierSettings = verifier;
+        verifier.render();
+    } catch (e: any) {
+        console.error("reCAPTCHA settings error:", e);
+    }
+    
+    return cleanup;
+  }, [isOpen, linkingPhoneState, auth, toast]);
 
   const handleApiKeySave = () => {
     const trimmedKey = apiKeyInput.trim();
@@ -161,7 +177,6 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
             }
         } catch (error) {
             console.error('Polling error:', error);
-            // Just continue polling, don't show an error for each failed attempt
         }
     }, 3000);
   }
@@ -175,7 +190,6 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
     const authUrl = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
 
-    // If Google is already a provider, we just need to re-run the OAuth flow for API permissions.
     if (isGoogleProviderLinked) {
         toast({ title: 'Opening Google...', description: 'Please authorize access in the new tab.' });
         window.open(authUrl, '_blank', 'width=500,height=600');
@@ -183,7 +197,6 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
         return;
     }
 
-    // If Google is NOT a provider, we need to link it first.
     const provider = new GoogleAuthProvider();
     provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
     provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
@@ -191,9 +204,8 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
 
     try {
         await linkWithPopup(auth.currentUser, provider);
-        await refreshUser(); // Refresh user to update providerData
+        await refreshUser(); 
         
-        // After a successful link, run the redirect flow in a new tab to get the offline refresh token.
         toast({ title: 'Account Linked!', description: 'Now granting permissions in the new tab.' });
         window.open(authUrl, '_blank', 'width=500,height=600');
         startPollingForConnection();

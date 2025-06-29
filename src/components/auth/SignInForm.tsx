@@ -1,3 +1,4 @@
+
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult, linkWithPopup, fetchSignInMethodsForEmail, linkWithPhoneNumber } from 'firebase/auth';
@@ -62,48 +63,46 @@ export default function SignInForm() {
   });
 
   useEffect(() => {
-    if (!auth || view !== 'phone') {
+    const recaptchaContainer = document.getElementById('recaptcha-container');
+
+    const cleanup = () => {
+        if (window.recaptchaVerifier) {
+            window.recaptchaVerifier.clear();
+            window.recaptchaVerifier = undefined;
+        }
+        if (recaptchaContainer) {
+            recaptchaContainer.innerHTML = '';
+        }
+    };
+
+    if (view !== 'phone' || !auth) {
+      cleanup();
       return;
     }
-  
-    const recaptchaContainer = document.getElementById('recaptcha-container');
+    
     if (!recaptchaContainer) {
       return;
     }
+
+    // Defensive cleanup before creating a new one
+    cleanup();
+
+    try {
+        const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
+            'size': 'invisible',
+            'callback': () => console.log("reCAPTCHA verified"),
+            'expired-callback': () => {
+                toast({ title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
+                cleanup(); // Cleanup on expiration to allow re-creation
+            }
+        });
+        window.recaptchaVerifier = verifier;
+        verifier.render();
+    } catch (e: any) {
+        console.error("reCAPTCHA creation/render error:", e);
+    }
   
-    // Define a new verifier instance for this effect run
-    const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
-      'size': 'invisible',
-      'callback': () => console.log("reCAPTCHA verified"),
-      'expired-callback': () => {
-        toast({ title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
-      }
-    });
-  
-    // Render the verifier and attach it to the window
-    verifier.render().then(() => {
-      window.recaptchaVerifier = verifier;
-    }).catch((e) => {
-      console.error("reCAPTCHA render error:", e);
-      // Avoid creating a toast for the common "already rendered" error which can happen during fast-toggling
-      if (e.code !== 'auth/recaptcha-already-rendered') {
-        toast({ title: 'reCAPTCHA Error', description: 'Could not initialize phone sign-in. Please refresh.', variant: 'destructive' });
-      }
-    });
-  
-    // Return a cleanup function
-    return () => {
-      // Use the verifier from this effect's closure to clear it
-      verifier.clear();
-      // Clear the container just in case
-      if (recaptchaContainer) {
-        recaptchaContainer.innerHTML = '';
-      }
-      // Also clear the global reference if it's the one we set
-      if (window.recaptchaVerifier === verifier) {
-        window.recaptchaVerifier = undefined;
-      }
-    };
+    return cleanup;
   }, [view, auth, toast]);
 
 
@@ -149,12 +148,13 @@ export default function SignInForm() {
         // If not connected, start the authorization flow.
         toast({ title: 'Connecting Google Account...', description: 'Please authorize access to your Google Calendar and Gmail.' });
         const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
-        window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
+        const authUrl = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
+        window.open(authUrl, '_blank', 'width=500,height=600');
       } else {
         // If already connected, just go to the dashboard.
         toast({ title: 'Success', description: 'Signed in with Google successfully.' });
-        router.push('/');
       }
+      router.push('/');
     } catch (error: any) {
         if (error.code === 'auth/account-exists-with-different-credential') {
              const email = error.customData.email;
@@ -172,9 +172,8 @@ export default function SignInForm() {
                 variant: 'destructive',
             });
         }
-      setLoading(false); // Only set loading to false on error
+      setLoading(false); 
     }
-    // Do not set loading to false on success because of the potential redirect.
   };
 
   const handleSendOtp = async () => {

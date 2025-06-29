@@ -1,3 +1,4 @@
+
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
@@ -64,41 +65,45 @@ export default function SignUpForm() {
   });
 
   useEffect(() => {
-    if (!auth || view !== 'phone') {
+    const recaptchaContainer = document.getElementById('recaptcha-container-signup');
+
+    const cleanup = () => {
+        if (window.recaptchaVerifier) {
+            window.recaptchaVerifier.clear();
+            window.recaptchaVerifier = undefined;
+        }
+        if (recaptchaContainer) {
+            recaptchaContainer.innerHTML = '';
+        }
+    };
+
+    if (view !== 'phone' || !auth) {
+      cleanup();
       return;
     }
-  
-    const recaptchaContainer = document.getElementById('recaptcha-container-signup');
+    
     if (!recaptchaContainer) {
       return;
     }
+
+    cleanup();
+
+    try {
+        const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
+            'size': 'invisible',
+            'callback': () => console.log("reCAPTCHA verified"),
+            'expired-callback': () => {
+                toast({ title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
+                cleanup();
+            }
+        });
+        window.recaptchaVerifier = verifier;
+        verifier.render();
+    } catch (e: any) {
+        console.error("reCAPTCHA creation/render error:", e);
+    }
   
-    const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
-      'size': 'invisible',
-      'callback': () => console.log("reCAPTCHA verified"),
-      'expired-callback': () => {
-        toast({ title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
-      }
-    });
-  
-    verifier.render().then(() => {
-      window.recaptchaVerifier = verifier;
-    }).catch((e) => {
-      console.error("reCAPTCHA render error:", e);
-      if (e.code !== 'auth/recaptcha-already-rendered') {
-        toast({ title: 'reCAPTCHA Error', description: 'Could not initialize phone sign-up. Please refresh.', variant: 'destructive' });
-      }
-    });
-  
-    return () => {
-      verifier.clear();
-      if (recaptchaContainer) {
-        recaptchaContainer.innerHTML = '';
-      }
-      if (window.recaptchaVerifier === verifier) {
-        window.recaptchaVerifier = undefined;
-      }
-    };
+    return cleanup;
   }, [view, auth, toast]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
