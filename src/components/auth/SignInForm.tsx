@@ -23,6 +23,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Eye, EyeOff, Smartphone, Mail } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
+import 'react-phone-number-input/style.css';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+
+
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(1, { message: 'Password cannot be empty.' }),
@@ -42,7 +46,7 @@ export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
   
   const [view, setView] = useState<'email' | 'phone'>('email');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState<string | undefined>();
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
 
@@ -122,9 +126,8 @@ export default function SignInForm() {
       toast({ title: 'Error', description: 'Firebase Auth not initialized.', variant: 'destructive' });
       return;
     }
-    const e164Regex = /^\+[1-9]\d{1,14}$/;
-    if (!e164Regex.test(phoneNumber)) {
-        toast({ title: 'Invalid Phone Number', description: 'Please use the E.164 format (e.g., +14155552671).', variant: 'destructive' });
+    if (!phoneNumber || !isValidPhoneNumber(phoneNumber)) {
+        toast({ title: 'Invalid Phone Number', description: 'Please enter a complete and valid phone number.', variant: 'destructive' });
         return;
     }
     setLoading(true);
@@ -136,7 +139,7 @@ export default function SignInForm() {
       toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.' });
     } catch (error: any) {
       console.error(error);
-      toast({ title: 'Error', description: error.message || 'Failed to send OTP. Please ensure the format is correct and refresh the page.', variant: 'destructive' });
+      toast({ title: 'Error', description: error.message || 'Failed to send OTP. Please refresh the page and try again.', variant: 'destructive' });
     } finally {
         setLoading(false);
     }
@@ -239,15 +242,15 @@ export default function SignInForm() {
             <div className="space-y-8">
              {!showOtpInput ? (
                 <div className="space-y-8">
-                    <div className="space-y-2">
+                    <div className="space-y-2 phone-input-container">
                       <Label htmlFor="phone-number" className="text-center block">Phone Number</Label>
-                      <Input 
+                      <PhoneInput
                         id="phone-number"
-                        type="tel"
-                        placeholder="e.g., +14155552671" 
+                        international
+                        countryCallingCodeEditable={false}
+                        placeholder="Enter phone number"
                         value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
+                        onChange={setPhoneNumber}
                       />
                     </div>
                     <Button onClick={handleSendOtp} className="w-full bg-accent/70 hover:bg-accent/80 text-white h-12 text-lg rounded-full border border-white/30" disabled={loading}>
