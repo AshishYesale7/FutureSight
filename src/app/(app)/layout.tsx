@@ -1,3 +1,4 @@
+
 'use client';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
@@ -24,16 +25,16 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   }, [user, loading, isSubscribed, router, pathname]);
 
-  // Logic to show modal once per session
+  // Logic to show modal once per session, ONLY on the dashboard
   useEffect(() => {
-    if (!loading && user && isSubscribed) {
+    if (!loading && user && isSubscribed && pathname === '/') {
       const hasSeenModal = sessionStorage.getItem('seenTodaysPlanModal');
       if (!hasSeenModal) {
         setIsPlanModalOpen(true);
         sessionStorage.setItem('seenTodaysPlanModal', 'true');
       }
     }
-  }, [user, loading, isSubscribed]);
+  }, [user, loading, isSubscribed, pathname]);
 
   if (loading || !user || (!isSubscribed && pathname !== '/subscription')) {
     return (

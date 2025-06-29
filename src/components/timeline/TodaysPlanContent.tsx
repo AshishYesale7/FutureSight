@@ -1,3 +1,4 @@
+
 'use client';
 import type { TodaysPlan } from '@/types';
 import { CheckSquare, Calendar, Quote, Brain, Lightbulb } from 'lucide-react';
@@ -16,7 +17,7 @@ export function TodaysPlanContent({ todaysPlan, quote, isLoadingQuote }: TodaysP
         <h3 className="font-semibold text-lg mb-2 flex items-center text-foreground">
           <Brain className="mr-2 h-5 w-5 text-accent" /> Micro-Goals
         </h3>
-        <ul className="space-y-1 list-disc list-inside_ pl-0">
+        <ul className="space-y-1 pl-0">
           {todaysPlan.microGoals.map((goal, index) => (
             <li key={index} className="text-sm text-foreground/90 flex items-start">
               <CheckSquare className="h-4 w-4 mr-2 mt-0.5 text-green-500 shrink-0" />
