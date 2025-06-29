@@ -1,9 +1,8 @@
-
 'use server';
 
 import { google } from 'googleapis';
 import { getAuthenticatedClient } from './googleAuthService';
-import type { RawGoogleTask } from '@/types';
+import type { RawGoogleTask, GoogleTaskList } from '@/types';
 import { formatISO } from 'date-fns';
 
 export async function getGoogleTasks(userId: string): Promise<RawGoogleTask[]> {
@@ -29,7 +28,7 @@ export async function getGoogleTasks(userId: string): Promise<RawGoogleTask[]> {
     }
 
     return tasks.map((task): RawGoogleTask | null => {
-        if (!task.id || !task.title || !task.status) {
+        if (!task.id || !task.title || !task.status || !task.updated) {
             return null; // Skip tasks without essential data
         }
         
@@ -46,6 +45,7 @@ export async function getGoogleTasks(userId: string): Promise<RawGoogleTask[]> {
           due: task.due ? formatISO(new Date(task.due)) : undefined,
           status: task.status as 'needsAction' | 'completed',
           link: task.selfLink || undefined,
+          updated: task.updated,
         };
       }).filter((task): task is RawGoogleTask => task !== null);
 
@@ -61,5 +61,77 @@ export async function getGoogleTasks(userId: string): Promise<RawGoogleTask[]> {
     console.error(`Error fetching Google Tasks for user ${userId}:`, error);
     // Generic error for other issues
     throw new Error('Failed to fetch Google Tasks. Please try re-connecting your Google account in Settings.');
+  }
+}
+
+export async function getGoogleTaskLists(userId: string): Promise<GoogleTaskList[]> {
+  const client = await getAuthenticatedClient(userId);
+  if (!client) {
+    console.log(`Not authenticated with Google for user ${userId}. Cannot fetch task lists.`);
+    return [];
+  }
+
+  const tasksService = google.tasks({ version: 'v1', auth: client });
+
+  try {
+    const response = await tasksService.tasklists.list({
+      maxResults: 100,
+    });
+
+    const lists = response.data.items;
+    if (!lists) {
+      return [];
+    }
+
+    return lists.map(list => ({
+      id: list.id!,
+      title: list.title!,
+    })).filter(list => !!list.id && !!list.title);
+
+  } catch (error: any) {
+    if (error.code === 403 && error.errors?.[0]?.reason === 'accessNotConfigured') {
+        const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '[your-project-id]';
+        const errorMessage = `Google Tasks API has not been used in project ${projectId} or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/tasks.googleapis.com/overview?project=${projectId} and then retry.`;
+        console.error(errorMessage, error);
+        throw new Error(errorMessage);
+    }
+    
+    console.error(`Error fetching Google Task Lists for user ${userId}:`, error);
+    throw new Error('Failed to fetch Google Task Lists.');
+  }
+}
+
+export async function getAllTasksFromList(userId: string, taskListId: string): Promise<RawGoogleTask[]> {
+  const client = await getAuthenticatedClient(userId);
+  if (!client) return [];
+
+  const tasksService = google.tasks({ version: 'v1', auth: client });
+  try {
+    const response = await tasksService.tasks.list({
+      tasklist: taskListId,
+      showCompleted: true,
+      maxResults: 100,
+    });
+    const tasks = response.data.items;
+    if (!tasks) return [];
+    
+    return tasks.map((task): RawGoogleTask | null => {
+        if (!task.id || !task.title || !task.status || !task.updated) {
+            return null;
+        }
+        return {
+          id: task.id,
+          title: task.title,
+          notes: task.notes || undefined,
+          due: task.due ? formatISO(new Date(task.due)) : undefined,
+          status: task.status as 'needsAction' | 'completed',
+          link: task.selfLink || undefined,
+          updated: task.updated,
+        };
+      }).filter((task): task is RawGoogleTask => task !== null);
+
+  } catch (error) {
+    console.error(`Error fetching tasks for list ${taskListId}:`, error);
+    throw new Error(`Failed to fetch tasks for list ${taskListId}.`);
   }
 }

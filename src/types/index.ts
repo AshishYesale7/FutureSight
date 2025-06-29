@@ -1,4 +1,3 @@
-
 import type { LucideIcon } from 'lucide-react';
 
 export interface RoutineItem {
@@ -111,6 +110,7 @@ export interface RawGoogleTask {
   due?: string; // ISO 8601 date string, e.g., "2024-05-30T00:00:00.000Z"
   status: 'needsAction' | 'completed';
   link?: string;
+  updated: string;
 }
 
 export interface RawGmailMessage {
@@ -124,6 +124,11 @@ export interface RawGmailMessage {
 export interface GmailLabel {
   id: string;
   name: string;
+}
+
+export interface GoogleTaskList {
+  id: string;
+  title: string;
 }
 
 export interface ActionableInsight {

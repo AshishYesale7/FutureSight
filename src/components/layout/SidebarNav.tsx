@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -21,6 +20,7 @@ import {
   Shrink,
   FileText,
   Crown,
+  ClipboardCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { signOut } from 'firebase/auth';
@@ -50,6 +50,7 @@ const navItems = [
   { href: '/career-vision', label: 'Career Vision', icon: Eye },
   { href: '/news', label: 'News', icon: Newspaper },
   { href: '/resources', label: 'Resources', icon: Lightbulb },
+  { href: '/tasks', label: 'Tasks', icon: ClipboardCheck },
   { href: '/subscription', label: 'Subscription', icon: Crown },
 ];
 

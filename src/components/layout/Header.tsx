@@ -1,9 +1,8 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
-import { Menu, UserCircle, LogOut, Settings, Sun, Moon, Palette, Expand, Shrink, FileText, Crown } from 'lucide-react';
+import { Menu, UserCircle, LogOut, Settings, Sun, Moon, Palette, Expand, Shrink, FileText, Crown, ClipboardCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { signOut } from 'firebase/auth';
@@ -32,6 +31,7 @@ const navItems = [
   { href: '/career-vision', label: 'Career Vision', icon: Menu },
   { href: '/news', label: 'News', icon: Menu },
   { href: '/resources', label: 'Resources', icon: Menu },
+  { href: '/tasks', label: 'Tasks', icon: ClipboardCheck },
   { href: '/subscription', label: 'Subscription', icon: Crown },
 ];
 
