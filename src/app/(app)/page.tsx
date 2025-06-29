@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
 import EventCalendarView from '@/components/timeline/EventCalendarView';
 import SlidingTimelineView from '@/components/timeline/SlidingTimelineView';
@@ -10,7 +10,7 @@ import EditEventModal from '@/components/timeline/EditEventModal';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { AlertCircle, Bot, Calendar, List, CalendarDays as CalendarIconLucide, PlusCircle } from 'lucide-react';
+import { AlertCircle, Bot, Calendar, List, CalendarDays as CalendarIconLucide, PlusCircle, Upload, Download } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
 import { mockTimelineEvents } from '@/data/mock';
@@ -25,6 +25,8 @@ import { getTimelineEvents, saveTimelineEvent, deleteTimelineEvent } from '@/ser
 import { getGoogleCalendarEvents } from '@/services/googleCalendarService';
 import { getGoogleTasks } from '@/services/googleTasksService';
 import ImportantEmailsCard from '@/components/timeline/ImportantEmailsCard';
+import { saveAs } from 'file-saver';
+import * as ical from 'ical';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 
@@ -133,6 +135,7 @@ export default function ActualDashboardPage() {
   const { apiKey } = useApiKey();
   const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(loadFromLocalStorage);
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean | null>(null);
+  const importFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Background sync with Firestore
@@ -422,7 +425,6 @@ export default function ActualDashboardPage() {
     }
   }, [displayedTimelineEvents, handleCloseEditModal, toast, isAddingNewEvent, user]);
 
-
   const handleEventStatusUpdate = useCallback(async (eventId: string, newStatus: 'completed' | 'missed') => {
     const eventToUpdate = displayedTimelineEvents.find(event => event.id === eventId);
     if (!eventToUpdate || !user) return;
@@ -455,6 +457,120 @@ export default function ActualDashboardPage() {
       toast({ title: "Sync Error", description: "Could not save status to server. Change is saved locally.", variant: "destructive" });
     }
   }, [displayedTimelineEvents, user, toast]);
+
+  const handleExportEvents = useCallback(() => {
+    if (displayedTimelineEvents.length === 0) {
+      toast({ title: 'No Events', description: 'There are no events to export.', variant: 'destructive' });
+      return;
+    }
+
+    const formatToICSDate = (date: Date, isAllDay: boolean): string => {
+      if (isAllDay) {
+        return format(date, 'yyyyMMdd');
+      }
+      return format(date, "yyyyMMdd'T'HHmmss'Z'");
+    };
+
+    const icsEvents = displayedTimelineEvents.map(event => {
+      let icsEvent = 'BEGIN:VEVENT\n';
+      icsEvent += `UID:${event.id}@futuresight.app\n`;
+      icsEvent += `DTSTAMP:${formatToICSDate(new Date(), false)}\n`;
+      icsEvent += `DTSTART${event.isAllDay ? ';VALUE=DATE' : ''}:${formatToICSDate(event.date, !!event.isAllDay)}\n`;
+      if (event.endDate) {
+        icsEvent += `DTEND${event.isAllDay ? ';VALUE=DATE' : ''}:${formatToICSDate(event.endDate, !!event.isAllDay)}\n`;
+      }
+      icsEvent += `SUMMARY:${event.title}\n`;
+      if (event.notes) icsEvent += `DESCRIPTION:${event.notes.replace(/\n/g, '\\n')}\n`;
+      if (event.location) icsEvent += `LOCATION:${event.location}\n`;
+      if (event.url) icsEvent += `URL:${event.url}\n`;
+      icsEvent += 'END:VEVENT\n';
+      return icsEvent;
+    }).join('');
+
+    const icsFileContent = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//FutureSight//AI Career Planner//EN\n${icsEvents}END:VCALENDAR`;
+    
+    const blob = new Blob([icsFileContent], { type: 'text/calendar;charset=utf-8' });
+    saveAs(blob, 'futuresight-calendar.ics');
+    toast({ title: 'Export Successful', description: 'Your calendar has been downloaded as an .ics file.' });
+
+  }, [displayedTimelineEvents, toast]);
+
+  const handleImportChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!user) {
+        toast({ title: 'Not signed in', description: 'You must be signed in to import events.', variant: 'destructive' });
+        return;
+    }
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        const fileContent = event.target?.result;
+        if (typeof fileContent !== 'string') return;
+        
+        try {
+            const parsedData = ical.parseICS(fileContent);
+            const importedEvents: TimelineEvent[] = [];
+            
+            const existingEventSignatures = new Set(
+                displayedTimelineEvents.map(evt => `${evt.title}_${evt.date.toISOString()}`)
+            );
+
+            for (const key in parsedData) {
+                if (parsedData.hasOwnProperty(key)) {
+                    const item = parsedData[key];
+                    if (item.type === 'VEVENT') {
+                        const startDate = new Date(item.start);
+                        const eventSignature = `${item.summary}_${startDate.toISOString()}`;
+                        if (existingEventSignatures.has(eventSignature)) {
+                            continue; // Skip duplicate
+                        }
+
+                        const newEvent: TimelineEvent = {
+                            id: `imported-${Date.now()}-${importedEvents.length}`,
+                            title: item.summary,
+                            date: startDate,
+                            endDate: item.end ? new Date(item.end) : undefined,
+                            notes: item.description,
+                            location: item.location,
+                            url: item.url,
+                            type: 'custom',
+                            isAllDay: !item.start.toISOString().includes('T'), // Simple check for all-day
+                            status: 'pending',
+                            isDeletable: true,
+                            priority: 'None'
+                        };
+                        importedEvents.push(newEvent);
+                    }
+                }
+            }
+            
+            if (importedEvents.length > 0) {
+                const updatedEvents = [...displayedTimelineEvents, ...importedEvents];
+                setDisplayedTimelineEvents(updatedEvents);
+                syncToLocalStorage(updatedEvents);
+
+                // Save new events to Firestore
+                for (const newEvent of importedEvents) {
+                    const { icon, ...data } = newEvent;
+                    const payload = { ...data, date: data.date.toISOString(), endDate: data.endDate ? data.endDate.toISOString() : null };
+                    await saveTimelineEvent(user.uid, payload, { syncToGoogle: false });
+                }
+                
+                toast({ title: 'Import Successful', description: `${importedEvents.length} new event(s) were imported.` });
+            } else {
+                toast({ title: 'Nothing to Import', description: 'No new events were found in the file.' });
+            }
+
+        } catch (error) {
+            console.error('Error importing .ics file:', error);
+            toast({ title: 'Import Failed', description: 'The selected file could not be parsed.', variant: 'destructive' });
+        }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset file input
+  }, [user, toast, displayedTimelineEvents]);
+
 
   return (
     <div className={cn("space-y-8 h-full flex flex-col")}>
@@ -533,22 +649,35 @@ export default function ActualDashboardPage() {
       <Card className="frosted-glass shadow-lg">
         <CardHeader>
           <CardTitle className="font-headline text-xl text-primary flex items-center">
-            <Bot className="mr-2 h-5 w-5 text-accent" /> AI-Powered Sync
+            <Bot className="mr-2 h-5 w-5 text-accent" /> AI-Powered Sync & Data Management
           </CardTitle>
           <CardDescription>
-            Sync your Google Calendar & Tasks to get AI-powered insights and add events to your timeline.
+            Sync your Google data, or import and export your calendar in .ics format.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button onClick={handleSyncCalendarData} disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            {isLoading ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" /> Syncing from Google...
-              </>
-            ) : (
-              'Sync Google Calendar & Tasks'
-            )}
-          </Button>
+        <CardContent className="flex flex-wrap gap-2">
+            <Button onClick={handleSyncCalendarData} disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                {isLoading ? (
+                <>
+                    <LoadingSpinner size="sm" className="mr-2" /> Syncing from Google...
+                </>
+                ) : (
+                'Sync Google Calendar & Tasks'
+                )}
+            </Button>
+            <Button onClick={() => importFileRef.current?.click()} variant="outline">
+                <Upload className="mr-2 h-4 w-4" /> Import (.ics)
+            </Button>
+            <Button onClick={handleExportEvents} variant="outline">
+                <Download className="mr-2 h-4 w-4" /> Export (.ics)
+            </Button>
+            <input
+                type="file"
+                ref={importFileRef}
+                onChange={handleImportChange}
+                accept=".ics,text/calendar"
+                className="hidden"
+            />
         </CardContent>
       </Card>
 
