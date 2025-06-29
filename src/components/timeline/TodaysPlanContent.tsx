@@ -63,12 +63,12 @@ export function TodaysPlanContent({ plan, displayDate, onStatusChange }: TodaysP
           <Calendar className="mr-2 h-5 w-5 text-accent" /> Schedule
         </h3>
         <ul className="space-y-2">
-          {plan.schedule.map((item) => {
+          {plan.schedule.map((item, index) => {
             const isRange = item.time.includes('-');
             
             if (isRange) {
               return (
-                 <li key={item.id} className="text-sm text-foreground/90 flex items-center py-1">
+                 <li key={`${item.id}-${index}`} className="text-sm text-foreground/90 flex items-center py-1">
                     <Checkbox id={`plan-item-${item.id}`} className="mr-3 opacity-0 cursor-default" disabled />
                     <label htmlFor={`plan-item-${item.id}`} className="flex items-center">
                         <span className="font-medium w-36 text-accent/90">{item.time}</span>
@@ -97,7 +97,7 @@ export function TodaysPlanContent({ plan, displayDate, onStatusChange }: TodaysP
             };
 
             return (
-              <li key={item.id} className={cn("text-sm text-foreground/90 flex items-center relative pl-4 py-1", isCurrent && "text-accent font-semibold")}>
+              <li key={`${item.id}-${index}`} className={cn("text-sm text-foreground/90 flex items-center relative pl-4 py-1", isCurrent && "text-accent font-semibold")}>
                 {isCurrent && (
                     <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-accent animate-pulse"></div>
                 )}
