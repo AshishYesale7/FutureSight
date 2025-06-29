@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, type FC } from 'react';
@@ -104,8 +105,8 @@ const EditRoutineModal: FC<EditRoutineModalProps> = ({ isOpen, onOpenChange, onR
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg frosted-glass flex flex-col max-h-[90vh]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-lg frosted-glass flex flex-col max-h-[90vh] p-0">
+        <DialogHeader className="p-6 pb-4 border-b border-border/30">
           <DialogTitle className="font-headline text-lg text-primary flex items-center">
             <Clock className="mr-2 h-5 w-5" /> Edit Weekly Routine
           </DialogTitle>
@@ -113,13 +114,12 @@ const EditRoutineModal: FC<EditRoutineModalProps> = ({ isOpen, onOpenChange, onR
             Define your fixed activities to help the AI find your free time for planning.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 overflow-y-auto p-6">
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <LoadingSpinner />
             </div>
           ) : (
-            <ScrollArea className="h-full pr-4">
               <div className="space-y-4">
                 {preferences.routine?.map(item => (
                   <div key={item.id} className="p-3 rounded-md border border-border/50 bg-background/30 space-y-3">
@@ -189,10 +189,9 @@ const EditRoutineModal: FC<EditRoutineModalProps> = ({ isOpen, onOpenChange, onR
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Activity
                 </Button>
               </div>
-            </ScrollArea>
           )}
         </div>
-        <DialogFooter className="pt-4 border-t border-border/30">
+        <DialogFooter className="p-6 pt-4 border-t border-border/30">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
