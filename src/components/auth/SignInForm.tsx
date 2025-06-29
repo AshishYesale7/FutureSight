@@ -1,3 +1,4 @@
+
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
@@ -21,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Eye, EyeOff, Smartphone, Mail } from 'lucide-react';
-import { FormLabel } from '../ui/form';
+import { Label } from '@/components/ui/label';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -78,7 +79,7 @@ export default function SignInForm() {
     } catch (e) {
         console.error("reCAPTCHA error", e);
     }
-  }, [auth, view]);
+  }, [auth, view, toast]);
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -239,36 +240,34 @@ export default function SignInForm() {
             <div className="space-y-8">
              {!showOtpInput ? (
                 <div className="space-y-8">
-                    <FormItem>
-                    <FormLabel className="text-center block">Phone Number</FormLabel>
-                    <FormControl>
-                        <Input 
+                    <div className="space-y-2">
+                      <Label htmlFor="phone-number" className="text-center block">Phone Number</Label>
+                      <Input 
+                        id="phone-number"
                         type="tel"
                         placeholder="e.g., +14155552671" 
                         value={phoneNumber}
                         onChange={(e) => setPhoneNumber(e.target.value)}
                         className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
-                        />
-                    </FormControl>
-                    </FormItem>
+                      />
+                    </div>
                     <Button onClick={handleSendOtp} className="w-full bg-accent/70 hover:bg-accent/80 text-white h-12 text-lg rounded-full border border-white/30" disabled={loading}>
                      {loading ? 'SENDING OTP...' : 'SEND OTP'}
                     </Button>
                 </div>
             ) : (
                 <div className="space-y-8">
-                    <FormItem>
-                    <FormLabel className="text-center block">Enter OTP</FormLabel>
-                    <FormControl>
-                        <Input 
+                    <div className="space-y-2">
+                      <Label htmlFor="otp" className="text-center block">Enter OTP</Label>
+                      <Input 
+                        id="otp"
                         type="number"
                         placeholder="6-digit code" 
                         value={otp}
                         onChange={(e) => setOtp(e.target.value)}
                         className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
-                        />
-                    </FormControl>
-                    </FormItem>
+                      />
+                    </div>
                     <Button onClick={handleVerifyOtp} className="w-full bg-accent/70 hover:bg-accent/80 text-white h-12 text-lg rounded-full border border-white/30" disabled={loading}>
                         {loading ? 'VERIFYING...' : 'VERIFY & SIGN IN'}
                     </Button>
