@@ -106,7 +106,7 @@ Your goal is to create a highly personalized, actionable, and motivating daily p
 Today's date is: ${currentDateStr}
 
 **1. CRITICAL: User's Fixed Schedule for Today**
-These are the user's fixed, non-negotiable activities and appointments for today.
+These are the user's fixed, non-negotiable activities and appointments for today. The times provided are in 24-hour format.
 You MUST include every single one of these items in the final schedule at their specified times. These blocks of time are UNAVAILABLE for any other task.
 ${fixedScheduleText}
 
@@ -128,7 +128,8 @@ Analyze all the provided information and generate a complete daily plan. Follow 
 3.  **Build the Schedule:**
     a.  Start by creating a schedule that includes *all* items from the "CRITICAL: User's Fixed Schedule for Today".
     b.  Then, intelligently fill the remaining empty time slots with tasks to achieve the micro-goals. Mix focused work with short breaks. Be realistic about what can be achieved.
-4.  **Generate Critical Reminders:** Create a list of 1-3 important reminders for events happening today or tomorrow.
+    c.  IMPORTANT: Format all times in the final 'schedule' output using a 12-hour clock with AM/PM (e.g., '9:00 AM', '1:30 PM').
+4.  **Generate Critical Reminders:** Create a list of 1-3 important reminders for today or tomorrow.
 5.  **Find a Motivational Quote:** Provide one short, inspiring quote related to productivity or learning.
 
 Your entire output MUST be a single, valid JSON object that adheres to the output schema.`;
