@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, type FC } from 'react';
