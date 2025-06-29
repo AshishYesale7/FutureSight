@@ -26,7 +26,6 @@ import { getGoogleCalendarEvents } from '@/services/googleCalendarService';
 import { getGoogleTasks } from '@/services/googleTasksService';
 import ImportantEmailsCard from '@/components/timeline/ImportantEmailsCard';
 import { saveAs } from 'file-saver';
-import * as ical from 'ical';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 
@@ -495,7 +494,7 @@ export default function ActualDashboardPage() {
 
   }, [displayedTimelineEvents, toast]);
 
-  const handleImportChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!user) {
         toast({ title: 'Not signed in', description: 'You must be signed in to import events.', variant: 'destructive' });
         return;
@@ -509,7 +508,19 @@ export default function ActualDashboardPage() {
         if (typeof fileContent !== 'string') return;
         
         try {
-            const parsedData = ical.parseICS(fileContent);
+            const response = await fetch('/api/calendar/parse-ics', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ icsContent: fileContent }),
+            });
+
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.message || 'Failed to parse ICS file on server.');
+            }
+
+            const parsedData = result.data;
             const importedEvents: TimelineEvent[] = [];
             
             const existingEventSignatures = new Set(
@@ -564,7 +575,7 @@ export default function ActualDashboardPage() {
 
         } catch (error) {
             console.error('Error importing .ics file:', error);
-            toast({ title: 'Import Failed', description: 'The selected file could not be parsed.', variant: 'destructive' });
+            toast({ title: 'Import Failed', description: error instanceof Error ? error.message : 'The selected file could not be parsed.', variant: 'destructive' });
         }
     };
     reader.readAsText(file);
