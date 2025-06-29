@@ -2,8 +2,8 @@
 'use server';
 
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import type { UserPreferences } from '@/types';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import type { UserPreferences, RoutineItem } from '@/types';
 
 const getUserDocRef = (userId: string) => {
     if (!db) {
@@ -12,12 +12,16 @@ const getUserDocRef = (userId: string) => {
     return doc(db, 'users', userId);
 };
 
+const DEFAULT_ROUTINE: RoutineItem[] = [
+    { id: '1', activity: 'Sleep', startTime: '23:00', endTime: '07:00', days: [0, 1, 2, 3, 4, 5, 6] },
+    { id: '2', activity: 'College', startTime: '09:00', endTime: '17:00', days: [1, 2, 3, 4, 5] },
+    { id: '3', activity: 'Gym', startTime: '18:00', endTime: '19:00', days: [1, 3, 5] },
+    { id: '4', activity: 'Free Time', startTime: '19:00', endTime: '21:00', days: [0, 1, 2, 3, 4, 5, 6] },
+];
+
 export const saveUserGeminiApiKey = async (userId: string, apiKey: string | null): Promise<void> => {
     const userDocRef = getUserDocRef(userId);
     try {
-        // Using setDoc with merge:true will create the document if it doesn't exist,
-        // or update it if it does, without overwriting other fields.
-        // Storing null is fine to indicate no key.
         await setDoc(userDocRef, { geminiApiKey: apiKey }, { merge: true });
     } catch (error) {
         console.error("Failed to save Gemini API key to Firestore:", error);
@@ -54,13 +58,17 @@ export const getUserPreferences = async (userId: string): Promise<UserPreference
     try {
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists() && docSnap.data().preferences) {
-            return docSnap.data().preferences as UserPreferences;
+            // Basic validation to ensure it has the 'routine' property
+            const prefs = docSnap.data().preferences;
+            if (prefs && Array.isArray(prefs.routine)) {
+                 return prefs as UserPreferences;
+            }
         }
-        // Return default preferences if none are set
-        return { wakeUpTime: '07:00', bedtime: '23:00' };
+        // Return default preferences if none are set or if the structure is invalid
+        return { routine: DEFAULT_ROUTINE };
     } catch (error) {
         console.error("Failed to get user preferences from Firestore:", error);
         // Return default preferences on error
-        return { wakeUpTime: '07:00', bedtime: '23:00' };
+        return { routine: DEFAULT_ROUTINE };
     }
 };

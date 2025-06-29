@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiKey } from '@/hooks/use-api-key';
 import { useToast } from '@/hooks/use-toast';
-import { KeyRound, Globe, Unplug, CheckCircle, Smartphone, Trash2, Clock } from 'lucide-react';
+import { KeyRound, Globe, Unplug, CheckCircle, Smartphone, Trash2, Clock, PlusCircle } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
@@ -25,7 +25,7 @@ import { GoogleAuthProvider, linkWithPopup, RecaptchaVerifier, linkWithPhoneNumb
 import 'react-phone-number-input/style.css';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import { getUserPreferences, saveUserPreferences } from '@/services/userService';
-import type { UserPreferences } from '@/types';
+import type { UserPreferences, RoutineItem } from '@/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +37,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { cn } from '@/lib/utils';
+import shortid from 'shortid';
 
 declare global {
   interface Window {
@@ -44,6 +46,8 @@ declare global {
     confirmationResultSettings?: ConfirmationResult;
   }
 }
+
+const WEEK_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -62,7 +66,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   const [phoneForLinking, setPhoneForLinking] = useState<string | undefined>();
   const [otpForLinking, setOtpForLinking] = useState('');
 
-  const [preferences, setPreferences] = useState<UserPreferences>({ wakeUpTime: '07:00', bedtime: '23:00' });
+  const [preferences, setPreferences] = useState<UserPreferences>({ routine: [] });
   
   const [isPolling, setIsPolling] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -163,6 +167,43 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     } catch (error: any) {
         toast({ title: 'Error', description: error.message || 'Failed to save preferences.', variant: 'destructive' });
     }
+  };
+
+  const handleRoutineChange = (id: string, field: keyof RoutineItem, value: any) => {
+    setPreferences(prev => ({
+        ...prev,
+        routine: prev.routine.map(item => item.id === id ? { ...item, [field]: value } : item)
+    }));
+  };
+
+  const handleDayToggle = (id: string, dayIndex: number) => {
+    setPreferences(prev => ({
+        ...prev,
+        routine: prev.routine.map(item => {
+            if (item.id === id) {
+                const newDays = item.days.includes(dayIndex)
+                    ? item.days.filter(d => d !== dayIndex)
+                    : [...item.days, dayIndex];
+                return { ...item, days: newDays.sort() };
+            }
+            return item;
+        })
+    }));
+  };
+  
+  const handleAddRoutineItem = () => {
+    const newItem: RoutineItem = {
+      id: shortid.generate(),
+      activity: 'New Activity',
+      startTime: '12:00',
+      endTime: '13:00',
+      days: []
+    };
+    setPreferences(prev => ({...prev, routine: [...prev.routine, newItem] }));
+  };
+  
+  const handleDeleteRoutineItem = (id: string) => {
+    setPreferences(prev => ({ ...prev, routine: prev.routine.filter(item => item.id !== id) }));
   };
 
   const handleApiKeySave = () => {
@@ -382,7 +423,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md frosted-glass">
+      <DialogContent className="sm:max-w-lg frosted-glass">
         <DialogHeader>
           <DialogTitle className="font-headline text-lg text-primary flex items-center">
             <KeyRound className="mr-2 h-5 w-5" /> Settings
@@ -490,34 +531,58 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
 
             <Separator/>
 
-             <div className="space-y-3 px-2">
+            <div className="space-y-3 px-2">
                 <Label className="font-semibold text-base flex items-center text-primary">
-                    <Clock className="mr-2 h-4 w-4" /> Daily Planning
+                    <Clock className="mr-2 h-4 w-4" /> Typical Weekly Routine
                 </Label>
                 <p className="text-sm text-muted-foreground">
-                    Set your typical schedule to help the AI generate a relevant daily plan.
+                    Define your fixed activities to help the AI find your free time for planning.
                 </p>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="wakeUpTime">Wake-up Time</Label>
-                        <Input
-                            id="wakeUpTime"
-                            type="time"
-                            value={preferences.wakeUpTime}
-                            onChange={(e) => setPreferences({ ...preferences, wakeUpTime: e.target.value })}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="bedtime">Bedtime</Label>
-                        <Input
-                            id="bedtime"
-                            type="time"
-                            value={preferences.bedtime}
-                            onChange={(e) => setPreferences({ ...preferences, bedtime: e.target.value })}
-                        />
-                    </div>
+                <div className="space-y-4">
+                    {preferences.routine.map(item => (
+                        <div key={item.id} className="p-3 rounded-md border border-border/50 bg-background/30 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <Input 
+                                    value={item.activity}
+                                    onChange={(e) => handleRoutineChange(item.id, 'activity', e.target.value)}
+                                    className="text-base font-medium border-0 border-b-2 rounded-none focus-visible:ring-0 p-1 h-auto"
+                                    placeholder="Activity Name"
+                                />
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteRoutineItem(item.id)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <Label htmlFor={`start-${item.id}`} className="text-xs">Start Time</Label>
+                                    <Input id={`start-${item.id}`} type="time" value={item.startTime} onChange={(e) => handleRoutineChange(item.id, 'startTime', e.target.value)} />
+                                </div>
+                                <div>
+                                    <Label htmlFor={`end-${item.id}`} className="text-xs">End Time</Label>
+                                    <Input id={`end-${item.id}`} type="time" value={item.endTime} onChange={(e) => handleRoutineChange(item.id, 'endTime', e.target.value)} />
+                                </div>
+                            </div>
+                            <div>
+                                <Label className="text-xs">Repeat on</Label>
+                                <div className="flex justify-between gap-1 mt-1">
+                                    {WEEK_DAYS.map((day, index) => (
+                                        <button
+                                            key={day}
+                                            type="button"
+                                            onClick={() => handleDayToggle(item.id, index)}
+                                            className={cn(
+                                                "h-8 w-8 rounded-full border text-xs font-semibold transition-colors",
+                                                item.days.includes(index) ? 'bg-accent text-accent-foreground border-accent' : 'bg-muted/50 hover:bg-muted'
+                                            )}
+                                        >{day}</button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    <Button variant="outline" className="w-full" onClick={handleAddRoutineItem}><PlusCircle className="mr-2 h-4 w-4" /> Add Activity</Button>
                 </div>
-                 <Button onClick={handlePreferencesSave} variant="outline" className="w-full">Save Preferences</Button>
+                 <Button onClick={handlePreferencesSave} variant="outline" className="w-full mt-4">Save Routine</Button>
             </div>
             
             <Separator />

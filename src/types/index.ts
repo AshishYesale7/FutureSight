@@ -1,5 +1,16 @@
-
 import type { LucideIcon } from 'lucide-react';
+
+export interface RoutineItem {
+  id: string;
+  activity: string;
+  startTime: string; // "HH:mm" format
+  endTime: string;   // "HH:mm" format
+  days: number[];    // Array of numbers 0-6 (Sun-Sat)
+}
+
+export interface UserPreferences {
+  routine: RoutineItem[];
+}
 
 export interface TimelineEvent {
   id: string;
@@ -69,13 +80,6 @@ export interface DailyPlan {
   reminders: string[];
   motivationalQuote: string;
 }
-
-// User preferences for AI scheduling
-export interface UserPreferences {
-  wakeUpTime: string; // e.g., "07:00"
-  bedtime: string; // e.g., "23:00"
-}
-
 
 // Types for Google Data Processing Flow
 export interface RawCalendarEvent {

@@ -9,7 +9,6 @@
  */
 
 import { ai, generateWithApiKey } from '@/ai/genkit';
-import type { CareerGoal, Skill, TimelineEvent, UserPreferences } from '@/types';
 import { z } from 'genkit';
 
 // Helper schemas for serialization
@@ -37,9 +36,16 @@ const SkillSchema = z.object({
     proficiency: z.string(),
 });
 
+const RoutineItemSchema = z.object({
+    id: z.string(),
+    activity: z.string().describe("The name of the routine activity, e.g., 'Sleep', 'College', 'Gym'."),
+    startTime: z.string().describe("The start time in HH:mm format."),
+    endTime: z.string().describe("The end time in HH:mm format."),
+    days: z.array(z.number()).describe("The days of the week this activity occurs on (0=Sun, 1=Mon, ..., 6=Sat).")
+});
+
 const UserPreferencesSchema = z.object({
-    wakeUpTime: z.string().describe("User's wake up time, e.g., '07:00'"),
-    bedtime: z.string().describe("User's bedtime, e.g., '23:00'"),
+    routine: z.array(RoutineItemSchema).describe("User's typical weekly routine."),
 });
 
 // Main input schema for the payload
@@ -74,37 +80,46 @@ export async function generateDailyPlan(input: GenerateDailyPlanInput): Promise<
   const promptText = `You are an expert productivity and career coach AI named 'FutureSight'. Your goal is to create a highly personalized, actionable, and motivating daily plan for a user.
 
 Today's date is: ${input.currentDate}
-The user wakes up at ${input.userPreferences.wakeUpTime} and goes to bed at ${input.userPreferences.bedtime}. Plan activities only within this timeframe.
+The user's day is defined by their routine. Do NOT schedule over their fixed activities like 'Sleep', 'College', or 'Gym'. Only use 'Free Time' blocks for planning productive tasks.
 
-Analyze all the following information to create the plan:
+**1. User's Typical Routine for Today:**
+Determine which activities from the user's routine apply to today.
+{{#each userPreferences.routine}}
+- Activity: {{this.activity}} from {{this.startTime}} to {{this.endTime}} (Applies on days: {{#each this.days}}{{@index}}, {{/each}})
+{{/each}}
 
-**1. User's Long-Term Goals & Vision:**
+**2. User's Long-Term Goals & Vision:**
 - Career Goals:
 {{#each careerGoals}} - {{this.title}} (Progress: {{this.progress}}%{{#if this.deadline}}, Deadline: {{this.deadline}}{{/if}}). {{/each}}
 - Skills to Develop:
 {{#each skills}} - {{this.name}} (Proficiency: {{this.proficiency}}). {{/each}}
 
-**2. Existing Schedule for Today & Near Future (Do NOT schedule over these):**
+**3. Existing One-Off Events for Today & Near Future (Do NOT schedule over these):**
 {{#each timelineEvents}}
 - Event: "{{this.title}}" on {{this.date}}{{#if this.endDate}} to {{this.endDate}}{{/if}}. (Priority: {{this.priority}}, Status: {{this.status}}). Notes: {{this.notes}}
 {{/each}}
 
 **Instructions:**
-1.  **Identify Free Time:** Look at the user's timeline events and their sleep/wake schedule to find all available blocks of time for today.
-2.  **Proactive Planning (CRITICAL):** Scrutinize all future events. If there is a major exam or deadline (e.g., "GATE Exam", "TOEFL Exam Slot", "Submit University Applications") coming up in the next 1-2 weeks, you MUST allocate dedicated preparation blocks in today's schedule. Prioritize these over less urgent goals.
-3.  **Create Daily Micro-Goals:** Based on the user's career goals, skills, and upcoming deadlines, generate 2-4 specific, achievable "micro-goals" for today. These should be concrete actions, like "Complete Chapter 2 of the OS book" or "Solve one 'Medium' LeetCode problem related to Graphs."
-4.  **Build the Schedule:** Create an hour-by-hour schedule from wake-up to bedtime. Fill the user's free time with activities that accomplish the micro-goals. Mix focused work with short breaks (e.g., a 15-minute break after a 90-minute study block). Be realistic.
+1.  **Identify Free Time:** Look at the user's routine for today and their one-off timeline events to find all available blocks of "Free Time".
+2.  **Proactive Planning (CRITICAL):** Scrutinize all future events. If there is a major exam or deadline (e.g., "GATE Exam", "TOEFL Exam Slot", "Submit University Applications") coming up in the next 1-2 weeks, you MUST allocate dedicated preparation blocks in today's free time. Prioritize these over less urgent goals.
+3.  **Create Daily Micro-Goals:** Based on the user's career goals, skills, and upcoming deadlines, generate 2-4 specific, achievable "micro-goals" for today. These should be concrete actions that can be done in free time, like "Complete Chapter 2 of the OS book" or "Solve one 'Medium' LeetCode problem related to Graphs."
+4.  **Build the Schedule:** Create a schedule for the entire 24-hour day. First, fill in all the fixed routine activities (Sleep, College, etc.). Then, fill the user's "Free Time" with activities that accomplish the micro-goals. Mix focused work with short breaks (e.g., a 15-minute break after a 90-minute study block). Be realistic.
 5.  **Generate Critical Reminders:** Create a short list of 1-3 "Important Reminders" for today. These should be about events or deadlines happening today or tomorrow. Example: "Don't forget: Team Meeting at 2:30 PM today!" or "Reminder: Assignment 3 is due tomorrow!".
 6.  **Motivational Quote:** Provide one short, inspiring motivational quote related to productivity, learning, or achieving goals.
 
 Your entire output MUST be a single, valid JSON object that adheres to the output schema.
 `;
-  
+
   const { output } = await generateWithApiKey(input.apiKey, {
     model: 'googleai/gemini-2.0-flash',
     prompt: promptText,
     output: {
       schema: GenerateDailyPlanOutputSchema,
+    },
+    // Use Handlebars for templating
+    template: {
+      type: 'handlebars',
+      input: input,
     },
   });
 
