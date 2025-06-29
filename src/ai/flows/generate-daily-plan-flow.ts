@@ -76,34 +76,39 @@ export async function generateDailyPlan(input: GenerateDailyPlanInput): Promise<
 Today's date is: {{{currentDate}}}
 
 **1. User's Typical Routine for Today:**
-These are the user's fixed activities for today. Do NOT schedule over them. Only use 'Free Time' blocks for planning productive tasks.
+These are the user's fixed, non-negotiable activities for today.
 {{#if todaysRoutine}}
   {{#each todaysRoutine}}
   - Activity: {{this.activity}} from {{this.startTime}} to {{this.endTime}}
   {{/each}}
 {{else}}
-- The user has no fixed routine activities scheduled for today. You can plan for the entire day.
+- The user has no fixed routine activities scheduled for today.
 {{/if}}
 
+**2. Existing One-Off Events for Today & Near Future:**
+These are also fixed, non-negotiable events.
+{{#each timelineEvents}}
+- Event: "{{this.title}}" on {{this.date}}{{#if this.endDate}} to {{this.endDate}}{{/if}}. (Priority: {{this.priority}}, Status: {{this.status}}). Notes: {{this.notes}}
+{{/each}}
 
-**2. User's Long-Term Goals & Vision:**
+**3. User's Long-Term Goals & Vision:**
 - Career Goals:
 {{#each careerGoals}} - {{this.title}} (Progress: {{this.progress}}%{{#if this.deadline}}, Deadline: {{this.deadline}}{{/if}}). {{/each}}
 - Skills to Develop:
 {{#each skills}} - {{this.name}} (Proficiency: {{this.proficiency}}). {{/each}}
 
-**3. Existing One-Off Events for Today & Near Future (Do NOT schedule over these):**
-{{#each timelineEvents}}
-- Event: "{{this.title}}" on {{this.date}}{{#if this.endDate}} to {{this.endDate}}{{/if}}. (Priority: {{this.priority}}, Status: {{this.status}}). Notes: {{this.notes}}
-{{/each}}
+---
+
+**CRITICAL SCHEDULING RULE:** You MUST include every activity from the "User's Typical Routine for Today" and "Existing One-Off Events" in the final schedule at their specified times. These are non-negotiable. Any time slot not occupied by these fixed activities is considered free time available for planning.
 
 **Instructions:**
-1.  **Identify Free Time:** Look at the user's routine for today (from section 1) and their one-off timeline events (from section 3) to find all available blocks of "Free Time".
-2.  **Proactive Planning (CRITICAL):** Scrutinize all future events. If there is a major exam or deadline (e.g., "GATE Exam", "TOEFL Exam Slot", "Submit University Applications") coming up in the next 1-2 weeks, you MUST allocate dedicated preparation blocks in today's free time. Prioritize these over less urgent goals.
-3.  **Create Daily Micro-Goals:** Based on the user's career goals, skills, and upcoming deadlines, generate 2-4 specific, achievable "micro-goals" for today. These should be concrete actions that can be done in free time, like "Complete Chapter 2 of the OS book" or "Solve one 'Medium' LeetCode problem related to Graphs."
-4.  **Build the Schedule:** Create a schedule for the entire 24-hour day. First, fill in all the fixed routine activities (Sleep, College, etc.). Then, fill the user's "Free Time" with activities that accomplish the micro-goals. Mix focused work with short breaks (e.g., a 15-minute break after a 90-minute study block). Be realistic.
-5.  **Generate Critical Reminders:** Create a short list of 1-3 "Important Reminders" for today. These should be about events or deadlines happening today or tomorrow. Example: "Don't forget: Team Meeting at 2:30 PM today!" or "Reminder: Assignment 3 is due tomorrow!".
-6.  **Motivational Quote:** Provide one short, inspiring motivational quote related to productivity, learning, or achieving goals.
+1.  **Create Daily Micro-Goals:** Based on the user's long-term goals, skills, and upcoming deadlines, generate 2-4 specific, achievable "micro-goals" for today. These should be concrete actions that can be done in the free time slots, like "Complete Chapter 2 of the OS book" or "Solve one 'Medium' LeetCode problem related to Graphs."
+2.  **Proactive Planning:** Scrutinize all future events. If there is a major exam or deadline (e.g., "GATE Exam", "TOEFL Exam Slot") coming up in the next 1-2 weeks, you MUST allocate dedicated preparation blocks for it within today's free time. Prioritize these over less urgent goals. The micro-goals should reflect this.
+3.  **Build the Schedule:**
+    a.  First, create a schedule for the entire 24-hour day, filling it with all the fixed activities from the user's routine and one-off timeline events.
+    b.  Next, intelligently fill the remaining empty/free time slots with tasks that accomplish the micro-goals and proactive planning items. Be realistic. Mix focused work with short breaks (e.g., a 15-minute break after a 90-minute study block).
+4.  **Generate Critical Reminders:** Create a short list of 1-3 "Important Reminders" for today. These should be about events or deadlines happening today or tomorrow. Example: "Don't forget: Team Meeting at 2:30 PM today!" or "Reminder: Assignment 3 is due tomorrow!".
+5.  **Motivational Quote:** Provide one short, inspiring motivational quote related to productivity, learning, or achieving goals.
 
 Your entire output MUST be a single, valid JSON object that adheres to the output schema.
 `;
