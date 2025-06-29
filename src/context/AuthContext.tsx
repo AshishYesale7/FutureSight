@@ -7,10 +7,14 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AlertCircle } from 'lucide-react';
+import { getUserSubscription } from '@/services/subscriptionService';
+import type { UserSubscription } from '@/types';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  subscription: UserSubscription | null;
+  isSubscribed: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,8 +49,11 @@ const MissingConfiguration = () => (
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+
+  const isSubscribed = !!subscription && subscription.status === 'active' && new Date(subscription.endDate) > new Date();
 
   useEffect(() => {
     setMounted(true);
@@ -55,8 +62,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        try {
+          const userSub = await getUserSubscription(currentUser.uid);
+          setSubscription(userSub);
+        } catch (error) {
+          console.error("Failed to fetch user subscription:", error);
+          setSubscription(null);
+        }
+      } else {
+        setSubscription(null);
+      }
       setLoading(false);
     });
     return () => unsubscribe();
@@ -83,7 +101,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, subscription, isSubscribed }}>
       {children}
     </AuthContext.Provider>
   );
