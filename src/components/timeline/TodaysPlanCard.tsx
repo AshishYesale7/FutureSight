@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { CardContent, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button, buttonVariants } from '@/components/ui/button';
 import {
   Accordion,
   AccordionContent,
@@ -21,6 +20,7 @@ import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { TodaysPlanContent } from './TodaysPlanContent';
 import { format, subDays, addDays, isToday, isTomorrow, isYesterday, startOfDay, differenceInDays } from 'date-fns';
 import EditRoutineModal from './EditRoutineModal';
+import { cn } from '@/lib/utils';
 
 export default function TodaysPlanCard() {
   const { user } = useAuth();
@@ -144,40 +144,43 @@ export default function TodaysPlanCard() {
   return (
     <>
       <div className="w-full frosted-glass shadow-lg rounded-lg">
-        <Accordion type="single" collapsible className="w-full" defaultValue='item-1'>
+        <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="item-1" className="border-b-0">
-            <div className="flex items-center gap-4 p-6">
-              <div className="flex items-center gap-1">
-                <Button variant="outline" size="icon" onClick={handlePrevDay} disabled={!canGoBack} className="h-8 w-8">
-                  <ChevronLeft className="h-5 w-5" />
-                  <span className="sr-only">Previous day</span>
-                </Button>
-                <Button variant="outline" size="icon" onClick={handleNextDay} disabled={!canGoForward} className="h-8 w-8">
-                  <ChevronRight className="h-5 w-5" />
-                  <span className="sr-only">Next day</span>
-                </Button>
-              </div>
-
-              <AccordionTrigger className="flex-1 p-0 text-left hover:no-underline justify-between">
-                <div className="flex-1">
-                  <CardTitle className="font-headline text-xl text-primary flex items-center">
-                    <Calendar className="mr-2 h-5 w-5 text-accent" /> {getDisplayDateTitle(displayDate)}
-                  </CardTitle>
-                  <CardDescription className="mt-1">
-                    Your personalized schedule for {format(displayDate, 'MMMM d, yyyy')}.
-                  </CardDescription>
+            <div className="flex items-center p-6">
+                <div className="flex items-center gap-1">
+                    <Button variant="outline" size="icon" onClick={handlePrevDay} disabled={!canGoBack} className="h-8 w-8">
+                        <ChevronLeft className="h-5 w-5" />
+                        <span className="sr-only">Previous day</span>
+                    </Button>
+                    <Button variant="outline" size="icon" onClick={handleNextDay} disabled={!canGoForward} className="h-8 w-8">
+                        <ChevronRight className="h-5 w-5" />
+                        <span className="sr-only">Next day</span>
+                    </Button>
                 </div>
-              </AccordionTrigger>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Edit routine"
-                onClick={() => setIsRoutineModalOpen(true)}
-                className="h-8 w-8 p-0"
-              >
-                <Edit className="h-5 w-5 text-muted-foreground" />
-              </Button>
+                <AccordionTrigger className="flex-1 p-0 text-left hover:no-underline ml-4">
+                    <div className="flex justify-between items-center w-full">
+                        <div className="flex-1">
+                             <CardTitle className="font-headline text-xl text-primary flex items-center">
+                                <Calendar className="mr-2 h-5 w-5 text-accent" /> {getDisplayDateTitle(displayDate)}
+                            </CardTitle>
+                            <CardDescription className="mt-1">
+                                Your personalized schedule for {format(displayDate, 'MMMM d, yyyy')}.
+                            </CardDescription>
+                        </div>
+                         <div
+                            role="button"
+                            aria-label="Edit routine"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsRoutineModalOpen(true);
+                            }}
+                            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-8 w-8 p-0 ml-2 shrink-0")}
+                        >
+                            <Edit className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                    </div>
+                </AccordionTrigger>
             </div>
             <AccordionContent className="px-6 pb-6 pt-0">
               <CardContent className="p-0">
