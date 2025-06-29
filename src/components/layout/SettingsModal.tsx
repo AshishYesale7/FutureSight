@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -14,14 +15,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiKey } from '@/hooks/use-api-key';
 import { useToast } from '@/hooks/use-toast';
-import { KeyRound, Globe, Unplug, CheckCircle, Smartphone } from 'lucide-react';
+import { KeyRound, Globe, Unplug, CheckCircle, Smartphone, Trash2 } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/lib/firebase';
-import { GoogleAuthProvider, linkWithPopup, RecaptchaVerifier, linkWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
+import { GoogleAuthProvider, linkWithPopup, RecaptchaVerifier, linkWithPhoneNumber, type ConfirmationResult, deleteUser } from 'firebase/auth';
 import 'react-phone-number-input/style.css';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 declare global {
   interface Window {
@@ -42,9 +54,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   const [apiKeyInput, setApiKeyInput] = useState(currentApiKey || '');
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean | null>(null);
 
-  // State to manage the entire phone linking flow lifecycle
   const [isLinkingPhone, setIsLinkingPhone] = useState(false);
-  // State to manage the steps within the phone linking flow
   const [linkingPhoneState, setLinkingPhoneState] = useState<'input' | 'otp-sent' | 'loading' | 'success'>('input');
   const [phoneForLinking, setPhoneForLinking] = useState<string | undefined>();
   const [otpForLinking, setOtpForLinking] = useState('');
@@ -54,6 +64,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   
   const isGoogleProviderLinked = user?.providerData.some(p => p.providerId === GoogleAuthProvider.PROVIDER_ID);
   const recaptchaContainerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     return () => {
@@ -63,21 +74,18 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     };
   }, []);
 
-  // Effect to reset state when modal is closed
   useEffect(() => {
     if (!isOpen) {
-       // Clean up and reset everything when the modal is no longer open
        if (pollIntervalRef.current) {
             clearInterval(pollIntervalRef.current);
             pollIntervalRef.current = null;
        }
        setIsPolling(false);
-       setIsLinkingPhone(false); // End the linking flow
-       setLinkingPhoneState('input'); // Reset step for next time
+       setIsLinkingPhone(false);
+       setLinkingPhoneState('input');
        setPhoneForLinking(undefined);
        setOtpForLinking('');
     } else {
-        // Fetch status when modal opens
         setApiKeyInput(currentApiKey || '');
         if (user) {
             setIsGoogleConnected(null); 
@@ -96,59 +104,46 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     }
   }, [currentApiKey, isOpen, toast, user]);
 
-  // Effect to manage reCAPTCHA lifecycle, now dependent on isLinkingPhone
   useEffect(() => {
-    if (!isLinkingPhone || !recaptchaContainerRef.current || window.recaptchaVerifierSettings) {
-        return;
+    if (!isLinkingPhone || !recaptchaContainerRef.current) {
+      if(window.recaptchaVerifierSettings) {
+        window.recaptchaVerifierSettings.clear();
+        window.recaptchaVerifierSettings = undefined;
+        const container = recaptchaContainerRef.current;
+        if (container) container.innerHTML = '';
+      }
+      return;
     }
     
-    const cleanup = () => {
-      if (window.recaptchaVerifierSettings) {
-        try {
-          // This seems to be the most reliable way to clear it
-          const container = window.recaptchaVerifierSettings.container;
-          if (container) {
-             (container as HTMLElement).innerHTML = '';
-          }
-          window.recaptchaVerifierSettings.clear();
-        } catch (e) {
-          console.warn("Failed to clear previous reCAPTCHA verifier for settings:", e);
-        }
-        window.recaptchaVerifierSettings = undefined;
-      }
-    };
-
-    cleanup();
+    if (window.recaptchaVerifierSettings) return;
 
     if (!auth) {
         toast({ title: 'Authentication Error', description: 'Firebase not initialized.', variant: 'destructive' });
         return;
     }
     
-    try {
-        const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
-            'size': 'invisible',
-            'callback': () => console.log('reCAPTCHA for settings verified'),
-            'expired-callback': () => {
-                toast({ title: 'reCAPTCHA Expired', description: 'Please try again.', variant: 'destructive' });
-                cleanup();
-                setLinkingPhoneState('input'); 
-            },
-        });
-        window.recaptchaVerifierSettings = verifier;
-        verifier.render().catch((e) => {
-            console.error("reCAPTCHA settings render error:", e);
-            toast({ title: 'reCAPTCHA Error', description: "Failed to render reCAPTCHA. Please close and reopen the modal.", variant: "destructive"});
-            cleanup();
-            setIsLinkingPhone(false);
-        });
-    } catch (e: any) {
-        console.error("reCAPTCHA settings creation error:", e);
-        toast({ title: "reCAPTCHA Error", description: "Could not initialize reCAPTCHA. Please try again.", variant: "destructive"});
+    const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+        'size': 'invisible',
+        'callback': () => console.log('reCAPTCHA for settings verified'),
+        'expired-callback': () => {
+            toast({ title: 'reCAPTCHA Expired', description: 'Please try again.', variant: 'destructive' });
+            if(window.recaptchaVerifierSettings) {
+              window.recaptchaVerifierSettings.clear();
+              window.recaptchaVerifierSettings = undefined;
+            }
+            setLinkingPhoneState('input'); 
+        },
+    });
+    window.recaptchaVerifierSettings = verifier;
+    verifier.render().catch((e) => {
+        console.error("reCAPTCHA settings render error:", e);
+        if(window.recaptchaVerifierSettings) {
+          window.recaptchaVerifierSettings.clear();
+          window.recaptchaVerifierSettings = undefined;
+        }
         setIsLinkingPhone(false);
-    }
+    });
 
-    return cleanup;
   }, [isLinkingPhone, auth, toast]);
 
   const handleApiKeySave = () => {
@@ -236,7 +231,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
         if (error.code === 'auth/credential-already-in-use') {
             toast({
                 title: 'Google Account In Use',
-                description: "To link, please: 1. Sign out. 2. Sign back in using Google. 3. Go to Settings and link this phone number to your Google account.",
+                description: "This Google account is already linked to another user. Please sign out and sign in with Google to merge accounts.",
                 variant: 'destructive',
                 duration: 12000,
             });
@@ -292,7 +287,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
       }
       setLinkingPhoneState('loading');
       try {
-        const confirmationResult = await linkWithPhoneNumber(user, fullPhoneNumber, verifier);
+        const confirmationResult = await linkWithPhoneNumber(auth.currentUser, fullPhoneNumber, verifier);
         window.confirmationResultSettings = confirmationResult;
         setLinkingPhoneState('otp-sent');
         toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.'});
@@ -321,18 +316,48 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
         setLinkingPhoneState('success');
         toast({ title: 'Success!', description: 'Your phone number has been linked.' });
     } catch (error: any) {
-        if (error.code === 'auth/credential-already-in-use') {
+        if (error.code === 'auth/credential-already-in-use' || error.code === 'auth/account-exists-with-different-credential') {
             toast({
-                title: 'Number Already In Use',
-                description: "This phone number is already linked to another account. Please sign in with that number to continue.",
+                title: 'Account Exists With This Credential',
+                description: "This phone number is already linked to another account. Please use the sign-in method associated with that account.",
                 variant: 'destructive',
-                duration: 8000
+                duration: 9000
             });
         } else {
             console.error("OTP verification error:", error);
             toast({ title: 'Error', description: 'Invalid OTP or verification failed.', variant: 'destructive' });
         }
-        setLinkingPhoneState('otp-sent'); // Go back to OTP input screen
+        setLinkingPhoneState('otp-sent');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) {
+        toast({ title: 'Error', description: 'No user is currently logged in.', variant: 'destructive' });
+        return;
+    }
+    
+    try {
+        await deleteUser(user);
+        toast({ title: 'Account Deleted', description: 'Your account has been permanently deleted.' });
+        router.push('/auth/signin');
+        onOpenChange(false);
+    } catch (error: any) {
+        console.error("Account deletion error:", error);
+        if (error.code === 'auth/requires-recent-login') {
+            toast({
+                title: 'Re-authentication Required',
+                description: 'For your security, please sign out and sign back in before deleting your account.',
+                variant: 'destructive',
+                duration: 8000,
+            });
+        } else {
+            toast({
+                title: 'Error',
+                description: 'Failed to delete account. Please try again.',
+                variant: 'destructive',
+            });
+        }
     }
   };
 
@@ -348,8 +373,8 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
             Manage application settings, API keys, and integrations here.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4 space-y-4">
-            <div className="space-y-3">
+        <div className="py-4 space-y-4 max-h-[70vh] overflow-y-auto px-1">
+            <div className="space-y-3 px-2">
                  <Label className="font-semibold text-base flex items-center text-primary">
                     <Globe className="mr-2 h-4 w-4" /> Google Integration
                 </Label>
@@ -380,7 +405,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
             
             <Separator/>
 
-            <div className="space-y-3">
+            <div className="space-y-3 px-2">
                 <Label className="font-semibold text-base flex items-center text-primary">
                     <Smartphone className="mr-2 h-4 w-4" /> Phone Number
                 </Label>
@@ -447,7 +472,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
 
             <Separator />
             
-            <div className="space-y-3">
+            <div className="space-y-3 px-2">
                  <Label className="font-semibold text-base flex items-center text-primary">
                     <KeyRound className="mr-2 h-4 w-4" /> Custom API Key
                 </Label>
@@ -464,6 +489,41 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                         onChange={(e) => setApiKeyInput(e.target.value)}
                     />
                 </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3 px-2">
+                <Label className="font-semibold text-base flex items-center text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" /> Danger Zone
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                    This action is irreversible. Deleting your account will permanently remove all your data, including goals, skills, and timeline events.
+                </p>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="w-full">
+                      Delete My Account
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="frosted-glass">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete your account and all associated data. You cannot undo this action.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-destructive hover:bg-destructive/90"
+                        onClick={handleDeleteAccount}
+                      >
+                        Yes, delete my account
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
             </div>
         </div>
         <DialogFooter>
