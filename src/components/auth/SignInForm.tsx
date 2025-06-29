@@ -161,8 +161,17 @@ export default function SignInForm() {
       setShowOtpInput(true);
       toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.' });
     } catch (error: any) {
-      console.error(error);
-      toast({ title: 'Error', description: error.message || 'Failed to send OTP. Please refresh the page and try again.', variant: 'destructive' });
+      console.error("Phone Auth Error:", error);
+      if (error.code === 'auth/billing-not-enabled') {
+        toast({
+            title: 'Service Not Available',
+            description: "Phone sign-in is not enabled for this project. Please contact the administrator or sign in using another method.",
+            variant: 'destructive',
+            duration: 8000
+        });
+      } else {
+        toast({ title: 'Error', description: error.message || 'Failed to send OTP. Please refresh the page and try again.', variant: 'destructive' });
+      }
     } finally {
         setLoading(false);
     }

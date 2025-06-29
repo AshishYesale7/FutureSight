@@ -73,6 +73,14 @@ export default function SignUpForm() {
       return;
     }
 
+    // Cleanup existing verifier if it exists
+    if (window.recaptchaVerifier) {
+      window.recaptchaVerifier.clear();
+      if (recaptchaContainer) {
+          recaptchaContainer.innerHTML = '';
+      }
+    }
+    
     try {
       const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
         'size': 'invisible',
@@ -155,8 +163,17 @@ export default function SignUpForm() {
       setShowOtpInput(true);
       toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.' });
     } catch (error: any) {
-      console.error(error);
-      toast({ title: 'Error', description: error.message || 'Failed to send OTP. Please refresh the page and try again.', variant: 'destructive' });
+      console.error("Phone Auth Error:", error);
+       if (error.code === 'auth/billing-not-enabled') {
+        toast({
+            title: 'Service Not Available',
+            description: "Phone sign-up is not enabled for this project. Please contact the administrator or sign up using another method.",
+            variant: 'destructive',
+            duration: 8000
+        });
+      } else {
+       toast({ title: 'Error', description: error.message || 'Failed to send OTP. Please refresh the page and try again.', variant: 'destructive' });
+      }
     } finally {
         setLoading(false);
     }
@@ -214,10 +231,10 @@ export default function SignUpForm() {
                       <Input 
                         placeholder="Email" 
                         {...field} 
-                        className="bg-transparent text-foreground border-0 border-b-2 border-border rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary placeholder:text-muted-foreground text-center"
+                        className="bg-transparent text-foreground border-0 border-b-2 border-border rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary placeholder:text-muted-foreground"
                       />
                     </FormControl>
-                    <FormMessage className="text-center" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -232,7 +249,7 @@ export default function SignUpForm() {
                           type={showPassword ? "text" : "password"} 
                           placeholder="Password" 
                           {...field} 
-                          className="bg-transparent text-foreground border-0 border-b-2 border-border rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary placeholder:text-muted-foreground text-center"
+                          className="bg-transparent text-foreground border-0 border-b-2 border-border rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary placeholder:text-muted-foreground"
                         />
                         <Button
                           type="button"
@@ -245,7 +262,7 @@ export default function SignUpForm() {
                         </Button>
                       </div>
                     </FormControl>
-                    <FormMessage className="text-center" />
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -260,7 +277,7 @@ export default function SignUpForm() {
                           type={showConfirmPassword ? "text" : "password"} 
                           placeholder="Confirm Password" 
                           {...field} 
-                          className="bg-transparent text-foreground border-0 border-b-2 border-border rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary placeholder:text-muted-foreground text-center"
+                          className="bg-transparent text-foreground border-0 border-b-2 border-border rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary placeholder:text-muted-foreground"
                         />
                         <Button
                           type="button"
@@ -273,7 +290,7 @@ export default function SignUpForm() {
                         </Button>
                       </div>
                     </FormControl>
-                    <FormMessage className="text-center"/>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -314,7 +331,7 @@ export default function SignUpForm() {
                         placeholder="6-digit code" 
                         value={otp}
                         onChange={(e) => setOtp(e.target.value)}
-                        className="bg-transparent text-foreground border-0 border-b-2 border-border rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary placeholder:text-muted-foreground text-center"
+                        className="bg-transparent text-foreground border-0 border-b-2 border-border rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary placeholder:text-muted-foreground"
                       />
                     </div>
                     <Button onClick={handleVerifyOtp} className="w-full bg-accent/70 hover:bg-accent/80 text-white h-12 text-lg rounded-full border border-white/30" disabled={loading}>
