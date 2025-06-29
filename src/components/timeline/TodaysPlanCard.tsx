@@ -143,49 +143,50 @@ export default function TodaysPlanCard() {
 
   return (
     <>
-      <Accordion type="single" collapsible className="w-full frosted-glass shadow-lg rounded-lg" defaultValue='item-1'>
-        <AccordionItem value="item-1" className="border-b-0">
-          <AccordionTrigger className="p-6 hover:no-underline">
-            <div className='flex justify-between items-center w-full gap-4'>
-               <div className="flex items-center gap-1">
-                <Button variant="outline" size="icon" onClick={(e) => { e.stopPropagation(); handlePrevDay(); }} disabled={!canGoBack} className="h-8 w-8">
+      <div className="w-full frosted-glass shadow-lg rounded-lg">
+        <Accordion type="single" collapsible className="w-full" defaultValue='item-1'>
+          <AccordionItem value="item-1" className="border-b-0">
+            <div className="flex items-center gap-4 p-6">
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="icon" onClick={handlePrevDay} disabled={!canGoBack} className="h-8 w-8">
                   <ChevronLeft className="h-5 w-5" />
-                   <span className="sr-only">Previous day</span>
+                  <span className="sr-only">Previous day</span>
                 </Button>
-                <Button variant="outline" size="icon" onClick={(e) => { e.stopPropagation(); handleNextDay(); }} disabled={!canGoForward} className="h-8 w-8">
+                <Button variant="outline" size="icon" onClick={handleNextDay} disabled={!canGoForward} className="h-8 w-8">
                   <ChevronRight className="h-5 w-5" />
                   <span className="sr-only">Next day</span>
                 </Button>
               </div>
 
-              <div className="text-left flex-1">
-                <CardTitle className="font-headline text-xl text-primary flex items-center">
-                  <Calendar className="mr-2 h-5 w-5 text-accent" /> {getDisplayDateTitle(displayDate)}
-                </CardTitle>
-                <CardDescription className="mt-1">
-                  Your personalized schedule for {format(displayDate, 'MMMM d, yyyy')}.
-                </CardDescription>
-              </div>
-               <div
-                role="button"
+              <AccordionTrigger className="flex-1 p-0 text-left hover:no-underline justify-between">
+                <div className="flex-1">
+                  <CardTitle className="font-headline text-xl text-primary flex items-center">
+                    <Calendar className="mr-2 h-5 w-5 text-accent" /> {getDisplayDateTitle(displayDate)}
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    Your personalized schedule for {format(displayDate, 'MMMM d, yyyy')}.
+                  </CardDescription>
+                </div>
+              </AccordionTrigger>
+
+              <Button
+                variant="ghost"
+                size="icon"
                 aria-label="Edit routine"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsRoutineModalOpen(true);
-                }}
-                className="p-2 rounded-md hover:bg-accent/20 transition-colors"
+                onClick={() => setIsRoutineModalOpen(true)}
+                className="h-8 w-8 p-0"
               >
                 <Edit className="h-5 w-5 text-muted-foreground" />
-              </div>
+              </Button>
             </div>
-          </AccordionTrigger>
-          <AccordionContent className="px-6 pb-6 pt-0">
-            <CardContent className="p-0">
-              {renderContent()}
-            </CardContent>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+            <AccordionContent className="px-6 pb-6 pt-0">
+              <CardContent className="p-0">
+                {renderContent()}
+              </CardContent>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </div>
       <EditRoutineModal
         isOpen={isRoutineModalOpen}
         onOpenChange={setIsRoutineModalOpen}
