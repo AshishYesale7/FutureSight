@@ -1,4 +1,3 @@
-
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
@@ -127,8 +126,9 @@ export default function SignUpForm() {
       toast({ title: 'Error', description: 'Firebase Auth not initialized.', variant: 'destructive' });
       return;
     }
-    if (!phoneNumber || phoneNumber.length < 10) {
-        toast({ title: 'Invalid Phone Number', description: 'Please enter a valid phone number with country code (e.g., +14155552671).', variant: 'destructive' });
+    const e164Regex = /^\+[1-9]\d{1,14}$/;
+    if (!e164Regex.test(phoneNumber)) {
+        toast({ title: 'Invalid Phone Number', description: 'Please use the E.164 format (e.g., +14155552671).', variant: 'destructive' });
         return;
     }
     setLoading(true);
@@ -140,7 +140,7 @@ export default function SignUpForm() {
       toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.' });
     } catch (error: any) {
       console.error(error);
-      toast({ title: 'Error', description: error.message || 'Failed to send OTP. Please ensure the format is correct (e.g., +14155552671) and refresh the page.', variant: 'destructive' });
+      toast({ title: 'Error', description: error.message || 'Failed to send OTP. Please ensure the format is correct and refresh the page.', variant: 'destructive' });
     } finally {
         setLoading(false);
     }
