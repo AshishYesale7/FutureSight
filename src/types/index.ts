@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from 'lucide-react';
 
 export interface RoutineItem {
@@ -73,9 +74,17 @@ export interface TodaysPlan {
   microGoals: string[];
 }
 
+// Type for a single item in the AI-generated daily plan schedule
+export interface DailyPlanScheduleItem {
+  id: string;
+  time: string;
+  activity: string;
+  status: 'pending' | 'completed' | 'missed';
+}
+
 // AI-Generated Daily Plan
 export interface DailyPlan {
-  schedule: { time: string; activity: string }[];
+  schedule: DailyPlanScheduleItem[];
   microGoals: string[];
   reminders: string[];
   motivationalQuote: string;

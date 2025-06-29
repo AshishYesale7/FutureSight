@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -87,6 +88,26 @@ export default function TodaysPlanCard() {
     }
   };
 
+  const handleStatusChange = (itemId: string, newStatus: 'completed' | 'missed') => {
+    if (!plan || !user) return;
+    
+    const updatedSchedule = plan.schedule.map(item =>
+        item.id === itemId ? { ...item, status: newStatus } : item
+    );
+    const updatedPlan = { ...plan, schedule: updatedSchedule };
+    setPlan(updatedPlan); // Optimistic update
+
+    const dateStr = format(displayDate, 'yyyy-MM-dd');
+    saveDailyPlan(user.uid, dateStr, updatedPlan)
+        .catch(err => {
+            toast({
+                title: "Sync Error",
+                description: "Failed to save plan changes. Your changes are saved locally for this session.",
+                variant: 'destructive'
+            });
+        });
+  };
+
   const handlePrevDay = () => setDisplayDate(prev => subDays(prev, 1));
   const handleNextDay = () => setDisplayDate(prev => addDays(prev, 1));
 
@@ -130,7 +151,7 @@ export default function TodaysPlanCard() {
     }
 
     if (plan) {
-      return <TodaysPlanContent plan={plan} />;
+      return <TodaysPlanContent plan={plan} displayDate={displayDate} onStatusChange={handleStatusChange} />;
     }
 
     return (
@@ -147,8 +168,18 @@ export default function TodaysPlanCard() {
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="item-1" className="border-b-0">
             <div className="flex items-center p-6">
+                <div className="flex-1 min-w-0 pr-4">
+                     <CardTitle className="font-headline text-xl text-primary flex items-center">
+                        <Calendar className="mr-2 h-5 w-5 text-accent shrink-0" />
+                        <span className="truncate">{getDisplayDateTitle(displayDate)}</span>
+                    </CardTitle>
+                    <CardDescription className="mt-1 truncate">
+                        Your personalized schedule for {format(displayDate, 'MMMM d, yyyy')}.
+                    </CardDescription>
+                </div>
+                
                 <div className="flex items-center gap-1">
-                    <Button variant="outline" size="icon" onClick={handlePrevDay} disabled={!canGoBack} className="h-8 w-8">
+                     <Button variant="outline" size="icon" onClick={handlePrevDay} disabled={!canGoBack} className="h-8 w-8">
                         <ChevronLeft className="h-5 w-5" />
                         <span className="sr-only">Previous day</span>
                     </Button>
@@ -156,31 +187,19 @@ export default function TodaysPlanCard() {
                         <ChevronRight className="h-5 w-5" />
                         <span className="sr-only">Next day</span>
                     </Button>
-                </div>
-
-                <div className="flex-1 ml-4 min-w-0">
-                    <AccordionTrigger className="w-full p-0 text-left hover:no-underline flex justify-between items-center">
-                        <div className="flex-1 min-w-0 pr-4">
-                             <CardTitle className="font-headline text-xl text-primary flex items-center">
-                                <Calendar className="mr-2 h-5 w-5 text-accent shrink-0" />
-                                <span className="truncate">{getDisplayDateTitle(displayDate)}</span>
-                            </CardTitle>
-                            <CardDescription className="mt-1 truncate">
-                                Your personalized schedule for {format(displayDate, 'MMMM d, yyyy')}.
-                            </CardDescription>
-                        </div>
-                         <div
-                            role="button"
-                            aria-label="Edit routine"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsRoutineModalOpen(true);
-                            }}
-                            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "h-8 w-8 p-0 ml-2 shrink-0")}
-                        >
-                            <Edit className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                    </AccordionTrigger>
+                     <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsRoutineModalOpen(true);
+                        }}
+                        className="h-8 w-8 p-0 ml-2 shrink-0"
+                        aria-label="Edit routine"
+                    >
+                        <Edit className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                    <AccordionTrigger className="p-2 -mr-2" />
                 </div>
             </div>
             <AccordionContent className="px-6 pb-6 pt-0">

@@ -33,8 +33,10 @@ export type GenerateDailyPlanInput = z.infer<typeof GenerateDailyPlanInputSchema
 // The output schema the AI must adhere to
 const GenerateDailyPlanOutputSchema = z.object({
   schedule: z.array(z.object({
+    id: z.string().describe("A unique ID for this schedule item, e.g., 'plan-item-1'."),
     time: z.string().describe("The time for the activity, e.g., '09:00 AM' or a range like '11:00 PM - 07:00 AM'."),
     activity: z.string().describe("A specific, actionable task."),
+    status: z.enum(['pending', 'completed', 'missed']).default('pending').describe("The initial status of the task, which must always be 'pending'."),
   })).describe("A detailed schedule for the day, starting from wake-up time."),
   microGoals: z.array(z.string()).describe("A list of 2-4 specific, achievable micro-goals for today."),
   reminders: z.array(z.string()).describe("A list of 1-3 critical reminders for today or tomorrow."),
@@ -146,6 +148,7 @@ Analyze all the provided information and generate a complete daily plan. Follow 
         - For any activity block that is **shorter than 4 hours** (like a 2-hour 'College' block or a 1-hour 'Study' block), you MUST create **individual hourly entries**. For example, a 'Study' block from 9 AM to 11 AM must be represented as two separate entries: one for \`{"time": "09:00 AM", "activity": "Study"}\` and another for \`{"time": "10:00 AM", "activity": "Study"}\`.
     e.  The sleep block for the upcoming night should be placed at the very end of the schedule. You MUST use the times from the "User's Preferred Sleep Schedule" section above for this. This should be the ONLY 'Sleep' activity in the entire schedule.
     f.  All times in the final 'schedule' output must use a 12-hour clock with AM/PM (e.g., '09:00 AM').
+    g.  Each schedule item you create MUST have a unique 'id' field (e.g. "plan-item-1", "plan-item-2") and a 'status' field initialized to "pending".
 
 3.  **Generate Critical Reminders:** Create a list of 1-3 important reminders for today or tomorrow.
 

@@ -103,7 +103,9 @@ export function TodaysPlanModal({ isOpen, onOpenChange }: TodaysPlanModalProps) 
     }
 
     if (plan) {
-      return <TodaysPlanContent plan={plan} />;
+      // The modal always shows today's plan, so we can pass a new Date()
+      // onStatusChange is omitted, so checkboxes will be read-only
+      return <TodaysPlanContent plan={plan} displayDate={new Date()} />;
     }
 
     return (
