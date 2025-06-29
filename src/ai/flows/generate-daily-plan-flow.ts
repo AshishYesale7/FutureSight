@@ -60,9 +60,14 @@ export async function generateDailyPlan(input: GenerateDailyPlanInput): Promise<
   // Pre-process the data for the prompt
   const today = new Date(input.currentDate);
 
-  // Filter routine items for today
-  const todaysRoutineBlocks = userPreferences.routine.filter(item => 
-    item.days.includes(today.getDay())
+  // Find the user's sleep schedule for today
+  const userSleepSchedule = userPreferences.routine.find(item =>
+    item.activity.toLowerCase() === 'sleep' && item.days.includes(today.getDay())
+  );
+  
+  // Filter routine items for today, EXCLUDING sleep
+  const todaysRoutineBlocks = userPreferences.routine.filter(item =>
+    item.activity.toLowerCase() !== 'sleep' && item.days.includes(today.getDay())
   ).map(item => ({
     title: item.activity,
     startTime: item.startTime,
@@ -84,13 +89,17 @@ export async function generateDailyPlan(input: GenerateDailyPlanInput): Promise<
       }
   });
 
-  // Combine both into a single list of fixed schedule items
+  // Combine both into a single list of fixed schedule items (without sleep)
   const fixedScheduleForToday = [...todaysRoutineBlocks, ...todaysTimelineBlocks];
 
   // Manually construct the prompt string
   const currentDateStr = format(today, 'PPPP');
 
-  const fixedScheduleText = fixedScheduleForToday.length > 0 
+  const sleepScheduleText = userSleepSchedule
+    ? `The user's preferred sleep time is from ${userSleepSchedule.startTime} to ${userSleepSchedule.endTime}.`
+    : 'The user has not set a preferred sleep time.';
+
+  const fixedScheduleText = fixedScheduleForToday.length > 0
     ? fixedScheduleForToday.map(item => `  - Activity: "${item.title}" from ${item.startTime} to ${item.endTime}`).join('\n')
     : '- The user has no fixed activities scheduled for today.';
 
@@ -100,23 +109,26 @@ export async function generateDailyPlan(input: GenerateDailyPlanInput): Promise<
   
   const timelineEventsText = timelineEvents.map(e => `- Event: "${e.title}" on ${format(e.date, 'PPP')}.`).join('\n');
 
-  const promptText = `You are an expert productivity and career coach AI named 'FutureSight'. 
+  const promptText = `You are an expert productivity and career coach AI named 'FutureSight'.
 Your goal is to create a highly personalized, scannable, and motivating daily plan for a user that flows chronologically from their wake-up time.
 
 Today's date is: ${currentDateStr}
 
-**1. CRITICAL: User's Fixed Schedule for Today**
-These are the user's fixed, non-negotiable activities and appointments for today. The times provided are in 24-hour format.
-You MUST include every single one of these items in the final schedule at their specified times, WITH THE EXCEPTION of any activity named 'Sleep'. The 'Sleep' activity is handled separately in the instructions below.
+**1. User's Preferred Sleep Schedule:**
+${sleepScheduleText}
+
+**2. CRITICAL: User's Fixed Schedule for Today**
+These are the user's fixed, non-negotiable activities and appointments for today (excluding sleep). The times provided are in 24-hour format.
+You MUST include every single one of these items in the final schedule at their specified times.
 ${fixedScheduleText}
 
-**2. User's Long-Term Goals & Vision:**
+**3. User's Long-Term Goals & Vision:**
 - Career Goals:
 ${careerGoalsText}
 - Skills to Develop:
 ${skillsText}
 
-**3. All Upcoming Events (for context):**
+**4. All Upcoming Events (for context):**
 ${timelineEventsText}
 
 ---
@@ -127,12 +139,12 @@ Analyze all the provided information and generate a complete daily plan. Follow 
 
 2.  **Build the Schedule:**
     a.  The schedule must start from the user's first waking activity. Do not include a sleep block at the beginning of the day.
-    b.  First, place all items from the "CRITICAL: User's Fixed Schedule for Today" section (except for 'Sleep') into the timetable.
+    b.  First, place all items from the "CRITICAL: User's Fixed Schedule for Today" section into the timetable.
     c.  Then, intelligently fill the remaining empty time slots with tasks to achieve the micro-goals. Mix focused work with short breaks.
     d.  **IMPORTANT OUTPUT FORMATTING:** When creating the final 'schedule' array, follow this rule:
         - For any activity block (either from the fixed schedule or one you plan) that is **4 hours or longer** (like 'Sleep'), you MUST create a **single entry** with a time range. Example: \`{"time": "11:00 PM - 07:00 AM", "activity": "Sleep"}\`.
         - For any activity block that is **shorter than 4 hours** (like a 2-hour 'College' block or a 1-hour 'Study' block), you MUST create **individual hourly entries**. For example, a 'Study' block from 9 AM to 11 AM must be represented as two separate entries: one for \`{"time": "09:00 AM", "activity": "Study"}\` and another for \`{"time": "10:00 AM", "activity": "Study"}\`.
-    e.  The sleep block for the upcoming night should be placed at the very end of the schedule. This should be the ONLY 'Sleep' activity in the entire schedule.
+    e.  The sleep block for the upcoming night should be placed at the very end of the schedule. You MUST use the times from the "User's Preferred Sleep Schedule" section above for this. This should be the ONLY 'Sleep' activity in the entire schedule.
     f.  All times in the final 'schedule' output must use a 12-hour clock with AM/PM (e.g., '09:00 AM').
 
 3.  **Generate Critical Reminders:** Create a list of 1-3 important reminders for today or tomorrow.
