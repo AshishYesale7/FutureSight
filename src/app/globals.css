@@ -197,7 +197,7 @@ body {
 
 /* Custom styles for react-phone-number-input */
 .phone-input-container .PhoneInputInput {
-  @apply bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 h-auto focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary dark:focus:border-primary placeholder-foreground/60 text-center;
+  @apply bg-transparent text-foreground border-0 border-b-2 border-border rounded-none px-1 py-2 h-auto focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary placeholder:text-muted-foreground text-center;
   flex: 1; /* Allow input to grow */
   min-width: 0; /* Important for flexbox growth */
 }
@@ -211,12 +211,11 @@ body {
 }
 
 .phone-input-container .PhoneInputCountry {
-  @apply mr-2;
+  @apply mr-2 border-b-2 border-border;
   /* Align the country selector with the input's bottom border */
   align-self: stretch;
   display: flex;
   align-items: center;
-  border-bottom: 2px solid hsl(var(--border) / 0.5);
 }
 
 .phone-input-container .PhoneInputCountryIcon {

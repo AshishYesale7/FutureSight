@@ -60,26 +60,41 @@ export default function SignInForm() {
   });
 
   useEffect(() => {
-    if (!auth || view !== 'phone') return;
-    
+    if (!auth || view !== 'phone') {
+      return;
+    }
+
     const recaptchaContainer = document.getElementById('recaptcha-container');
-    if (recaptchaContainer) {
-        recaptchaContainer.innerHTML = '';
+    if (!recaptchaContainer) {
+      return;
     }
 
     try {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            'size': 'invisible',
-            'callback': (response: any) => {
-                console.log("reCAPTCHA verified");
-            },
-            'expired-callback': () => {
-                toast({ title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
-            }
-        });
-        window.recaptchaVerifier.render();
-    } catch (e) {
+      const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
+          'size': 'invisible',
+          'callback': () => {
+              console.log("reCAPTCHA verified");
+          },
+          'expired-callback': () => {
+              toast({ title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
+          }
+      });
+      
+      verifier.render();
+      window.recaptchaVerifier = verifier;
+
+      // Cleanup function to run when component unmounts or view changes
+      return () => {
+        verifier.clear();
+        if (recaptchaContainer) {
+            recaptchaContainer.innerHTML = '';
+        }
+      };
+    } catch (e: any) {
         console.error("reCAPTCHA error", e);
+        if (e.code !== 'auth/recaptcha-already-rendered') {
+            toast({ title: 'reCAPTCHA Error', description: 'Could not initialize phone sign-in. Please refresh.', variant: 'destructive' });
+        }
     }
   }, [auth, view, toast]);
 
@@ -196,7 +211,7 @@ export default function SignInForm() {
                         <Input 
                         placeholder="Email" 
                         {...field} 
-                        className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
+                        className="bg-transparent text-foreground border-0 border-b-2 border-border rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary placeholder:text-muted-foreground text-center"
                         />
                     </FormControl>
                     <FormMessage className="text-center" />
@@ -214,7 +229,7 @@ export default function SignInForm() {
                             type={showPassword ? "text" : "password"} 
                             placeholder="Password" 
                             {...field} 
-                            className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
+                            className="bg-transparent text-foreground border-0 border-b-2 border-border rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary placeholder:text-muted-foreground text-center"
                         />
                         <Button
                             type="button"
@@ -267,7 +282,7 @@ export default function SignInForm() {
                         placeholder="6-digit code" 
                         value={otp}
                         onChange={(e) => setOtp(e.target.value)}
-                        className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
+                        className="bg-transparent text-foreground border-0 border-b-2 border-border rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-primary placeholder:text-muted-foreground text-center"
                       />
                     </div>
                     <Button onClick={handleVerifyOtp} className="w-full bg-accent/70 hover:bg-accent/80 text-white h-12 text-lg rounded-full border border-white/30" disabled={loading}>
