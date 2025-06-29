@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
@@ -670,9 +669,9 @@ export default function ActualDashboardPage() {
                 'Sync Google Calendar & Tasks'
                 )}
             </Button>
-            <Button onClick={() => importFileRef.current?.click()} variant="outline">
+            {/* <Button onClick={() => importFileRef.current?.click()} variant="outline">
                 <Upload className="mr-2 h-4 w-4" /> Import (.ics)
-            </Button>
+            </Button> */}
             <Button onClick={handleExportEvents} variant="outline">
                 <Download className="mr-2 h-4 w-4" /> Export (.ics)
             </Button>
