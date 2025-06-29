@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { TimelineEvent } from '@/types';
@@ -219,12 +218,14 @@ export default function TimelineListView({ events: allEventsFromProps, onDeleteE
                   </div>
                 )}
                 {event.url && (
-                  <div className="text-xs flex items-center gap-1.5">
-                    <LinkIcon size={12} className="flex-shrink-0"/>
-                    <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate min-w-0">
-                      {event.url}
-                    </a>
-                  </div>
+                    <div className="text-xs flex items-center gap-1.5 min-w-0">
+                        <LinkIcon size={12} className="flex-shrink-0"/>
+                        <div className="truncate">
+                            <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
+                                {event.url}
+                            </a>
+                        </div>
+                    </div>
                 )}
               </div>
             </CardContent>
