@@ -52,8 +52,8 @@ export default function SignUpForm() {
     try {
       if (!auth) throw new Error("Firebase Auth is not initialized.");
       await createUserWithEmailAndPassword(auth, values.email, values.password);
-      toast({ title: 'Success', description: 'Account created successfully. Please sign in.' });
-      router.push('/auth/signin');
+      toast({ title: 'Success', description: 'Account created successfully. Welcome!' });
+      router.push('/');
     } catch (error: any) {
       toast({
         title: 'Error',
