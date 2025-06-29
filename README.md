@@ -54,6 +54,14 @@ NEXT_PUBLIC_BASE_URL=
 
 ## Deployment
 
+### Firebase App Hosting
+
 This application is pre-configured for deployment on **Firebase App Hosting**.
 
 The `apphosting.yaml` file is already set up. To deploy your app, you will need to have the Firebase CLI installed and be logged into your Firebase account. You can then follow the [official Firebase App Hosting documentation](https://firebase.google.com/docs/app-hosting/deploy-nextjs) to get your site live.
+
+### Heroku Deployment
+
+You can also deploy this application to Heroku with a single click using the button below. Heroku will automatically detect the `app.json` file and guide you through setting up the required environment variables.
+
+[![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
