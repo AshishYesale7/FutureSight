@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -54,6 +53,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   
   const isGoogleProviderLinked = user?.providerData.some(p => p.providerId === GoogleAuthProvider.PROVIDER_ID);
+  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return () => {
@@ -98,56 +98,57 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
 
   // Effect to manage reCAPTCHA lifecycle, now dependent on isLinkingPhone
   useEffect(() => {
-    const recaptchaContainer = document.getElementById('recaptcha-container-settings');
-
+    if (!isLinkingPhone || !recaptchaContainerRef.current || window.recaptchaVerifierSettings) {
+        return;
+    }
+    
     const cleanup = () => {
       if (window.recaptchaVerifierSettings) {
         try {
+          // This seems to be the most reliable way to clear it
+          const container = window.recaptchaVerifierSettings.container;
+          if (container) {
+             (container as HTMLElement).innerHTML = '';
+          }
           window.recaptchaVerifierSettings.clear();
         } catch (e) {
           console.warn("Failed to clear previous reCAPTCHA verifier for settings:", e);
         }
         window.recaptchaVerifierSettings = undefined;
       }
-      if (recaptchaContainer) {
-        recaptchaContainer.innerHTML = '';
-      }
     };
 
-    if (!isLinkingPhone || !auth) {
-      cleanup();
-      return;
-    }
-    
-    if (!recaptchaContainer) {
-      console.warn('reCAPTCHA container for settings not found.');
-      return;
-    }
-
-    // A fresh verifier is created only when the linking process begins.
     cleanup();
 
+    if (!auth) {
+        toast({ title: 'Authentication Error', description: 'Firebase not initialized.', variant: 'destructive' });
+        return;
+    }
+    
     try {
-      const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
-        'size': 'invisible',
-        'callback': () => console.log('reCAPTCHA for settings verified'),
-        'expired-callback': () => {
-          toast({ title: 'reCAPTCHA Expired', description: 'Please try again.', variant: 'destructive' });
-          cleanup();
-          setLinkingPhoneState('input'); 
-        },
-      });
-      window.recaptchaVerifierSettings = verifier;
-      verifier.render().catch((e) => {
-        console.error("reCAPTCHA settings render error:", e);
-        toast({ title: 'reCAPTCHA Error', description: "Failed to render reCAPTCHA. Please try again.", variant: "destructive"});
-      });
+        const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+            'size': 'invisible',
+            'callback': () => console.log('reCAPTCHA for settings verified'),
+            'expired-callback': () => {
+                toast({ title: 'reCAPTCHA Expired', description: 'Please try again.', variant: 'destructive' });
+                cleanup();
+                setLinkingPhoneState('input'); 
+            },
+        });
+        window.recaptchaVerifierSettings = verifier;
+        verifier.render().catch((e) => {
+            console.error("reCAPTCHA settings render error:", e);
+            toast({ title: 'reCAPTCHA Error', description: "Failed to render reCAPTCHA. Please close and reopen the modal.", variant: "destructive"});
+            cleanup();
+            setIsLinkingPhone(false);
+        });
     } catch (e: any) {
-      console.error("reCAPTCHA settings creation error:", e);
-      toast({ title: "reCAPTCHA Error", description: "Could not initialize reCAPTCHA. Please try again.", variant: "destructive"});
+        console.error("reCAPTCHA settings creation error:", e);
+        toast({ title: "reCAPTCHA Error", description: "Could not initialize reCAPTCHA. Please try again.", variant: "destructive"});
+        setIsLinkingPhone(false);
     }
 
-    return cleanup; // Cleanup runs when isLinkingPhone becomes false.
+    return cleanup;
   }, [isLinkingPhone, auth, toast]);
 
   const handleApiKeySave = () => {
@@ -277,7 +278,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   };
 
   const handleSendLinkOtp = async () => {
-      if (!user || !auth || !auth.currentUser) { return; }
+      if (!user || !auth.currentUser) { return; }
       const verifier = window.recaptchaVerifierSettings;
       const fullPhoneNumber = typeof phoneForLinking === 'string' ? phoneForLinking : '';
       
@@ -291,7 +292,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
       }
       setLinkingPhoneState('loading');
       try {
-        const confirmationResult = await linkWithPhoneNumber(auth.currentUser, fullPhoneNumber, verifier);
+        const confirmationResult = await linkWithPhoneNumber(user, fullPhoneNumber, verifier);
         window.confirmationResultSettings = confirmationResult;
         setLinkingPhoneState('otp-sent');
         toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.'});
@@ -320,9 +321,18 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
         setLinkingPhoneState('success');
         toast({ title: 'Success!', description: 'Your phone number has been linked.' });
     } catch (error: any) {
-        console.error("OTP verification error:", error);
-        toast({ title: 'Error', description: 'Invalid OTP or verification failed.', variant: 'destructive' });
-        setLinkingPhoneState('otp-sent');
+        if (error.code === 'auth/credential-already-in-use') {
+            toast({
+                title: 'Number Already In Use',
+                description: "This phone number is already linked to another account. Please sign in with that number to continue.",
+                variant: 'destructive',
+                duration: 8000
+            });
+        } else {
+            console.error("OTP verification error:", error);
+            toast({ title: 'Error', description: 'Invalid OTP or verification failed.', variant: 'destructive' });
+        }
+        setLinkingPhoneState('otp-sent'); // Go back to OTP input screen
     }
   };
 
@@ -432,7 +442,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                     )}
                     </>
                 )}
-                <div id="recaptcha-container-settings"></div>
+                <div ref={recaptchaContainerRef} id="recaptcha-container-settings"></div>
             </div>
 
             <Separator />
