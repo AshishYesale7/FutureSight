@@ -41,8 +41,6 @@ export async function getGoogleGmailMessages(userId: string, labelId?: string): 
   const gmail = google.gmail({ version: 'v1', auth: client });
   const twoWeeksAgo = Math.floor(subDays(new Date(), 14).getTime() / 1000);
 
-  // Use the more specific `labelIds` parameter for filtering by label.
-  // The `q` parameter is used for other filters like date.
   const listOptions: {
     userId: string;
     maxResults: number;
@@ -51,15 +49,15 @@ export async function getGoogleGmailMessages(userId: string, labelId?: string): 
   } = {
     userId: 'me',
     maxResults: 20,
-    q: `after:${twoWeeksAgo}`,
   };
   
   if (labelId) {
+    // If a specific label is requested, use it exclusively.
+    // This is more reliable than combining with a 'q' parameter which can have unpredictable interactions.
     listOptions.labelIds = [labelId];
   } else {
-    // This is a fallback if no label ID is provided, though the UI defaults to 'IMPORTANT'.
-    // We modify the query to handle this default case.
-    delete listOptions.q;
+    // Fallback behavior if no label is selected.
+    // We'll search for important/starred emails from the last two weeks.
     listOptions.q = `(is:important OR is:starred) after:${twoWeeksAgo}`;
   }
   
