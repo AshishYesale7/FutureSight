@@ -158,13 +158,14 @@ export default function TodaysPlanCard() {
                     </Button>
                 </div>
 
-                <AccordionTrigger className="flex-1 p-0 text-left hover:no-underline ml-4">
-                    <div className="flex justify-between items-center w-full">
-                        <div className="flex-1">
+                <div className="flex-1 ml-4 min-w-0">
+                    <AccordionTrigger className="w-full p-0 text-left hover:no-underline flex justify-between items-center">
+                        <div className="flex-1 min-w-0 pr-4">
                              <CardTitle className="font-headline text-xl text-primary flex items-center">
-                                <Calendar className="mr-2 h-5 w-5 text-accent" /> {getDisplayDateTitle(displayDate)}
+                                <Calendar className="mr-2 h-5 w-5 text-accent shrink-0" />
+                                <span className="truncate">{getDisplayDateTitle(displayDate)}</span>
                             </CardTitle>
-                            <CardDescription className="mt-1">
+                            <CardDescription className="mt-1 truncate">
                                 Your personalized schedule for {format(displayDate, 'MMMM d, yyyy')}.
                             </CardDescription>
                         </div>
@@ -179,8 +180,8 @@ export default function TodaysPlanCard() {
                         >
                             <Edit className="h-5 w-5 text-muted-foreground" />
                         </div>
-                    </div>
-                </AccordionTrigger>
+                    </AccordionTrigger>
+                </div>
             </div>
             <AccordionContent className="px-6 pb-6 pt-0">
               <CardContent className="p-0">
