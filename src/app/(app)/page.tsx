@@ -569,6 +569,8 @@ export default function ActualDashboardPage() {
                 }
                 
                 toast({ title: 'Import Successful', description: `${importedEvents.length} new event(s) were imported.` });
+            } else if (result.message) {
+                 toast({ title: 'Import Complete', description: result.message });
             } else {
                 toast({ title: 'Nothing to Import', description: 'No new events were found in the file.' });
             }
