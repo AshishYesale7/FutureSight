@@ -95,9 +95,9 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     const cleanup = () => {
       if (window.recaptchaVerifierSettings) {
         try {
-            window.recaptchaVerifierSettings.clear();
-        } catch(e) {
-            console.warn("Failed to clear previous reCAPTCHA verifier for settings:", e);
+          window.recaptchaVerifierSettings.clear();
+        } catch (e) {
+          console.warn("Failed to clear previous reCAPTCHA verifier for settings:", e);
         }
         window.recaptchaVerifierSettings = undefined;
       }
@@ -106,35 +106,36 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
       }
     };
 
-    if (!isOpen || (linkingPhoneState !== 'input' && linkingPhoneState !== 'loading' && linkingPhoneState !== 'otp-sent')) {
+    if (!isOpen || linkingPhoneState !== 'input') {
       cleanup();
       return;
     }
 
-    if (linkingPhoneState === 'input' && !window.recaptchaVerifierSettings) {
-      if (!recaptchaContainer || !auth) return;
-      
-      cleanup();
-      
-      try {
-        const verifier = new RecaptchaVerifier(auth, 'recaptcha-container-settings', {
-          'size': 'invisible',
-          'callback': () => console.log('reCAPTCHA for settings verified'),
-          'expired-callback': () => {
-            toast({ title: 'reCAPTCHA Expired', description: 'Please try again.', variant: 'destructive' });
-            cleanup();
-            setLinkingPhoneState('input'); 
-          },
-        });
-        window.recaptchaVerifierSettings = verifier;
-        verifier.render().catch((e) => {
-            console.error("reCAPTCHA settings render error:", e);
-            toast({ title: 'reCAPTCHA Error', description: "Failed to render reCAPTCHA. Please close and reopen the modal.", variant: "destructive"});
-        });
-      } catch (e: any) {
-        console.error("reCAPTCHA settings creation error:", e);
-        toast({ title: "reCAPTCHA Error", description: "Could not initialize reCAPTCHA. Please close and reopen the modal.", variant: "destructive"});
-      }
+    if (!recaptchaContainer || !auth) {
+      console.warn('reCAPTCHA container or auth not available for settings modal.');
+      return;
+    }
+    
+    cleanup();
+
+    try {
+      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container-settings', {
+        'size': 'invisible',
+        'callback': () => console.log('reCAPTCHA for settings verified'),
+        'expired-callback': () => {
+          toast({ title: 'reCAPTCHA Expired', description: 'Please try again.', variant: 'destructive' });
+          cleanup();
+          setLinkingPhoneState('input'); 
+        },
+      });
+      window.recaptchaVerifierSettings = verifier;
+      verifier.render().catch((e) => {
+        console.error("reCAPTCHA settings render error:", e);
+        toast({ title: 'reCAPTCHA Error', description: "Failed to render reCAPTCHA. Please close and reopen the modal.", variant: "destructive"});
+      });
+    } catch (e: any) {
+      console.error("reCAPTCHA settings creation error:", e);
+      toast({ title: "reCAPTCHA Error", description: "Could not initialize reCAPTCHA. Please close and reopen the modal.", variant: "destructive"});
     }
 
     return cleanup;
@@ -267,9 +268,10 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   };
 
   const handleSendLinkOtp = async () => {
+      if (!user || !auth) { return; }
       const verifier = window.recaptchaVerifierSettings;
       const fullPhoneNumber = typeof phoneForLinking === 'string' ? phoneForLinking : '';
-      if (!user || !auth) { return; }
+      
       if (!verifier) {
          toast({ title: 'reCAPTCHA Error', description: "Verifier not ready. Please try again in a moment.", variant: 'destructive'});
          return;
@@ -374,7 +376,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                     {linkingPhoneState === 'idle' && (
                         <Button onClick={() => setLinkingPhoneState('input')} variant="outline" className="w-full">Link Phone Number</Button>
                     )}
-                    {(linkingPhoneState === 'input' || linkingPhoneState === 'loading' && phoneForLinking) && (
+                    {linkingPhoneState === 'input' && (
                         <div className="space-y-4">
                             <div className="space-y-2 phone-input-container">
                                 <Label htmlFor="phone-link" className="text-xs">Enter your phone number</Label>
@@ -393,7 +395,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                             </Button>
                         </div>
                     )}
-                    {(linkingPhoneState === 'otp-sent' || linkingPhoneState === 'loading' && otpForLinking) && (
+                    {(linkingPhoneState === 'otp-sent' || linkingPhoneState === 'loading') && (
                         <div className="space-y-4">
                              <div className="space-y-2">
                                 <Label htmlFor="otp-link" className="text-xs">Enter 6-digit OTP</Label>
