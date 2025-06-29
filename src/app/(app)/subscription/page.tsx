@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CheckCircle, Crown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { useRouter } from 'next/navigation';
 
 const plans = {
     monthly: {
@@ -36,7 +37,8 @@ declare global {
 }
 
 export default function SubscriptionPage() {
-    const { user } = useAuth();
+    const { user, refreshSubscription } = useAuth();
+    const router = useRouter();
     const { toast } = useToast();
     const [isLoading, setIsLoading] = useState<PlanID | null>(null);
     const [isScriptLoaded, setIsScriptLoaded] = useState(false);
@@ -48,7 +50,7 @@ export default function SubscriptionPage() {
         }
 
         if (!isScriptLoaded) {
-            toast({ title: 'Error', description: 'Payment script not loaded yet. Please wait a moment.', variant: 'destructive' });
+            toast({ title: 'Payment Service Unavailable', description: 'Could not connect to the payment provider. Please check your internet connection and try again.', variant: 'destructive' });
             return;
         }
         
@@ -88,7 +90,8 @@ export default function SubscriptionPage() {
                     const verificationData = await verificationRes.json();
                     if (verificationRes.ok) {
                         toast({ title: 'Success!', description: 'Your subscription is now active.' });
-                        // Optionally redirect or update UI state
+                        await refreshSubscription();
+                        router.push('/');
                     } else {
                         throw new Error(verificationData.error || 'Payment verification failed.');
                     }
@@ -164,7 +167,7 @@ export default function SubscriptionPage() {
                                 <CardFooter>
                                     <Button
                                         className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                                        disabled={isLoading !== null || !isScriptLoaded}
+                                        disabled={isLoading !== null}
                                         onClick={() => handleSubscribe(planId)}
                                     >
                                         {isLoading === planId ? (

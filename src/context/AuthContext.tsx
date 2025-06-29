@@ -3,7 +3,7 @@
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import type { ReactNode } from 'react';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { auth } from '@/lib/firebase';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AlertCircle } from 'lucide-react';
@@ -15,6 +15,7 @@ interface AuthContextType {
   loading: boolean;
   subscription: UserSubscription | null;
   isSubscribed: boolean;
+  refreshSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -55,7 +56,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const isSubscribed = !!subscription && 
     (subscription.status === 'active' || subscription.status === 'trial') && 
-    new Date(subscription.endDate) > new Date();
+    (subscription.endDate && new Date(subscription.endDate) > new Date());
+
+  const fetchSubscription = useCallback(async (uid: string) => {
+    try {
+        const userSub = await getUserSubscription(uid);
+        setSubscription(userSub);
+    } catch (error) {
+        console.error("Failed to fetch user subscription:", error);
+        setSubscription(null);
+    }
+  }, []);
+
+  const refreshSubscription = useCallback(async () => {
+    if (user) {
+        await fetchSubscription(user.uid);
+    }
+  }, [user, fetchSubscription]);
+
 
   useEffect(() => {
     setMounted(true);
@@ -67,20 +85,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        try {
-          const userSub = await getUserSubscription(currentUser.uid);
-          setSubscription(userSub);
-        } catch (error) {
-          console.error("Failed to fetch user subscription:", error);
-          setSubscription(null);
-        }
+        await fetchSubscription(currentUser.uid);
       } else {
         setSubscription(null);
       }
       setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [fetchSubscription]);
 
   if (!mounted) {
     return (
@@ -103,7 +115,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, subscription, isSubscribed }}>
+    <AuthContext.Provider value={{ user, loading, subscription, isSubscribed, refreshSubscription }}>
       {children}
     </AuthContext.Provider>
   );
