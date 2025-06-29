@@ -1,6 +1,6 @@
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult, linkWithPopup, fetchSignInMethodsForEmail } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult, linkWithPopup, fetchSignInMethodsForEmail, linkWithPhoneNumber } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -182,7 +182,8 @@ export default function SignInForm() {
       toast({ title: 'Error', description: 'Firebase Auth not initialized.', variant: 'destructive' });
       return;
     }
-    if (!phoneNumber || !isValidPhoneNumber(phoneNumber)) {
+    const fullPhoneNumber = typeof phoneNumber === 'string' ? phoneNumber : '';
+    if (!fullPhoneNumber || !isValidPhoneNumber(fullPhoneNumber)) {
         toast({ title: 'Invalid Phone Number', description: 'Please enter a complete and valid phone number in international format (e.g., +1...).', variant: 'destructive' });
         return;
     }
@@ -197,11 +198,11 @@ export default function SignInForm() {
       // If a user is logged in, link the phone number. Otherwise, sign in.
       if (auth.currentUser) {
           setIsLinking(true);
-          confirmationResult = await linkWithPopup(auth.currentUser, phoneNumber, verifier);
+          confirmationResult = await linkWithPhoneNumber(auth.currentUser, fullPhoneNumber, verifier);
           toast({ title: 'OTP Sent', description: 'Check your phone to link your number.' });
       } else {
           setIsLinking(false);
-          confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+          confirmationResult = await signInWithPhoneNumber(auth, fullPhoneNumber, verifier);
           toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.' });
       }
       window.confirmationResult = confirmationResult;
@@ -215,7 +216,14 @@ export default function SignInForm() {
             variant: 'destructive',
             duration: 8000
         });
-      } else {
+      } else if (error.code === 'auth/credential-already-in-use') {
+         toast({
+            title: 'Number In Use',
+            description: "This phone number is already linked to another account.",
+            variant: 'destructive'
+        });
+      }
+      else {
         console.error("Phone Auth Error:", error);
         toast({ title: 'Error', description: error.message || 'Failed to send OTP. Please refresh the page and try again.', variant: 'destructive' });
       }

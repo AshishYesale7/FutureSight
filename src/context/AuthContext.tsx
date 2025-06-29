@@ -16,6 +16,7 @@ interface AuthContextType {
   subscription: UserSubscription | null;
   isSubscribed: boolean;
   refreshSubscription: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -74,6 +75,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user, fetchSubscription]);
 
+  const refreshUser = useCallback(async () => {
+    if (auth.currentUser) {
+      await auth.currentUser.reload();
+      const refreshedUser = auth.currentUser;
+      setUser(refreshedUser);
+    }
+  }, []);
+
 
   useEffect(() => {
     setMounted(true);
@@ -115,7 +124,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, subscription, isSubscribed, refreshSubscription }}>
+    <AuthContext.Provider value={{ user, loading, subscription, isSubscribed, refreshSubscription, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

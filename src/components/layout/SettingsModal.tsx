@@ -14,13 +14,21 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiKey } from '@/hooks/use-api-key';
 import { useToast } from '@/hooks/use-toast';
-import { KeyRound, Globe, Unplug, CheckCircle } from 'lucide-react';
+import { KeyRound, Globe, Unplug, CheckCircle, Smartphone } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/lib/firebase';
-import { GoogleAuthProvider, linkWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, linkWithPopup, RecaptchaVerifier, linkWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
+import 'react-phone-number-input/style.css';
+import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 
+declare global {
+  interface Window {
+    recaptchaVerifierSettings?: RecaptchaVerifier;
+    confirmationResultSettings?: ConfirmationResult;
+  }
+}
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -30,12 +38,16 @@ interface SettingsModalProps {
 export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalProps) {
   const { apiKey: currentApiKey, setApiKey } = useApiKey();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [apiKeyInput, setApiKeyInput] = useState(currentApiKey || '');
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean | null>(null);
 
+  // State for phone linking
+  const [phoneForLinking, setPhoneForLinking] = useState<string | undefined>();
+  const [otpForLinking, setOtpForLinking] = useState('');
+  const [linkingPhoneState, setLinkingPhoneState] = useState<'idle' | 'input' | 'otp-sent' | 'loading' | 'success'>('idle');
+  
   useEffect(() => {
-    // Sync input field if modal opens and key has changed elsewhere
     if (isOpen) {
         setApiKeyInput(currentApiKey || '');
         if (user) {
@@ -52,8 +64,36 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                 toast({ title: 'Error', description: 'Could not verify Google connection status.', variant: 'destructive' });
             });
         }
+    } else {
+       // Reset phone linking state when modal closes
+       setLinkingPhoneState('idle');
+       setPhoneForLinking(undefined);
+       setOtpForLinking('');
     }
   }, [currentApiKey, isOpen, toast, user]);
+
+  // Effect to manage reCAPTCHA for phone linking
+  useEffect(() => {
+    let verifier: RecaptchaVerifier | undefined;
+    if (isOpen && linkingPhoneState === 'input') {
+        const recaptchaContainer = document.getElementById('recaptcha-container-settings');
+        if (recaptchaContainer && !window.recaptchaVerifierSettings) {
+            verifier = new RecaptchaVerifier(auth, 'recaptcha-container-settings', {
+                'size': 'invisible',
+                'callback': () => console.log('reCAPTCHA for settings verified'),
+            });
+            verifier.render().then(() => {
+              window.recaptchaVerifierSettings = verifier;
+            });
+        }
+    }
+    return () => {
+      if (window.recaptchaVerifierSettings) {
+        window.recaptchaVerifierSettings.clear();
+        window.recaptchaVerifierSettings = undefined;
+      }
+    };
+  }, [isOpen, linkingPhoneState]);
 
   const handleApiKeySave = () => {
     const trimmedKey = apiKeyInput.trim();
@@ -86,7 +126,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
         if (error.code === 'auth/credential-already-in-use') {
             toast({
                 title: 'Google Account In Use',
-                description: "To link, please: 1. Sign out. 2. Sign back in using Google. 3. Go to Settings and link this phone number to your Google account.",
+                description: "This Google account is already linked to another user. Please sign out and sign in with Google to merge accounts.",
                 variant: 'destructive',
                 duration: 10000,
             });
@@ -123,6 +163,51 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
       }
   };
 
+  const handleSendLinkOtp = async () => {
+      const verifier = window.recaptchaVerifierSettings;
+      const fullPhoneNumber = typeof phoneForLinking === 'string' ? phoneForLinking : '';
+      if (!auth.currentUser || !verifier || !fullPhoneNumber || !isValidPhoneNumber(fullPhoneNumber)) {
+        toast({ title: 'Invalid Phone Number', variant: 'destructive'});
+        return;
+      }
+      setLinkingPhoneState('loading');
+      try {
+        const confirmationResult = await linkWithPhoneNumber(auth.currentUser, fullPhoneNumber, verifier);
+        window.confirmationResultSettings = confirmationResult;
+        setLinkingPhoneState('otp-sent');
+        toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.'});
+      } catch (error: any) {
+        console.error("Phone link error:", error);
+        toast({ title: 'Error', description: error.message || "Failed to send OTP.", variant: 'destructive' });
+        setLinkingPhoneState('input');
+      }
+  };
+
+  const handleVerifyLinkOtp = async () => {
+    if (!otpForLinking || otpForLinking.length !== 6) {
+        toast({ title: 'Invalid OTP', description: 'Please enter the 6-digit OTP.', variant: 'destructive' });
+        return;
+    }
+    const confirmationResult = window.confirmationResultSettings;
+    if (!confirmationResult) {
+        toast({ title: 'Error', description: 'Verification expired. Please try again.', variant: 'destructive'});
+        setLinkingPhoneState('input');
+        return;
+    }
+    setLinkingPhoneState('loading');
+    try {
+        await confirmationResult.confirm(otpForLinking);
+        await refreshUser(); // Refresh user data to get the new phone number
+        setLinkingPhoneState('success');
+        toast({ title: 'Success!', description: 'Your phone number has been linked.' });
+    } catch (error: any) {
+        console.error("OTP verification error:", error);
+        toast({ title: 'Error', description: 'Invalid OTP or verification failed.', variant: 'destructive' });
+        setLinkingPhoneState('otp-sent');
+    }
+  };
+
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md frosted-glass">
@@ -135,25 +220,6 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
-            {/* API Key Section */}
-            <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                    Optionally provide your own Google Gemini API key. Your key is saved securely to your account and is never shared.
-                </p>
-                <div className="space-y-2">
-                    <Label htmlFor="geminiApiKey" className="text-sm font-medium">Your Gemini API Key</Label>
-                    <Input
-                        id="geminiApiKey"
-                        type="password"
-                        placeholder="Enter your Gemini API key"
-                        value={apiKeyInput}
-                        onChange={(e) => setApiKeyInput(e.target.value)}
-                    />
-                </div>
-            </div>
-
-            <Separator />
-            
             {/* Google Integration Section */}
             <div className="space-y-3">
                  <Label className="font-semibold text-base flex items-center text-primary">
@@ -183,9 +249,97 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                     </Button>
                 )}
             </div>
+            
+            <Separator/>
+
+            {/* Phone Number Linking Section */}
+            <div className="space-y-3">
+                <Label className="font-semibold text-base flex items-center text-primary">
+                    <Smartphone className="mr-2 h-4 w-4" /> Phone Number
+                </Label>
+                {user?.phoneNumber ? (
+                    <div className="flex items-center justify-between h-10">
+                        <p className="text-sm text-green-400 font-medium flex items-center">
+                            <CheckCircle className="mr-2 h-4 w-4" /> Linked: {user.phoneNumber}
+                        </p>
+                        {/* Unlink button can be added here in the future */}
+                    </div>
+                ) : (
+                    <>
+                    {linkingPhoneState === 'idle' && (
+                        <Button onClick={() => setLinkingPhoneState('input')} variant="outline" className="w-full">Link Phone Number</Button>
+                    )}
+                    {(linkingPhoneState === 'input' || linkingPhoneState === 'loading') && (
+                        <div className="space-y-4">
+                            <div className="space-y-2 phone-input-container">
+                                <Label htmlFor="phone-link" className="text-xs">Enter your phone number</Label>
+                                <PhoneInput
+                                    id="phone-link"
+                                    international
+                                    defaultCountry="US"
+                                    placeholder="Enter phone number"
+                                    value={phoneForLinking}
+                                    onChange={setPhoneForLinking}
+                                />
+                            </div>
+                            <Button onClick={handleSendLinkOtp} disabled={linkingPhoneState === 'loading'} className="w-full">
+                                {linkingPhoneState === 'loading' && <LoadingSpinner size="sm" className="mr-2"/>}
+                                Send OTP
+                            </Button>
+                        </div>
+                    )}
+                    {(linkingPhoneState === 'otp-sent' || linkingPhoneState === 'loading') && (
+                        <div className="space-y-4">
+                             <div className="space-y-2">
+                                <Label htmlFor="otp-link" className="text-xs">Enter 6-digit OTP</Label>
+                                <Input
+                                    id="otp-link"
+                                    type="text"
+                                    value={otpForLinking}
+                                    onChange={(e) => setOtpForLinking(e.target.value)}
+                                    placeholder="123456"
+                                />
+                             </div>
+                             <Button onClick={handleVerifyLinkOtp} disabled={linkingPhoneState === 'loading'} className="w-full">
+                                {linkingPhoneState === 'loading' && <LoadingSpinner size="sm" className="mr-2"/>}
+                                Verify & Link Phone
+                             </Button>
+                        </div>
+                    )}
+                    {linkingPhoneState === 'success' && (
+                        <p className="text-sm text-green-400 font-medium flex items-center h-10">
+                            <CheckCircle className="mr-2 h-4 w-4" /> Phone number linked successfully!
+                        </p>
+                    )}
+                    </>
+                )}
+                <div id="recaptcha-container-settings"></div>
+            </div>
+
+            <Separator />
+            
+            {/* API Key Section */}
+            <div className="space-y-3">
+                 <Label className="font-semibold text-base flex items-center text-primary">
+                    <KeyRound className="mr-2 h-4 w-4" /> Custom API Key
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                    Optionally provide your own Google Gemini API key. Your key is saved securely to your account. If empty, a shared key is used.
+                </p>
+                <div className="space-y-2">
+                    <Label htmlFor="geminiApiKey" className="text-sm font-medium">Your Gemini API Key</Label>
+                    <Input
+                        id="geminiApiKey"
+                        type="password"
+                        placeholder="Enter your Gemini API key"
+                        value={apiKeyInput}
+                        onChange={(e) => setApiKeyInput(e.target.value)}
+                    />
+                </div>
+            </div>
         </div>
         <DialogFooter>
-           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
            <Button onClick={handleApiKeySave} className="bg-accent hover:bg-accent/90 text-accent-foreground">
               Save API Key
             </Button>
