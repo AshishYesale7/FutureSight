@@ -41,15 +41,30 @@ export async function getGoogleGmailMessages(userId: string, labelId?: string): 
   const gmail = google.gmail({ version: 'v1', auth: client });
   const twoWeeksAgo = Math.floor(subDays(new Date(), 14).getTime() / 1000);
 
-  // Use a dynamic query based on whether a label is selected
-  const query = labelId ? `in:${labelId} after:${twoWeeksAgo}` : `(is:important OR is:starred) after:${twoWeeksAgo}`;
+  // Use the more specific `labelIds` parameter for filtering by label.
+  // The `q` parameter is used for other filters like date.
+  const listOptions: {
+    userId: string;
+    maxResults: number;
+    q?: string;
+    labelIds?: string[];
+  } = {
+    userId: 'me',
+    maxResults: 20,
+    q: `after:${twoWeeksAgo}`,
+  };
+  
+  if (labelId) {
+    listOptions.labelIds = [labelId];
+  } else {
+    // This is a fallback if no label ID is provided, though the UI defaults to 'IMPORTANT'.
+    // We modify the query to handle this default case.
+    delete listOptions.q;
+    listOptions.q = `(is:important OR is:starred) after:${twoWeeksAgo}`;
+  }
   
   try {
-    const listResponse = await gmail.users.messages.list({
-      userId: 'me',
-      q: query,
-      maxResults: 20, 
-    });
+    const listResponse = await gmail.users.messages.list(listOptions);
 
     const messages = listResponse.data.messages;
     if (!messages || messages.length === 0) {
