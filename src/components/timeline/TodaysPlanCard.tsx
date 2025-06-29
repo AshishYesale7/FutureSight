@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -10,7 +9,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Calendar, AlertTriangle, Settings } from 'lucide-react';
+import { Calendar, AlertTriangle, Edit } from 'lucide-react';
 import { generateDailyPlan } from '@/ai/flows/generate-daily-plan-flow';
 import type { DailyPlan } from '@/types';
 import { useApiKey } from '@/hooks/use-api-key';
@@ -24,8 +23,7 @@ import { getDailyPlan, saveDailyPlan } from '@/services/dailyPlanService';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { TodaysPlanContent } from './TodaysPlanContent';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import SettingsModal from '../layout/SettingsModal';
+import EditRoutineModal from './EditRoutineModal'; // New import
 
 export default function TodaysPlanCard() {
   const { user } = useAuth();
@@ -35,7 +33,7 @@ export default function TodaysPlanCard() {
   const [plan, setPlan] = useState<DailyPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isRoutineModalOpen, setIsRoutineModalOpen] = useState(false); // New state
 
   const fetchAndGeneratePlan = useCallback(async () => {
     if (!user) {
@@ -66,7 +64,7 @@ export default function TodaysPlanCard() {
       ]);
 
       if (!userPreferences) {
-        throw new Error("Please set your weekly routine in Settings to generate a plan.");
+        throw new Error("Please set your weekly routine to generate a plan.");
       }
 
       const result = await generateDailyPlan({
@@ -95,6 +93,14 @@ export default function TodaysPlanCard() {
   useEffect(() => {
     fetchAndGeneratePlan();
   }, [fetchAndGeneratePlan]);
+
+  const handleRoutineSaved = () => {
+    // Clear the existing plan so the AI is forced to regenerate it with the new routine
+    if(user) {
+      setPlan(null);
+      fetchAndGeneratePlan();
+    }
+  };
   
   const renderContent = () => {
     if (isLoading) {
@@ -112,7 +118,9 @@ export default function TodaysPlanCard() {
           <AlertTriangle className="h-10 w-10 mb-2" />
           <p className="font-semibold">Could not generate plan</p>
           <p className="text-sm">{error}</p>
-          <Button onClick={() => setIsSettingsModalOpen(true)} className="mt-4">Check Settings</Button>
+          <Button onClick={() => setIsRoutineModalOpen(true)} className="mt-4">
+            <Edit className="mr-2 h-4 w-4" /> Edit Routine
+          </Button>
         </div>
       );
     }
@@ -140,8 +148,20 @@ export default function TodaysPlanCard() {
                   <Calendar className="mr-2 h-5 w-5 text-accent" /> AI-Powered Daily Plan
                 </CardTitle>
                 <CardDescription className="mt-1">
-                  Your personalized schedule and goals for today. Configure your routine in Settings.
+                  Your personalized schedule and goals for today.
                 </CardDescription>
+              </div>
+              {/* This is the edit button that avoids nesting issues */}
+              <div
+                role="button"
+                aria-label="Edit routine"
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent the accordion from toggling
+                  setIsRoutineModalOpen(true);
+                }}
+                className="p-2 rounded-md hover:bg-accent/20 transition-colors"
+              >
+                <Edit className="h-5 w-5 text-muted-foreground" />
               </div>
             </div>
           </AccordionTrigger>
@@ -152,7 +172,11 @@ export default function TodaysPlanCard() {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-      <SettingsModal isOpen={isSettingsModalOpen} onOpenChange={setIsSettingsModalOpen} />
+      <EditRoutineModal
+        isOpen={isRoutineModalOpen}
+        onOpenChange={setIsRoutineModalOpen}
+        onRoutineSave={handleRoutineSaved}
+      />
     </>
   );
 }
