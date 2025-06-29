@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -47,7 +47,19 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   const [otpForLinking, setOtpForLinking] = useState('');
   const [linkingPhoneState, setLinkingPhoneState] = useState<'idle' | 'input' | 'otp-sent' | 'loading' | 'success'>('idle');
   
+  const [isPolling, setIsPolling] = useState(false);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   const isGoogleProviderLinked = user?.providerData.some(p => p.providerId === GoogleAuthProvider.PROVIDER_ID);
+
+  useEffect(() => {
+    // This cleanup runs when the component unmounts.
+    return () => {
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+        }
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -67,6 +79,12 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
             });
         }
     } else {
+       // Clean up when modal is closed
+       if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+       }
+       setIsPolling(false);
        setLinkingPhoneState('idle');
        setPhoneForLinking(undefined);
        setOtpForLinking('');
@@ -107,17 +125,61 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     onOpenChange(false);
   };
   
+  const startPollingForConnection = () => {
+    if (pollIntervalRef.current || !user) return;
+    
+    setIsPolling(true);
+    let attempts = 0;
+    const maxAttempts = 40; // Poll for 2 minutes (40 * 3s = 120s)
+    
+    pollIntervalRef.current = setInterval(async () => {
+        attempts++;
+        if (attempts > maxAttempts || !pollIntervalRef.current) {
+            if(pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+            setIsPolling(false);
+            if (attempts > maxAttempts) {
+                toast({ title: 'Timeout', description: 'Google connection status check timed out.', variant: 'destructive'});
+            }
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/auth/google/status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.uid }),
+            });
+            const data = await res.json();
+
+            if (data.isConnected) {
+                clearInterval(pollIntervalRef.current!);
+                pollIntervalRef.current = null;
+                setIsPolling(false);
+                setIsGoogleConnected(true);
+                toast({ title: 'Success!', description: 'Your Google account has been connected.' });
+            }
+        } catch (error) {
+            console.error('Polling error:', error);
+            // Just continue polling, don't show an error for each failed attempt
+        }
+    }, 3000);
+  }
+
   const handleConnectGoogle = async () => {
     if (!user || !auth?.currentUser) {
         toast({ title: 'Error', description: 'You must be logged in to connect a Google account.', variant: 'destructive' });
         return;
     }
 
+    const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
+    const authUrl = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
+
     // If Google is already a provider, we just need to re-run the OAuth flow for API permissions.
     if (isGoogleProviderLinked) {
-        toast({ title: 'Redirecting to Google...', description: 'Please re-authorize to sync your Calendar and Gmail.' });
-        const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
-        window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
+        toast({ title: 'Opening Google...', description: 'Please authorize access in the new tab.' });
+        window.open(authUrl, '_blank', 'width=500,height=600');
+        startPollingForConnection();
         return;
     }
 
@@ -129,13 +191,12 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
 
     try {
         await linkWithPopup(auth.currentUser, provider);
+        await refreshUser(); // Refresh user to update providerData
         
-        // After a successful link, we must run the redirect flow to get the offline refresh token for the backend APIs.
-        toast({ title: 'Account Linked!', description: 'Now redirecting to grant Calendar & Gmail permissions.' });
-        const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
-        setTimeout(() => {
-            window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
-        }, 1500);
+        // After a successful link, run the redirect flow in a new tab to get the offline refresh token.
+        toast({ title: 'Account Linked!', description: 'Now granting permissions in the new tab.' });
+        window.open(authUrl, '_blank', 'width=500,height=600');
+        startPollingForConnection();
 
     } catch (error: any) {
         if (error.code === 'auth/credential-already-in-use') {
@@ -146,11 +207,9 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                 duration: 12000,
             });
         } else if (error.code === 'auth/provider-already-linked') {
-             // This is an edge case where the provider is linked but our state is out of sync.
-             // We can treat this as success and just run the re-auth flow to get tokens.
              toast({ title: 'Re-authorizing...', description: 'Your account is already linked. Redirecting to grant permissions.' });
-             const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
-             window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
+             window.open(authUrl, '_blank', 'width=500,height=600');
+             startPollingForConnection();
         } else {
             console.error("Google link error:", error);
             toast({
@@ -263,9 +322,9 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                         </Button>
                     </div>
                 ) : (
-                    <Button onClick={handleConnectGoogle} variant="outline" className="w-full">
-                        <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4"><title>Google</title><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.3 1.63-4.5 1.63-5.42 0-9.82-4.4-9.82-9.82s4.4-9.82 9.82-9.82c3.1 0 5.14 1.25 6.32 2.39l2.44-2.44C20.44 1.89 17.13 0 12.48 0 5.88 0 0 5.88 0 12.48s5.88 12.48 12.48 12.48c6.92 0 12.04-4.82 12.04-12.04 0-.82-.07-1.62-.2-2.4z" fill="currentColor"/></svg>
-                        Connect with Google
+                    <Button onClick={handleConnectGoogle} variant="outline" className="w-full" disabled={isPolling}>
+                        {isPolling ? <LoadingSpinner size="sm" className="mr-2"/> : <svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4"><title>Google</title><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.02 1.02-2.3 1.63-4.5 1.63-5.42 0-9.82-4.4-9.82-9.82s4.4-9.82 9.82-9.82c3.1 0 5.14 1.25 6.32 2.39l2.44-2.44C20.44 1.89 17.13 0 12.48 0 5.88 0 0 5.88 0 12.48s5.88 12.48 12.48 12.48c6.92 0 12.04-4.82 12.04-12.04 0-.82-.07-1.62-.2-2.4z" fill="currentColor"/></svg>}
+                        {isPolling ? 'Waiting for connection...' : 'Connect with Google'}
                     </Button>
                 )}
             </div>
