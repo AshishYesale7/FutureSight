@@ -43,9 +43,12 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   const [apiKeyInput, setApiKeyInput] = useState(currentApiKey || '');
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean | null>(null);
 
+  // State to manage the entire phone linking flow lifecycle
+  const [isLinkingPhone, setIsLinkingPhone] = useState(false);
+  // State to manage the steps within the phone linking flow
+  const [linkingPhoneState, setLinkingPhoneState] = useState<'input' | 'otp-sent' | 'loading' | 'success'>('input');
   const [phoneForLinking, setPhoneForLinking] = useState<string | undefined>();
   const [otpForLinking, setOtpForLinking] = useState('');
-  const [linkingPhoneState, setLinkingPhoneState] = useState<'idle' | 'input' | 'otp-sent' | 'loading' | 'success'>('idle');
   
   const [isPolling, setIsPolling] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -60,8 +63,21 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     };
   }, []);
 
+  // Effect to reset state when modal is closed
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) {
+       // Clean up and reset everything when the modal is no longer open
+       if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+       }
+       setIsPolling(false);
+       setIsLinkingPhone(false); // End the linking flow
+       setLinkingPhoneState('input'); // Reset step for next time
+       setPhoneForLinking(undefined);
+       setOtpForLinking('');
+    } else {
+        // Fetch status when modal opens
         setApiKeyInput(currentApiKey || '');
         if (user) {
             setIsGoogleConnected(null); 
@@ -77,18 +93,10 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                 toast({ title: 'Error', description: 'Could not verify Google connection status.', variant: 'destructive' });
             });
         }
-    } else {
-       if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = null;
-       }
-       setIsPolling(false);
-       setLinkingPhoneState('idle');
-       setPhoneForLinking(undefined);
-       setOtpForLinking('');
     }
   }, [currentApiKey, isOpen, toast, user]);
 
+  // Effect to manage reCAPTCHA lifecycle, now dependent on isLinkingPhone
   useEffect(() => {
     const recaptchaContainer = document.getElementById('recaptcha-container-settings');
 
@@ -106,7 +114,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
       }
     };
 
-    if (!isOpen || linkingPhoneState !== 'input' || !auth) {
+    if (!isLinkingPhone || !auth) {
       cleanup();
       return;
     }
@@ -116,6 +124,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
       return;
     }
 
+    // A fresh verifier is created only when the linking process begins.
     cleanup();
 
     try {
@@ -131,15 +140,15 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
       window.recaptchaVerifierSettings = verifier;
       verifier.render().catch((e) => {
         console.error("reCAPTCHA settings render error:", e);
-        toast({ title: 'reCAPTCHA Error', description: "Failed to render reCAPTCHA. Please close and reopen the modal.", variant: "destructive"});
+        toast({ title: 'reCAPTCHA Error', description: "Failed to render reCAPTCHA. Please try again.", variant: "destructive"});
       });
     } catch (e: any) {
       console.error("reCAPTCHA settings creation error:", e);
-      toast({ title: "reCAPTCHA Error", description: "Could not initialize reCAPTCHA. Please close and reopen the modal.", variant: "destructive"});
+      toast({ title: "reCAPTCHA Error", description: "Could not initialize reCAPTCHA. Please try again.", variant: "destructive"});
     }
 
-    return cleanup;
-  }, [isOpen, linkingPhoneState, auth, toast]);
+    return cleanup; // Cleanup runs when isLinkingPhone becomes false.
+  }, [isLinkingPhone, auth, toast]);
 
   const handleApiKeySave = () => {
     const trimmedKey = apiKeyInput.trim();
@@ -268,7 +277,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   };
 
   const handleSendLinkOtp = async () => {
-      if (!user || !auth) { return; }
+      if (!user || !auth || !auth.currentUser) { return; }
       const verifier = window.recaptchaVerifierSettings;
       const fullPhoneNumber = typeof phoneForLinking === 'string' ? phoneForLinking : '';
       
@@ -282,7 +291,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
       }
       setLinkingPhoneState('loading');
       try {
-        const confirmationResult = await linkWithPhoneNumber(user, fullPhoneNumber, verifier);
+        const confirmationResult = await linkWithPhoneNumber(auth.currentUser, fullPhoneNumber, verifier);
         window.confirmationResultSettings = confirmationResult;
         setLinkingPhoneState('otp-sent');
         toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.'});
@@ -373,50 +382,53 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                     </div>
                 ) : (
                     <>
-                    {linkingPhoneState === 'idle' && (
-                        <Button onClick={() => setLinkingPhoneState('input')} variant="outline" className="w-full">Link Phone Number</Button>
-                    )}
-                    {linkingPhoneState === 'input' && (
-                        <div className="space-y-4">
-                            <div className="space-y-2 phone-input-container">
-                                <Label htmlFor="phone-link" className="text-xs">Enter your phone number</Label>
-                                <PhoneInput
-                                    id="phone-link"
-                                    international
-                                    defaultCountry="US"
-                                    placeholder="Enter phone number"
-                                    value={phoneForLinking}
-                                    onChange={setPhoneForLinking}
-                                />
-                            </div>
-                            <Button onClick={handleSendLinkOtp} disabled={linkingPhoneState === 'loading'} className="w-full">
-                                {linkingPhoneState === 'loading' && <LoadingSpinner size="sm" className="mr-2"/>}
-                                Send OTP
-                            </Button>
-                        </div>
-                    )}
-                    {(linkingPhoneState === 'otp-sent' || linkingPhoneState === 'loading') && (
-                        <div className="space-y-4">
-                             <div className="space-y-2">
-                                <Label htmlFor="otp-link" className="text-xs">Enter 6-digit OTP</Label>
-                                <Input
-                                    id="otp-link"
-                                    type="text"
-                                    value={otpForLinking}
-                                    onChange={(e) => setOtpForLinking(e.target.value)}
-                                    placeholder="123456"
-                                />
-                             </div>
-                             <Button onClick={handleVerifyLinkOtp} disabled={linkingPhoneState === 'loading'} className="w-full">
-                                {linkingPhoneState === 'loading' && <LoadingSpinner size="sm" className="mr-2"/>}
-                                Verify & Link Phone
-                             </Button>
-                        </div>
-                    )}
-                    {linkingPhoneState === 'success' && (
-                        <p className="text-sm text-green-400 font-medium flex items-center h-10">
-                            <CheckCircle className="mr-2 h-4 w-4" /> Phone number linked successfully!
-                        </p>
+                    {!isLinkingPhone ? (
+                        <Button onClick={() => setIsLinkingPhone(true)} variant="outline" className="w-full">Link Phone Number</Button>
+                    ) : (
+                        <>
+                            {linkingPhoneState === 'input' && (
+                                <div className="space-y-4">
+                                    <div className="space-y-2 phone-input-container">
+                                        <Label htmlFor="phone-link" className="text-xs">Enter your phone number</Label>
+                                        <PhoneInput
+                                            id="phone-link"
+                                            international
+                                            defaultCountry="US"
+                                            placeholder="Enter phone number"
+                                            value={phoneForLinking}
+                                            onChange={setPhoneForLinking}
+                                        />
+                                    </div>
+                                    <Button onClick={handleSendLinkOtp} disabled={linkingPhoneState === 'loading'} className="w-full">
+                                        {linkingPhoneState === 'loading' && <LoadingSpinner size="sm" className="mr-2"/>}
+                                        Send OTP
+                                    </Button>
+                                </div>
+                            )}
+                            {(linkingPhoneState === 'otp-sent' || linkingPhoneState === 'loading') && (
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="otp-link" className="text-xs">Enter 6-digit OTP</Label>
+                                        <Input
+                                            id="otp-link"
+                                            type="text"
+                                            value={otpForLinking}
+                                            onChange={(e) => setOtpForLinking(e.target.value)}
+                                            placeholder="123456"
+                                        />
+                                    </div>
+                                    <Button onClick={handleVerifyLinkOtp} disabled={linkingPhoneState === 'loading'} className="w-full">
+                                        {linkingPhoneState === 'loading' && <LoadingSpinner size="sm" className="mr-2"/>}
+                                        Verify & Link Phone
+                                    </Button>
+                                </div>
+                            )}
+                            {linkingPhoneState === 'success' && (
+                                <p className="text-sm text-green-400 font-medium flex items-center h-10">
+                                    <CheckCircle className="mr-2 h-4 w-4" /> Phone number linked successfully!
+                                </p>
+                            )}
+                        </>
                     )}
                     </>
                 )}
