@@ -381,6 +381,40 @@ export default function ActualDashboardPage() {
     }
   }, [displayedTimelineEvents, handleCloseEditModal, toast, isAddingNewEvent, user]);
 
+  const handleEventStatusUpdate = useCallback(async (eventId: string, newStatus: 'completed' | 'missed') => {
+    const eventToUpdate = displayedTimelineEvents.find(event => event.id === eventId);
+    if (!eventToUpdate) return;
+
+    const updatedEvent = { ...eventToUpdate, status: newStatus };
+
+    const newEvents = displayedTimelineEvents.map(event =>
+      event.id === eventId ? updatedEvent : event
+    );
+
+    setDisplayedTimelineEvents(newEvents);
+    syncToLocalStorage(newEvents);
+
+    toast({
+      title: "Status Updated",
+      description: `"${updatedEvent.title}" marked as ${newStatus}.`
+    });
+
+    if (user) {
+      try {
+        const { icon, ...data } = updatedEvent;
+        const payload = {
+          ...data,
+          date: data.date.toISOString(),
+          endDate: data.endDate ? data.endDate.toISOString() : null,
+        };
+        await saveTimelineEvent(user.uid, payload);
+      } catch (error) {
+        console.error("Failed to save event status to Firestore", error);
+        toast({ title: "Sync Error", description: "Could not save status to server. Change is saved locally.", variant: "destructive" });
+      }
+    }
+  }, [displayedTimelineEvents, user, toast]);
+
   return (
     <div className={cn("space-y-8 h-full flex flex-col")}>
       <TodaysPlanCard />
@@ -428,6 +462,7 @@ export default function ActualDashboardPage() {
                           onClose={closeDayTimetableView}
                           onDeleteEvent={handleDeleteTimelineEvent}
                           onEditEvent={handleOpenEditModal}
+                          onEventStatusChange={handleEventStatusUpdate}
                       />
                   ) : (
                       <SlidingTimelineView

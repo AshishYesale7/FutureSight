@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { TimelineEvent } from '@/types';
@@ -21,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import EventOverviewPanel from './EventOverviewPanel';
+import { Checkbox } from '../ui/checkbox';
 
 const HOUR_HEIGHT_PX = 60;
 const MIN_EVENT_COLUMN_WIDTH_PX = 90;
@@ -214,9 +216,10 @@ interface DayTimetableViewProps {
   onClose: () => void;
   onDeleteEvent?: (eventId: string) => void;
   onEditEvent?: (event: TimelineEvent) => void;
+  onEventStatusChange?: (eventId: string, status: 'completed' | 'missed') => void;
 }
 
-export default function DayTimetableView({ date, events, onClose, onDeleteEvent, onEditEvent }: DayTimetableViewProps) {
+export default function DayTimetableView({ date, events, onClose, onDeleteEvent, onEditEvent, onEventStatusChange }: DayTimetableViewProps) {
   const { toast } = useToast();
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -234,7 +237,7 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
           behavior: 'smooth',
           block: 'center',
         });
-      }, 300);
+      }, 500);
 
       const intervalId = setInterval(() => {
         setNow(new Date());
@@ -271,6 +274,12 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
   const handleEventClick = useCallback((event: TimelineEvent) => {
     setSelectedEvent(event);
   }, []);
+  
+  const handleCheckboxChange = (event: TimelineEvent, checked: boolean) => {
+    if (onEventStatusChange) {
+      onEventStatusChange(event.id, checked ? 'completed' : 'missed');
+    }
+  };
 
   const handleCloseOverview = useCallback(() => {
     setSelectedEvent(null);
@@ -307,20 +316,32 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
             if (!(event.date instanceof Date) || isNaN(event.date.valueOf())) return null;
             const statusBadge = getStatusBadgeVariant(event.status);
             const countdownText = getCountdownText(event.date);
+            const isEventInPast = isPast(event.date);
+            const isChecked = event.status === 'completed' || (event.status !== 'missed' && isEventInPast);
+
             return (
             <div
               key={event.id}
               className={cn(
-                "rounded-md p-1.5 text-xs flex justify-between items-center transition-opacity cursor-pointer hover:bg-muted/50",
-                !event.color && getEventTypeStyleClasses(event.type),
+                "rounded-md p-1.5 text-xs flex justify-between items-center transition-opacity",
+                "hover:bg-muted/50",
                 isDayInPast && "opacity-60 hover:opacity-100 focus-within:opacity-100",
                 selectedEvent?.id === event.id && "ring-2 ring-accent ring-offset-2 ring-offset-background"
               )}
               style={event.color ? getCustomColorStyles(event.color) : {}}
               title={getEventTooltip(event)}
-              onClick={() => handleEventClick(event)}
             >
-              <div className="font-medium flex items-center">
+              <div className="font-medium flex items-center gap-2" onClick={() => handleEventClick(event)}>
+                 {onEventStatusChange && (
+                    <Checkbox
+                        id={`check-allday-${event.id}`}
+                        checked={isChecked}
+                        onCheckedChange={(checked) => handleCheckboxChange(event, !!checked)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Mark ${event.title} as ${isChecked ? 'missed' : 'completed'}`}
+                        className="border-current"
+                    />
+                )}
                 {getEventTypeIcon(event)} {event.title}
                 {countdownText && <span className="ml-2 text-muted-foreground text-[10px] flex items-center"><Info className="h-3 w-3 mr-0.5"/>{countdownText}</span>}
               </div>
@@ -404,11 +425,14 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                   {timedEventsWithLayout.map(event => {
                       if (!(event.date instanceof Date) || isNaN(event.date.valueOf())) return null;
                       const isSmallWidth = parseFloat(event.layout.width) < 25;
+                      const isEventInPast = event.endDate ? isPast(event.endDate) : isPast(event.date);
+                      const isChecked = event.status === 'completed' || (event.status !== 'missed' && isEventInPast);
+
                       return (
                       <div
                           key={event.id}
                           className={cn(
-                          "absolute rounded border text-xs overflow-hidden shadow-sm cursor-pointer transition-opacity",
+                          "absolute rounded border text-xs overflow-hidden shadow-sm transition-opacity",
                           "focus-within:ring-2 focus-within:ring-ring",
                           !event.color && getEventTypeStyleClasses(event.type),
                           isSmallWidth ? "p-0.5" : "p-1",
@@ -428,9 +452,21 @@ export default function DayTimetableView({ date, events, onClose, onDeleteEvent,
                       >
                           <div className="flex flex-col h-full">
                               <div className="flex-grow overflow-hidden">
-                                  <p className={cn("font-semibold truncate", isSmallWidth ? "text-[10px]" : "text-xs", event.color ? 'text-foreground' : 'text-current')}>{event.title}</p>
+                                  <div className="flex items-start gap-1.5">
+                                      {onEventStatusChange && (
+                                          <Checkbox
+                                              id={`check-${event.id}`}
+                                              checked={isChecked}
+                                              onCheckedChange={(checked) => handleCheckboxChange(event, !!checked)}
+                                              onClick={(e) => e.stopPropagation()}
+                                              aria-label={`Mark ${event.title} as ${isChecked ? 'missed' : 'completed'}`}
+                                              className="mt-0.5 border-current flex-shrink-0"
+                                          />
+                                      )}
+                                      <p className={cn("font-semibold truncate", isSmallWidth ? "text-[10px]" : "text-xs", event.color ? 'text-foreground' : 'text-current')}>{event.title}</p>
+                                  </div>
                                   {!isSmallWidth && (
-                                  <p className={cn("opacity-80 truncate text-[10px]", event.color ? 'text-foreground/80' : '')}>
+                                  <p className={cn("opacity-80 truncate text-[10px] pl-5", event.color ? 'text-foreground/80' : '')}>
                                       {format(event.date, 'h:mm a')}
                                       {event.endDate && event.endDate instanceof Date && !isNaN(event.endDate.valueOf()) && ` - ${format(event.endDate, 'h:mm a')}`}
                                   </p>
