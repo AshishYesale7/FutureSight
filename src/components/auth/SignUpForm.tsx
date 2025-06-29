@@ -38,7 +38,7 @@ const formSchema = z.object({
 
 declare global {
   interface Window {
-    recaptchaVerifier?: RecaptchaVerifier;
+    recaptchaVerifierSignup?: RecaptchaVerifier;
     confirmationResult?: ConfirmationResult;
   }
 }
@@ -68,9 +68,13 @@ export default function SignUpForm() {
     const recaptchaContainer = document.getElementById('recaptcha-container-signup');
 
     const cleanup = () => {
-        if (window.recaptchaVerifier) {
-            window.recaptchaVerifier.clear();
-            window.recaptchaVerifier = undefined;
+        if (window.recaptchaVerifierSignup) {
+            try {
+                window.recaptchaVerifierSignup.clear();
+            } catch(e) {
+                console.warn("Failed to clear previous reCAPTCHA verifier for sign-up:", e);
+            }
+            window.recaptchaVerifierSignup = undefined;
         }
         if (recaptchaContainer) {
             recaptchaContainer.innerHTML = '';
@@ -83,6 +87,7 @@ export default function SignUpForm() {
     }
     
     if (!recaptchaContainer) {
+      console.warn("reCAPTCHA container for sign-up not found.");
       return;
     }
 
@@ -91,16 +96,20 @@ export default function SignUpForm() {
     try {
         const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
             'size': 'invisible',
-            'callback': () => console.log("reCAPTCHA verified"),
+            'callback': () => console.log("reCAPTCHA verified for sign-up"),
             'expired-callback': () => {
                 toast({ title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
                 cleanup();
             }
         });
-        window.recaptchaVerifier = verifier;
-        verifier.render();
+        window.recaptchaVerifierSignup = verifier;
+        verifier.render().catch((e) => {
+            console.error("reCAPTCHA render error for sign-up:", e);
+            toast({ title: 'reCAPTCHA Error', description: "Failed to render reCAPTCHA. Please refresh.", variant: "destructive"});
+        });
     } catch (e: any) {
-        console.error("reCAPTCHA creation/render error:", e);
+        console.error("reCAPTCHA creation error for sign-up:", e);
+        toast({ title: 'reCAPTCHA Error', description: "Failed to initialize reCAPTCHA. Please refresh.", variant: "destructive"});
     }
   
     return cleanup;
@@ -132,7 +141,6 @@ export default function SignUpForm() {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // After sign-up, start the authorization flow immediately.
       toast({ title: 'Account Created! Connecting Google...', description: 'Please authorize access to your Google Calendar and Gmail.' });
       const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
       window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
@@ -146,7 +154,7 @@ export default function SignUpForm() {
           variant: 'destructive',
           duration: 8000,
         });
-        router.push('/auth/signin'); // Redirect to sign in page
+        router.push('/auth/signin');
       } else {
         toast({
           title: 'Error',
@@ -169,7 +177,7 @@ export default function SignUpForm() {
     }
     setLoading(true);
     try {
-      const verifier = window.recaptchaVerifier;
+      const verifier = window.recaptchaVerifierSignup;
       if (!verifier) {
         throw new Error("reCAPTCHA not initialized. Please wait a moment and try again.");
       }

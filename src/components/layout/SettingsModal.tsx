@@ -94,7 +94,11 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
 
     const cleanup = () => {
       if (window.recaptchaVerifierSettings) {
-        window.recaptchaVerifierSettings.clear();
+        try {
+            window.recaptchaVerifierSettings.clear();
+        } catch(e) {
+            console.warn("Failed to clear previous reCAPTCHA verifier for settings:", e);
+        }
         window.recaptchaVerifierSettings = undefined;
       }
       if (recaptchaContainer) {
@@ -102,17 +106,16 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
       }
     };
 
-    // Exit conditions for the phone linking flow. Cleanup when flow is done or modal is closed.
-    if (!isOpen || linkingPhoneState === 'idle' || linkingPhoneState === 'success') {
+    if (!isOpen || (linkingPhoneState !== 'input' && linkingPhoneState !== 'loading' && linkingPhoneState !== 'otp-sent')) {
       cleanup();
       return;
     }
 
-    // At this point, we are actively in the linking flow.
-    // We only create the verifier ONCE when entering the 'input' state.
     if (linkingPhoneState === 'input' && !window.recaptchaVerifierSettings) {
       if (!recaptchaContainer || !auth) return;
-
+      
+      cleanup();
+      
       try {
         const verifier = new RecaptchaVerifier(auth, 'recaptcha-container-settings', {
           'size': 'invisible',
@@ -120,18 +123,20 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
           'expired-callback': () => {
             toast({ title: 'reCAPTCHA Expired', description: 'Please try again.', variant: 'destructive' });
             cleanup();
-            setLinkingPhoneState('input'); // Reset state to allow user to retry
+            setLinkingPhoneState('input'); 
           },
         });
         window.recaptchaVerifierSettings = verifier;
-        verifier.render();
+        verifier.render().catch((e) => {
+            console.error("reCAPTCHA settings render error:", e);
+            toast({ title: 'reCAPTCHA Error', description: "Failed to render reCAPTCHA. Please close and reopen the modal.", variant: "destructive"});
+        });
       } catch (e: any) {
-        console.error("reCAPTCHA settings error:", e);
-        toast({ title: "reCAPTCHA Error", description: "Could not initialize reCAPTCHA. Please refresh and try again.", variant: "destructive"});
+        console.error("reCAPTCHA settings creation error:", e);
+        toast({ title: "reCAPTCHA Error", description: "Could not initialize reCAPTCHA. Please close and reopen the modal.", variant: "destructive"});
       }
     }
 
-    // This cleanup will be called when the component unmounts.
     return cleanup;
   }, [isOpen, linkingPhoneState, auth, toast]);
 
@@ -152,7 +157,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     
     setIsPolling(true);
     let attempts = 0;
-    const maxAttempts = 40; // Poll for 2 minutes (40 * 3s = 120s)
+    const maxAttempts = 40;
     
     pollIntervalRef.current = setInterval(async () => {
         attempts++;
@@ -264,7 +269,12 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   const handleSendLinkOtp = async () => {
       const verifier = window.recaptchaVerifierSettings;
       const fullPhoneNumber = typeof phoneForLinking === 'string' ? phoneForLinking : '';
-      if (!user || !verifier || !fullPhoneNumber || !isValidPhoneNumber(fullPhoneNumber)) {
+      if (!user || !auth) { return; }
+      if (!verifier) {
+         toast({ title: 'reCAPTCHA Error', description: "Verifier not ready. Please try again in a moment.", variant: 'destructive'});
+         return;
+      }
+      if (!fullPhoneNumber || !isValidPhoneNumber(fullPhoneNumber)) {
         toast({ title: 'Invalid Phone Number', description: "Please enter a valid phone number.", variant: 'destructive'});
         return;
       }
