@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -23,7 +24,7 @@ import { getDailyPlan, saveDailyPlan } from '@/services/dailyPlanService';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { TodaysPlanContent } from './TodaysPlanContent';
 import { format } from 'date-fns';
-import EditRoutineModal from './EditRoutineModal'; // New import
+import EditRoutineModal from './EditRoutineModal';
 
 export default function TodaysPlanCard() {
   const { user } = useAuth();
@@ -33,9 +34,9 @@ export default function TodaysPlanCard() {
   const [plan, setPlan] = useState<DailyPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isRoutineModalOpen, setIsRoutineModalOpen] = useState(false); // New state
+  const [isRoutineModalOpen, setIsRoutineModalOpen] = useState(false);
 
-  const fetchAndGeneratePlan = useCallback(async () => {
+  const fetchAndGeneratePlan = useCallback(async (forceRegenerate: boolean = false) => {
     if (!user) {
       setIsLoading(false);
       setError("Please sign in to generate a plan.");
@@ -47,15 +48,17 @@ export default function TodaysPlanCard() {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     try {
-      // 1. Check for a saved plan first
-      const savedPlan = await getDailyPlan(user.uid, todayStr);
-      if (savedPlan) {
-        setPlan(savedPlan);
-        setIsLoading(false);
-        return;
+      // 1. Check for a saved plan first, unless regeneration is forced
+      if (!forceRegenerate) {
+        const savedPlan = await getDailyPlan(user.uid, todayStr);
+        if (savedPlan) {
+          setPlan(savedPlan);
+          setIsLoading(false);
+          return;
+        }
       }
 
-      // 2. If no saved plan, generate a new one
+      // 2. If no saved plan OR forceRegenerate is true, generate a new one
       const [timelineEvents, careerGoals, skills, userPreferences] = await Promise.all([
         getTimelineEvents(user.uid),
         getCareerGoals(user.uid),
@@ -76,7 +79,7 @@ export default function TodaysPlanCard() {
         userPreferences,
       });
       
-      // 3. Save the newly generated plan
+      // 3. Save the newly generated plan, overwriting any old one
       await saveDailyPlan(user.uid, todayStr, result);
       setPlan(result);
 
@@ -91,14 +94,14 @@ export default function TodaysPlanCard() {
   }, [user, apiKey, toast]);
 
   useEffect(() => {
-    fetchAndGeneratePlan();
+    // On initial load, don't force a regeneration
+    fetchAndGeneratePlan(false);
   }, [fetchAndGeneratePlan]);
 
   const handleRoutineSaved = () => {
-    // Clear the existing plan so the AI is forced to regenerate it with the new routine
-    if(user) {
-      setPlan(null);
-      fetchAndGeneratePlan();
+    if (user) {
+      // Force the regeneration of the plan after routine has been saved
+      fetchAndGeneratePlan(true);
     }
   };
   
@@ -132,7 +135,7 @@ export default function TodaysPlanCard() {
     return (
       <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
         <p>No plan available for today.</p>
-        <Button onClick={fetchAndGeneratePlan} className="mt-4">Generate Plan</Button>
+        <Button onClick={() => fetchAndGeneratePlan(true)} className="mt-4">Generate Plan</Button>
       </div>
     );
   };
@@ -151,12 +154,11 @@ export default function TodaysPlanCard() {
                   Your personalized schedule and goals for today.
                 </CardDescription>
               </div>
-              {/* This is the edit button that avoids nesting issues */}
               <div
                 role="button"
                 aria-label="Edit routine"
                 onClick={(e) => {
-                  e.stopPropagation(); // Prevent the accordion from toggling
+                  e.stopPropagation();
                   setIsRoutineModalOpen(true);
                 }}
                 className="p-2 rounded-md hover:bg-accent/20 transition-colors"
