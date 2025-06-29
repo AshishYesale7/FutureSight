@@ -14,7 +14,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AlertCircle, Bot, Calendar, Inbox, ExternalLink, List, CalendarDays as CalendarIconLucide, Edit3, PlusCircle } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
-import { mockRawCalendarEvents, mockRawGmailMessages, mockTimelineEvents } from '@/data/mock';
+import { mockTimelineEvents } from '@/data/mock';
 import type { TimelineEvent } from '@/types';
 import { format, parseISO, addMonths, subMonths, startOfMonth, isSameDay, startOfDay as dfnsStartOfDay } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +23,8 @@ import { cn } from '@/lib/utils';
 import { useApiKey } from '@/hooks/use-api-key';
 import { useAuth } from '@/context/AuthContext';
 import { getTimelineEvents, saveTimelineEvent, deleteTimelineEvent } from '@/services/timelineService';
+import { getGoogleCalendarEvents } from '@/services/googleCalendarService';
+import { getGoogleGmailMessages } from '@/services/googleGmailService';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 
@@ -130,6 +132,7 @@ export default function ActualDashboardPage() {
   
   const { apiKey } = useApiKey();
   const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(loadFromLocalStorage);
+  const [isGoogleConnected, setIsGoogleConnected] = useState<boolean | null>(null);
 
   useEffect(() => {
     // Background sync with Firestore
@@ -145,9 +148,14 @@ export default function ActualDashboardPage() {
         }
       }
     };
-
     syncWithFirestore();
   }, [user, toast]);
+
+  useEffect(() => {
+    fetch('/api/auth/google/status')
+        .then(res => res.json())
+        .then(data => setIsGoogleConnected(data.isConnected));
+  }, []);
 
   const transformInsightToEvent = (insight: ActionableInsight): TimelineEvent | null => {
     const eventDate = parseDatePreservingTime(insight.date);
@@ -174,6 +182,14 @@ export default function ActualDashboardPage() {
   };
 
   const handleFetchAndProcessGoogleData = async () => {
+    if (isGoogleConnected === null) {
+      toast({ title: "Please wait", description: "Checking Google connection status..." });
+      return;
+    }
+    if (!isGoogleConnected) {
+      toast({ title: "Not Connected", description: "Please connect your Google account in Settings to sync data.", variant: "destructive" });
+      return;
+    }
     if (!apiKey && process.env.NEXT_PUBLIC_IS_STATIC_EXPORT) {
       toast({
         title: 'Feature Unavailable',
@@ -182,63 +198,81 @@ export default function ActualDashboardPage() {
       });
       return;
     }
+    if (!user) {
+        toast({ title: "Authentication Error", description: "You must be signed in to perform this action.", variant: "destructive" });
+        return;
+    }
 
     setIsLoadingInsights(true);
     setInsightsError(null);
-    let newTimelineEventsFromAI: TimelineEvent[] = [];
-    let trulyNewEventsForToastCount = 0;
     let processingErrorOccurred = false;
     let toastTitle = "AI Insights";
     let toastDescription = "";
 
     try {
+      // Fetch real data instead of mock data
+      const [calendarEvents, gmailMessages] = await Promise.all([
+        getGoogleCalendarEvents(),
+        getGoogleGmailMessages()
+      ]);
+
+      if (calendarEvents.length === 0 && gmailMessages.length === 0) {
+          toast({ title: "No New Data", description: "No new events or important emails found in your primary calendar and inbox." });
+          setIsLoadingInsights(false);
+          return;
+      }
+      
       const input: ProcessGoogleDataInput = {
-        calendarEvents: mockRawCalendarEvents,
-        gmailMessages: mockRawGmailMessages,
+        calendarEvents,
+        gmailMessages,
         apiKey,
       };
-      const result = await processGoogleData(input);
 
+      const result = await processGoogleData(input);
+      
       if (result.insights && result.insights.length > 0) {
         const transformedEvents = result.insights.map(transformInsightToEvent).filter(event => event !== null) as TimelineEvent[];
-        newTimelineEventsFromAI = transformedEvents;
         setAiInsights(result.insights);
 
-        setDisplayedTimelineEvents(prevEvents => {
-          const currentEventIds = new Set(prevEvents.map(e => e.id));
-          const uniqueNewEventsToAdd = newTimelineEventsFromAI.filter(newEvent => !currentEventIds.has(newEvent.id));
-          trulyNewEventsForToastCount = uniqueNewEventsToAdd.length;
-          const updatedEvents = [...prevEvents, ...uniqueNewEventsToAdd];
-          syncToLocalStorage(updatedEvents);
-          return updatedEvents;
-        });
+        // Save new events to Firestore and update local state
+        const currentEventIds = new Set(displayedTimelineEvents.map(e => e.id));
+        const uniqueNewEventsToAdd = transformedEvents.filter(newEvent => !currentEventIds.has(newEvent.id));
+        
+        if (uniqueNewEventsToAdd.length > 0) {
+            // Update UI optimistically
+            const updatedEvents = [...displayedTimelineEvents, ...uniqueNewEventsToAdd];
+            setDisplayedTimelineEvents(updatedEvents);
+            syncToLocalStorage(updatedEvents);
 
+            // Save each new event to Firestore
+            await Promise.all(uniqueNewEventsToAdd.map(event => saveTimelineEvent(user.uid, event)));
+            
+            toastTitle = "Timeline Updated";
+            toastDescription = `${uniqueNewEventsToAdd.length} new item(s) have been synced from your Google account and added to your timeline.`;
+        } else {
+            toastTitle = "Already Synced";
+            toastDescription = "Your timeline is already up-to-date with your Google data.";
+        }
       } else {
-        setAiInsights([]);
-        trulyNewEventsForToastCount = -1;
+        toastTitle = "No Actionable Insights";
+        toastDescription = "The AI didn't find any new actionable items in your recent Google data.";
       }
     } catch (error: any) {
       console.error('Error processing Google data:', error);
       const errorMessage = error.message || 'Failed to fetch or process AI insights.';
       setInsightsError(errorMessage);
       processingErrorOccurred = true;
-      toastTitle = "Error";
+      toastTitle = "Sync Error";
       toastDescription = errorMessage;
     }
 
     setIsLoadingInsights(false);
 
-    if (processingErrorOccurred) {
-        toast({ title: toastTitle, description: toastDescription, variant: "destructive" });
-    } else if (trulyNewEventsForToastCount === -1) {
-        toast({ title: toastTitle, description: "No specific actionable insights found in the provided data." });
-    } else if (newTimelineEventsFromAI.length > 0) {
-      if (trulyNewEventsForToastCount === 0) {
-        toast({ title: toastTitle, description: "Insights processed, but no new unique items to add to the timeline." });
-      } else {
-        toast({ title: toastTitle, description: `${trulyNewEventsForToastCount} new item(s) added to your timeline.` });
-      }
-    }
+    toast({ 
+      title: toastTitle, 
+      description: toastDescription, 
+      variant: processingErrorOccurred ? "destructive" : "default" 
+    });
   };
 
   const handleDeleteTimelineEvent = async (eventId: string) => {
@@ -451,7 +485,7 @@ export default function ActualDashboardPage() {
             <Bot className="mr-2 h-5 w-5 text-accent" /> AI-Powered Google Sync
           </CardTitle>
           <CardDescription>
-            Get actionable insights from your Google Calendar and Gmail data to update your timeline. (Uses mock data for now)
+            Get actionable insights from your Google Calendar and Gmail data to update your timeline.
           </CardDescription>
         </CardHeader>
         <CardContent>
