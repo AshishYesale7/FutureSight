@@ -580,7 +580,7 @@ export default function ActualDashboardPage() {
             toast({ title: 'Import Failed', description: error instanceof Error ? error.message : 'The selected file could not be parsed.', variant: 'destructive' });
         }
     };
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
     e.target.value = ''; // Reset file input
   }, [user, toast, displayedTimelineEvents]);
 
