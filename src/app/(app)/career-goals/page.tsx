@@ -27,58 +27,54 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const CAREER_GOALS_STORAGE_KEY = 'futureSightCareerGoals';
 
+const syncToLocalStorage = (data: CareerGoal[]) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const serializableGoals = data.map(g => ({...g, deadline: g.deadline?.toISOString()}));
+    localStorage.setItem(CAREER_GOALS_STORAGE_KEY, JSON.stringify(serializableGoals));
+  } catch (error) {
+    console.error("Failed to save goals to local storage", error);
+  }
+};
+
+const loadFromLocalStorage = (): CareerGoal[] => {
+  if (typeof window === 'undefined') return mockCareerGoals;
+  try {
+    const storedGoals = localStorage.getItem(CAREER_GOALS_STORAGE_KEY);
+    if (storedGoals) {
+      const parsedGoals: (Omit<CareerGoal, 'deadline'> & { deadline?: string })[] = JSON.parse(storedGoals);
+      return parsedGoals.map(g => ({...g, deadline: g.deadline ? new Date(g.deadline) : undefined}));
+    }
+  } catch (error) {
+    console.error("Failed to load goals from local storage", error);
+  }
+  return mockCareerGoals;
+};
+
 export default function CareerGoalsPage() {
   const { user } = useAuth();
-  const [goals, setGoals] = useState<CareerGoal[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [goals, setGoals] = useState<CareerGoal[]>(loadFromLocalStorage);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<CareerGoal | null>(null);
   const { toast } = useToast();
 
-  const syncToLocalStorage = (data: CareerGoal[]) => {
-    try {
-      const serializableGoals = data.map(g => ({...g, deadline: g.deadline?.toISOString()}));
-      localStorage.setItem(CAREER_GOALS_STORAGE_KEY, JSON.stringify(serializableGoals));
-    } catch (error) {
-      console.error("Failed to save goals to local storage", error);
-    }
-  };
-
-  const loadFromLocalStorage = (): CareerGoal[] => {
-    try {
-      const storedGoals = localStorage.getItem(CAREER_GOALS_STORAGE_KEY);
-      if (storedGoals) {
-        const parsedGoals: (Omit<CareerGoal, 'deadline'> & { deadline?: string })[] = JSON.parse(storedGoals);
-        return parsedGoals.map(g => ({...g, deadline: g.deadline ? new Date(g.deadline) : undefined}));
-      }
-    } catch (error) {
-      console.error("Failed to load goals from local storage", error);
-    }
-    return mockCareerGoals;
-  };
-  
   useEffect(() => {
-    const loadGoals = async () => {
-      setIsLoading(true);
+    // This effect runs once on mount to sync with Firestore in the background
+    const syncWithFirestore = async () => {
       if (user) {
         try {
           const firestoreGoals = await getCareerGoals(user.uid);
           setGoals(firestoreGoals);
           syncToLocalStorage(firestoreGoals);
         } catch (error) {
-          console.error("Failed to fetch from Firestore, loading from local storage.", error);
-          setGoals(loadFromLocalStorage());
-          toast({ title: "Offline Mode", description: "Could not connect to the server. Displaying locally saved data.", variant: "destructive"});
+          console.error("Failed to fetch from Firestore, using local data.", error);
+          toast({ title: "Offline Mode", description: "Could not sync goals. Displaying local data.", variant: "destructive"});
         }
-      } else {
-        // No user, load from local storage
-        setGoals(loadFromLocalStorage());
       }
-      setIsLoading(false);
     };
-
-    loadGoals();
+    syncWithFirestore();
   }, [user, toast]);
+
 
   const handleOpenModal = (goal: CareerGoal | null) => {
     setEditingGoal(goal);
@@ -136,10 +132,6 @@ export default function CareerGoalsPage() {
         }
     }
   };
-
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-full"><LoadingSpinner size="lg" /></div>;
-  }
 
   return (
     <div className="space-y-6">

@@ -34,57 +34,53 @@ const proficiencyColors: Record<Skill['proficiency'], string> = {
 
 const SKILLS_STORAGE_KEY = 'futureSightSkills';
 
+const syncToLocalStorage = (data: Skill[]) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const serializableSkills = data.map(s => ({...s, lastUpdated: s.lastUpdated.toISOString() }));
+    localStorage.setItem(SKILLS_STORAGE_KEY, JSON.stringify(serializableSkills));
+  } catch (error) {
+    console.error("Failed to save skills to local storage", error);
+  }
+};
+
+const loadFromLocalStorage = (): Skill[] => {
+  if (typeof window === 'undefined') return mockSkills;
+  try {
+    const storedSkills = localStorage.getItem(SKILLS_STORAGE_KEY);
+    if (storedSkills) {
+      const parsedSkills: (Omit<Skill, 'lastUpdated'> & { lastUpdated?: string })[] = JSON.parse(storedSkills);
+      return parsedSkills.map(s => ({...s, lastUpdated: s.lastUpdated ? new Date(s.lastUpdated) : new Date() }));
+    }
+  } catch (error) {
+    console.error("Failed to load skills from local storage", error);
+  }
+  return mockSkills;
+};
+
 export default function SkillsPage() {
   const { user } = useAuth();
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [skills, setSkills] = useState<Skill[]>(loadFromLocalStorage);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSkill, setEditingSkill] = useState<Skill | null>(null);
   const { toast } = useToast();
 
-  const syncToLocalStorage = (data: Skill[]) => {
-    try {
-      const serializableSkills = data.map(s => ({...s, lastUpdated: s.lastUpdated.toISOString() }));
-      localStorage.setItem(SKILLS_STORAGE_KEY, JSON.stringify(serializableSkills));
-    } catch (error) {
-      console.error("Failed to save skills to local storage", error);
-    }
-  };
-
-  const loadFromLocalStorage = (): Skill[] => {
-    try {
-      const storedSkills = localStorage.getItem(SKILLS_STORAGE_KEY);
-      if (storedSkills) {
-        const parsedSkills: (Omit<Skill, 'lastUpdated'> & { lastUpdated?: string })[] = JSON.parse(storedSkills);
-        return parsedSkills.map(s => ({...s, lastUpdated: s.lastUpdated ? new Date(s.lastUpdated) : new Date() }));
-      }
-    } catch (error) {
-      console.error("Failed to load skills from local storage", error);
-    }
-    return mockSkills;
-  };
-
   useEffect(() => {
-    const loadSkills = async () => {
-      setIsLoading(true);
+    // Background sync with Firestore
+    const syncWithFirestore = async () => {
       if (user) {
         try {
           const firestoreSkills = await getSkills(user.uid);
           setSkills(firestoreSkills);
           syncToLocalStorage(firestoreSkills);
         } catch (error) {
-          console.error("Failed to fetch skills from Firestore, loading from local storage.", error);
-          setSkills(loadFromLocalStorage());
-          toast({ title: "Offline Mode", description: "Could not connect to the server. Displaying locally saved skills.", variant: "destructive"});
+          console.error("Failed to fetch skills from Firestore, using local data.", error);
+          toast({ title: "Offline Mode", description: "Could not sync skills. Displaying local data.", variant: "destructive"});
         }
-      } else {
-        setSkills(loadFromLocalStorage());
       }
-      setIsLoading(false);
     };
-
-    loadSkills();
-  }, [user]);
+    syncWithFirestore();
+  }, [user, toast]);
 
   const handleOpenModal = (skill: Skill | null) => {
     setEditingSkill(skill);
@@ -143,10 +139,6 @@ export default function SkillsPage() {
       }
     }
   };
-
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-full"><LoadingSpinner size="lg" /></div>;
-  }
 
   return (
     <div className="space-y-6">

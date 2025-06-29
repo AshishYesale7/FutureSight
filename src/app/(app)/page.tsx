@@ -116,7 +116,6 @@ const loadFromLocalStorage = (): TimelineEvent[] => {
 
 export default function ActualDashboardPage() {
   const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
   const [aiInsights, setAiInsights] = useState<ActionableInsight[]>([]);
   const [insightsError, setInsightsError] = useState<string | null>(null);
@@ -133,24 +132,21 @@ export default function ActualDashboardPage() {
   const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(loadFromLocalStorage);
 
   useEffect(() => {
-    const loadEvents = async () => {
-      setIsLoading(true);
+    // Background sync with Firestore
+    const syncWithFirestore = async () => {
       if (user) {
         try {
           const firestoreEvents = await getTimelineEvents(user.uid);
           setDisplayedTimelineEvents(firestoreEvents);
           syncToLocalStorage(firestoreEvents);
         } catch (error) {
-          console.error("Failed to fetch timeline from Firestore, using local storage.", error);
-          // state is already pre-populated from localStorage, just show toast
-          toast({ title: "Offline Mode", description: "Could not connect to server. Displaying local data.", variant: "destructive"});
+          console.error("Failed to sync timeline from Firestore, using local data.", error);
+          toast({ title: "Offline Mode", description: "Could not sync timeline. Displaying local data.", variant: "destructive"});
         }
       }
-      // If no user, it will just keep the data from localStorage from the initial useState.
-      setIsLoading(false);
     };
 
-    loadEvents();
+    syncWithFirestore();
   }, [user, toast]);
 
   const transformInsightToEvent = (insight: ActionableInsight): TimelineEvent | null => {
@@ -383,10 +379,6 @@ export default function ActualDashboardPage() {
         }
     }
   }, [displayedTimelineEvents, handleCloseEditModal, toast, isAddingNewEvent, user]);
-
-  if (isLoading) {
-    return <div className="flex justify-center items-center h-full"><LoadingSpinner size="lg" /></div>;
-  }
 
   return (
     <div className={cn("space-y-8 h-full flex flex-col")}>

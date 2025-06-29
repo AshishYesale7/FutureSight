@@ -29,10 +29,29 @@ import { useApiKey } from '@/hooks/use-api-key';
 
 const RESOURCES_STORAGE_KEY = 'futureSightBookmarkedResources';
 
+const syncToLocalStorage = (data: ResourceLink[]) => {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(RESOURCES_STORAGE_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.error("Failed to save resources to local storage", error);
+  }
+};
+
+const loadFromLocalStorage = (): ResourceLink[] => {
+  if (typeof window === 'undefined') return mockResourceLinks;
+  try {
+    const storedResources = localStorage.getItem(RESOURCES_STORAGE_KEY);
+    return storedResources ? JSON.parse(storedResources) : mockResourceLinks;
+  } catch (error) {
+    console.error("Failed to load resources from local storage", error);
+    return mockResourceLinks;
+  }
+};
+
 export default function ResourcesPage() {
   const { user } = useAuth();
-  const [bookmarkedResources, setBookmarkedResources] = useState<ResourceLink[]>([]);
-  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [bookmarkedResources, setBookmarkedResources] = useState<ResourceLink[]>(loadFromLocalStorage);
   const [aiSuggestedResources, setAiSuggestedResources] = useState<ResourceLink[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,44 +59,21 @@ export default function ResourcesPage() {
   const { toast } = useToast();
   const { apiKey } = useApiKey();
 
-  const syncToLocalStorage = (data: ResourceLink[]) => {
-    try {
-      localStorage.setItem(RESOURCES_STORAGE_KEY, JSON.stringify(data));
-    } catch (error) {
-      console.error("Failed to save resources to local storage", error);
-    }
-  };
-
-  const loadFromLocalStorage = (): ResourceLink[] => {
-    try {
-      const storedResources = localStorage.getItem(RESOURCES_STORAGE_KEY);
-      return storedResources ? JSON.parse(storedResources) : mockResourceLinks;
-    } catch (error) {
-      console.error("Failed to load resources from local storage", error);
-      return mockResourceLinks;
-    }
-  };
-
   useEffect(() => {
-    const loadResources = async () => {
-      setIsLoadingData(true);
+    // Background sync with Firestore
+    const syncWithFirestore = async () => {
       if (user) {
         try {
           const firestoreResources = await getBookmarkedResources(user.uid);
           setBookmarkedResources(firestoreResources);
           syncToLocalStorage(firestoreResources);
         } catch (error) {
-          console.error("Failed to fetch resources from Firestore, loading from local storage.", error);
-          setBookmarkedResources(loadFromLocalStorage());
-          toast({ title: "Offline Mode", description: "Could not connect to the server. Displaying locally saved resources.", variant: "destructive"});
+          console.error("Failed to fetch resources from Firestore, using local data.", error);
+          toast({ title: "Offline Mode", description: "Could not sync resources. Displaying locally saved resources.", variant: "destructive"});
         }
-      } else {
-        setBookmarkedResources(loadFromLocalStorage());
       }
-      setIsLoadingData(false);
     };
-
-    loadResources();
+    syncWithFirestore();
   }, [user, toast]);
 
   const fetchAiSuggestions = async () => {
@@ -169,10 +165,6 @@ export default function ResourcesPage() {
   };
 
   const allResources = [...bookmarkedResources, ...aiSuggestedResources];
-
-  if (isLoadingData) {
-    return <div className="flex justify-center items-center h-full"><LoadingSpinner size="lg" /></div>;
-  }
 
   return (
     <div className="space-y-6">
