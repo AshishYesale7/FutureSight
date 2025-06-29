@@ -27,6 +27,7 @@ import { getGoogleGmailMessages } from '@/services/googleGmailService';
 import ImportantEmailsCard from '@/components/timeline/ImportantEmailsCard';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
+const AI_INSIGHTS_STORAGE_KEY = 'futureSightAiInsights';
 
 const parseDatePreservingTime = (dateInput: string | Date | undefined): Date | undefined => {
   if (!dateInput) return undefined;
@@ -115,11 +116,32 @@ const loadFromLocalStorage = (): TimelineEvent[] => {
     }).filter(event => event !== null) as TimelineEvent[];
 };
 
+const syncInsightsToLocalStorage = (insights: ActionableInsight[]) => {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem(AI_INSIGHTS_STORAGE_KEY, JSON.stringify(insights));
+    }
+};
+
+const loadInsightsFromLocalStorage = (): ActionableInsight[] => {
+    if (typeof window === 'undefined') {
+        return [];
+    }
+    try {
+        const storedInsightsString = localStorage.getItem(AI_INSIGHTS_STORAGE_KEY);
+        if (storedInsightsString) {
+            return JSON.parse(storedInsightsString);
+        }
+    } catch (error) {
+        console.error("Error reading AI insights from localStorage:", error);
+    }
+    return [];
+};
+
 
 export default function ActualDashboardPage() {
   const { user } = useAuth();
   const [isLoadingInsights, setIsLoadingInsights] = useState(false);
-  const [aiInsights, setAiInsights] = useState<ActionableInsight[]>([]);
+  const [aiInsights, setAiInsights] = useState<ActionableInsight[]>(loadInsightsFromLocalStorage);
   const [insightsError, setInsightsError] = useState<string | null>(null);
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
@@ -187,39 +209,40 @@ export default function ActualDashboardPage() {
     };
   };
 
-  const handleFetchAndProcessGoogleData = async () => {
+  const handleFetchAndProcessGoogleData = useCallback(async (options?: { silent?: boolean }) => {
+    const isSilent = options?.silent || false;
+
     if (isGoogleConnected === null) {
-      toast({ title: "Please wait", description: "Checking Google connection status..." });
+      if (!isSilent) toast({ title: "Please wait", description: "Checking Google connection status..." });
       return;
     }
     if (!isGoogleConnected) {
-      toast({ title: "Not Connected", description: "Please connect your Google account in Settings to sync data.", variant: "destructive" });
+      if (!isSilent) toast({ title: "Not Connected", description: "Please connect your Google account in Settings to sync data.", variant: "destructive" });
       return;
     }
     if (!user) {
-        toast({ title: "Authentication Error", description: "You must be signed in to perform this action.", variant: "destructive" });
-        return;
+      if (!isSilent) toast({ title: "Authentication Error", description: "You must be signed in to perform this action.", variant: "destructive" });
+      return;
     }
 
     setIsLoadingInsights(true);
     setInsightsError(null);
-    let processingErrorOccurred = false;
-    let toastTitle = "AI Insights";
+    let toastTitle = "";
     let toastDescription = "";
+    let processingErrorOccurred = false;
 
     try {
-      // Fetch real data instead of mock data
       const [calendarEvents, gmailMessages] = await Promise.all([
         getGoogleCalendarEvents(user.uid),
         getGoogleGmailMessages(user.uid)
       ]);
 
       if (calendarEvents.length === 0 && gmailMessages.length === 0) {
-          toast({ title: "No New Data", description: "No new events or important emails found in your primary calendar and inbox." });
-          setIsLoadingInsights(false);
-          return;
+        if (!isSilent) toast({ title: "No New Data", description: "No new events or important emails found in your primary calendar and inbox." });
+        setIsLoadingInsights(false);
+        return;
       }
-      
+
       const input: ProcessGoogleDataInput = {
         calendarEvents,
         gmailMessages,
@@ -229,41 +252,37 @@ export default function ActualDashboardPage() {
 
       const result = await processGoogleData(input);
       
-      if (result.insights && result.insights.length > 0) {
-        const transformedEvents = result.insights.map(transformInsightToEvent).filter(event => event !== null) as TimelineEvent[];
+      if (result.insights) {
         setAiInsights(result.insights);
+        syncInsightsToLocalStorage(result.insights); // Save to local storage
 
-        // Save new events to Firestore and update local state
+        const transformedEvents = result.insights.map(transformInsightToEvent).filter(event => event !== null) as TimelineEvent[];
+        
         const currentEventIds = new Set(displayedTimelineEvents.map(e => e.id));
         const uniqueNewEventsToAdd = transformedEvents.filter(newEvent => !currentEventIds.has(newEvent.id));
         
         if (uniqueNewEventsToAdd.length > 0) {
-            // Update UI optimistically
             const updatedEvents = [...displayedTimelineEvents, ...uniqueNewEventsToAdd];
             setDisplayedTimelineEvents(updatedEvents);
             syncToLocalStorage(updatedEvents);
 
-            // Save each new event to Firestore
             for (const event of uniqueNewEventsToAdd) {
               const { icon, ...data } = event;
-              const payload = {
-                ...data,
-                date: data.date.toISOString(),
-                endDate: data.endDate ? data.endDate.toISOString() : null,
-              };
+              const payload = { ...data, date: data.date.toISOString(), endDate: data.endDate ? data.endDate.toISOString() : null };
               await saveTimelineEvent(user.uid, payload);
             }
             
             toastTitle = "Timeline Updated";
-            toastDescription = `${uniqueNewEventsToAdd.length} new item(s) have been synced from your Google account and added to your timeline.`;
+            toastDescription = `${uniqueNewEventsToAdd.length} new item(s) have been synced from your Google account.`;
         } else {
             toastTitle = "Already Synced";
-            toastDescription = "Your timeline is already up-to-date with your Google data.";
+            toastDescription = "Your timeline is up-to-date with your Google data.";
         }
       } else {
         toastTitle = "No Actionable Insights";
         toastDescription = "The AI didn't find any new actionable items in your recent Google data.";
-        setAiInsights([]); // Clear old insights if none are returned
+        setAiInsights([]);
+        syncInsightsToLocalStorage([]);
       }
     } catch (error: any) {
       console.error('Error processing Google data:', error);
@@ -276,12 +295,25 @@ export default function ActualDashboardPage() {
 
     setIsLoadingInsights(false);
 
-    toast({ 
-      title: toastTitle, 
-      description: toastDescription, 
-      variant: processingErrorOccurred ? "destructive" : "default" 
-    });
-  };
+    if (!isSilent || processingErrorOccurred) {
+        toast({ 
+          title: toastTitle, 
+          description: toastDescription, 
+          variant: processingErrorOccurred ? "destructive" : "default" 
+        });
+    }
+  }, [user, apiKey, isGoogleConnected, toast, displayedTimelineEvents]);
+  
+  // This useEffect will run once on mount and set up the hourly refresh
+  useEffect(() => {
+    if (isGoogleConnected) {
+      const intervalId = setInterval(() => {
+        handleFetchAndProcessGoogleData({ silent: true });
+      }, 3600000); // 1 hour
+
+      return () => clearInterval(intervalId);
+    }
+  }, [isGoogleConnected, handleFetchAndProcessGoogleData]);
 
   const handleDeleteTimelineEvent = async (eventId: string) => {
     const originalEvents = displayedTimelineEvents;
@@ -474,7 +506,11 @@ export default function ActualDashboardPage() {
               </div>
               
               {/* Right column for emails */}
-              <ImportantEmailsCard insights={aiInsights} isLoading={isLoadingInsights} />
+              <ImportantEmailsCard 
+                insights={aiInsights} 
+                isLoading={isLoadingInsights}
+                onRefresh={() => handleFetchAndProcessGoogleData()} 
+              />
             </div>
           </TabsContent>
           <TabsContent key="list-view" value="list" className={cn("mt-0", viewMode === 'list' ? 'flex flex-col h-[70vh]' : 'hidden')}>
@@ -497,7 +533,7 @@ export default function ActualDashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={handleFetchAndProcessGoogleData} disabled={isLoadingInsights} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button onClick={() => handleFetchAndProcessGoogleData()} disabled={isLoadingInsights} className="bg-accent hover:bg-accent/90 text-accent-foreground">
             {isLoadingInsights ? (
               <>
                 <LoadingSpinner size="sm" className="mr-2" /> Processing & Updating Timeline...

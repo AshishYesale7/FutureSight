@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import type { ActionableInsight } from '@/ai/flows/process-google-data-flow';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Inbox, MailWarning } from 'lucide-react';
+import { ExternalLink, Inbox, MailWarning, RefreshCw } from 'lucide-react';
 import { useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -15,9 +15,10 @@ interface ImportantEmailsCardProps {
   insights: ActionableInsight[];
   isLoading: boolean;
   className?: string;
+  onRefresh: () => void;
 }
 
-export default function ImportantEmailsCard({ insights, isLoading, className }: ImportantEmailsCardProps) {
+export default function ImportantEmailsCard({ insights, isLoading, className, onRefresh }: ImportantEmailsCardProps) {
   const gmailInsights = useMemo(() => {
     return insights
       .filter(insight => insight.source === 'gmail')
@@ -36,10 +37,16 @@ export default function ImportantEmailsCard({ insights, isLoading, className }: 
   return (
     <Card className={cn("hidden lg:flex flex-col frosted-glass shadow-lg w-full lg:w-1/3 lg:max-w-sm", className)}>
       <CardHeader className="p-4 border-b border-border/30">
-        <CardTitle className="font-headline text-xl text-primary flex items-center">
-          <Inbox className="mr-2 h-5 w-5 text-accent" />
-          Important Emails
-        </CardTitle>
+        <div className="flex justify-between items-center">
+            <CardTitle className="font-headline text-xl text-primary flex items-center">
+              <Inbox className="mr-2 h-5 w-5 text-accent" />
+              Important Emails
+            </CardTitle>
+            <Button variant="ghost" size="icon" onClick={onRefresh} disabled={isLoading} className="h-8 w-8">
+                <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                <span className="sr-only">Refresh Emails</span>
+            </Button>
+        </div>
         <CardDescription>AI-filtered emails that might require your attention.</CardDescription>
       </CardHeader>
       <CardContent className="p-0 flex-1 min-h-0">
@@ -53,7 +60,7 @@ export default function ImportantEmailsCard({ insights, isLoading, className }: 
               <div className="flex flex-col items-center justify-center text-center h-48 text-muted-foreground">
                 <MailWarning className="h-8 w-8 mb-2" />
                 <p className="text-sm">No important emails found after the last sync.</p>
-                 <p className="text-xs mt-1">Click "Sync Google Data" to check for new emails.</p>
+                 <p className="text-xs mt-1">Click the refresh icon to check for new emails.</p>
               </div>
             ) : (
               gmailInsights.map(insight => (
