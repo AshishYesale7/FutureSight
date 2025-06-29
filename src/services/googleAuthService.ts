@@ -1,3 +1,4 @@
+
 'use server';
 
 import { google } from 'googleapis';
@@ -51,13 +52,24 @@ export async function getTokensFromCode(code: string): Promise<Credentials> {
 }
 
 // Firestore-based token management
-export async function saveGoogleTokensToFirestore(userId: string, tokens: Credentials): Promise<void> {
+export async function saveGoogleTokensToFirestore(userId: string, newTokens: Credentials): Promise<void> {
     if (!db) throw new Error("Firestore is not initialized.");
-    if (!tokens.refresh_token) {
-        console.warn("Attempting to save Google tokens without a refresh token. User may need to re-authenticate later.");
-    }
+    
     const userDocRef = doc(db, 'users', userId);
-    await setDoc(userDocRef, { google_tokens: tokens }, { merge: true });
+    
+    // First, get existing tokens to preserve the refresh_token if it's not in the new token set.
+    const existingTokens = await getGoogleTokensFromFirestore(userId);
+    
+    const tokensToSave = {
+        ...existingTokens,
+        ...newTokens
+    };
+    
+    if (!tokensToSave.refresh_token) {
+        console.warn("Saving Google tokens without a refresh token. User may need to re-authenticate if the session expires completely.");
+    }
+    
+    await setDoc(userDocRef, { google_tokens: tokensToSave }, { merge: true });
 }
 
 export async function getGoogleTokensFromFirestore(userId: string): Promise<Credentials | null> {

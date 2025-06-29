@@ -1,3 +1,4 @@
+
 'use server';
 
 import { getGoogleTokensFromFirestore } from '@/services/googleAuthService';
@@ -10,10 +11,14 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ isConnected: false }, { status: 400 });
         }
         const tokens = await getGoogleTokensFromFirestore(userId);
-        // Check for refresh_token as a proxy for valid, long-term connection
-        if (tokens && tokens.refresh_token) {
+        
+        // A user is considered connected if we have tokens stored for them.
+        // The getAuthenticatedClient service handles refreshing the access token if needed.
+        // Checking just for a refresh_token is unreliable as it's often only sent on the first authorization.
+        if (tokens && (tokens.access_token || tokens.refresh_token)) {
             return NextResponse.json({ isConnected: true });
         }
+        
         return NextResponse.json({ isConnected: false });
     } catch (error) {
         console.error("Error checking Google connection status:", error);
