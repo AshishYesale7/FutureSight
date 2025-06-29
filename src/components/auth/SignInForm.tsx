@@ -1,9 +1,9 @@
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import Image from 'next/image';
@@ -20,18 +20,32 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { auth } from '@/lib/firebase';
 import { Card, CardContent } from '@/components/ui/card';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Smartphone, Mail } from 'lucide-react';
+import { FormLabel } from '../ui/form';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(1, { message: 'Password cannot be empty.' }),
 });
 
+declare global {
+  interface Window {
+    recaptchaVerifier: RecaptchaVerifier;
+    confirmationResult?: ConfirmationResult;
+  }
+}
+
 export default function SignInForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  const [view, setView] = useState<'email' | 'phone'>('email');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otp, setOtp] = useState('');
+  const [showOtpInput, setShowOtpInput] = useState(false);
+
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -40,6 +54,32 @@ export default function SignInForm() {
       password: '',
     },
   });
+
+  useEffect(() => {
+    if (!auth || view !== 'phone') return;
+    
+    // Ensure the container is empty before rendering a new verifier
+    const recaptchaContainer = document.getElementById('recaptcha-container');
+    if (recaptchaContainer) {
+        recaptchaContainer.innerHTML = '';
+    }
+
+    try {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            'size': 'invisible',
+            'callback': (response: any) => {
+                console.log("reCAPTCHA verified");
+            },
+            'expired-callback': () => {
+                toast({ title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
+            }
+        });
+        window.recaptchaVerifier.render();
+    } catch (e) {
+        console.error("reCAPTCHA error", e);
+    }
+  }, [auth, view]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
@@ -78,6 +118,50 @@ export default function SignInForm() {
     }
   };
 
+  const handleSendOtp = async () => {
+    if (!auth) {
+      toast({ title: 'Error', description: 'Firebase Auth not initialized.', variant: 'destructive' });
+      return;
+    }
+    if (!phoneNumber || phoneNumber.length < 10) {
+        toast({ title: 'Invalid Phone Number', description: 'Please enter a valid phone number with country code (e.g., +14155552671).', variant: 'destructive' });
+        return;
+    }
+    setLoading(true);
+    try {
+      const verifier = window.recaptchaVerifier;
+      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+      window.confirmationResult = confirmationResult;
+      setShowOtpInput(true);
+      toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.' });
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: 'Error', description: error.message || 'Failed to send OTP. Please ensure the format is correct (e.g., +14155552671) and refresh the page.', variant: 'destructive' });
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.length !== 6) {
+        toast({ title: 'Invalid OTP', description: 'Please enter the 6-digit OTP.', variant: 'destructive' });
+        return;
+    }
+    setLoading(true);
+    try {
+      if (!window.confirmationResult) {
+          throw new Error("No confirmation result found. Please send OTP again.");
+      }
+      await window.confirmationResult.confirm(otp);
+      toast({ title: 'Success', description: 'Signed in successfully.' });
+      router.push('/');
+    } catch (error: any) {
+       console.error(error);
+       toast({ title: 'Error', description: error.message || 'Invalid OTP. Please try again.', variant: 'destructive' });
+    } finally {
+        setLoading(false);
+    }
+  };
 
   return (
     <Card className="frosted-glass p-6 md:p-8">
@@ -92,57 +176,109 @@ export default function SignInForm() {
         />
       </div>
       <CardContent className="p-0">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input 
-                      placeholder="Email" 
-                      {...field} 
-                      className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
-                    />
-                  </FormControl>
-                  <FormMessage className="text-center" />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                     <div className="relative">
-                      <Input 
-                        type={showPassword ? "text" : "password"} 
-                        placeholder="Password" 
+         <div className="flex justify-center gap-2 mb-6">
+          <Button variant={view === 'email' ? 'default' : 'outline'} onClick={() => setView('email')}><Mail className="mr-2 h-4 w-4" /> Email</Button>
+          <Button variant={view === 'phone' ? 'default' : 'outline'} onClick={() => setView('phone')}><Smartphone className="mr-2 h-4 w-4" /> Phone</Button>
+        </div>
+        
+        {view === 'email' && (
+            <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormControl>
+                        <Input 
+                        placeholder="Email" 
                         {...field} 
                         className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="absolute right-0 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage className="text-center" />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full bg-accent/70 hover:bg-accent/80 text-white h-12 text-lg rounded-full border border-white/30" disabled={loading}>
-              {loading ? 'SIGNING IN...' : 'SIGN IN'}
-            </Button>
-          </form>
-        </Form>
+                        />
+                    </FormControl>
+                    <FormMessage className="text-center" />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormControl>
+                        <div className="relative">
+                        <Input 
+                            type={showPassword ? "text" : "password"} 
+                            placeholder="Password" 
+                            {...field} 
+                            className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
+                        />
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-0 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                            onClick={() => setShowPassword(!showPassword)}
+                        >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        </Button>
+                        </div>
+                    </FormControl>
+                    <FormMessage className="text-center" />
+                    </FormItem>
+                )}
+                />
+                <Button type="submit" className="w-full bg-accent/70 hover:bg-accent/80 text-white h-12 text-lg rounded-full border border-white/30" disabled={loading}>
+                {loading ? 'SIGNING IN...' : 'SIGN IN'}
+                </Button>
+            </form>
+            </Form>
+        )}
+
+        {view === 'phone' && (
+            <div className="space-y-8">
+             {!showOtpInput ? (
+                <div className="space-y-8">
+                    <FormItem>
+                    <FormLabel className="text-center block">Phone Number</FormLabel>
+                    <FormControl>
+                        <Input 
+                        type="tel"
+                        placeholder="e.g., +14155552671" 
+                        value={phoneNumber}
+                        onChange={(e) => setPhoneNumber(e.target.value)}
+                        className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
+                        />
+                    </FormControl>
+                    </FormItem>
+                    <Button onClick={handleSendOtp} className="w-full bg-accent/70 hover:bg-accent/80 text-white h-12 text-lg rounded-full border border-white/30" disabled={loading}>
+                     {loading ? 'SENDING OTP...' : 'SEND OTP'}
+                    </Button>
+                </div>
+            ) : (
+                <div className="space-y-8">
+                    <FormItem>
+                    <FormLabel className="text-center block">Enter OTP</FormLabel>
+                    <FormControl>
+                        <Input 
+                        type="number"
+                        placeholder="6-digit code" 
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value)}
+                        className="bg-transparent text-foreground border-0 border-b-2 border-neutral-500/50 rounded-none px-1 py-2 focus:ring-0 focus-visible:ring-0 focus-visible:outline-none focus:border-black dark:focus:border-neutral-300 focus-visible:border-black dark:focus-visible:border-neutral-300 placeholder-foreground/60 text-center"
+                        />
+                    </FormControl>
+                    </FormItem>
+                    <Button onClick={handleVerifyOtp} className="w-full bg-accent/70 hover:bg-accent/80 text-white h-12 text-lg rounded-full border border-white/30" disabled={loading}>
+                        {loading ? 'VERIFYING...' : 'VERIFY & SIGN IN'}
+                    </Button>
+                </div>
+            )}
+            </div>
+        )}
+
+        <div id="recaptcha-container" className="my-4"></div>
+
         <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
