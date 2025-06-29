@@ -16,10 +16,6 @@ import type { DailyPlan } from '@/types';
 import { useApiKey } from '@/hooks/use-api-key';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { getTimelineEvents } from '@/services/timelineService';
-import { getCareerGoals } from '@/services/careerGoalsService';
-import { getSkills } from '@/services/skillsService';
-import { getUserPreferences } from '@/services/userService';
 import { getDailyPlan, saveDailyPlan } from '@/services/dailyPlanService';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { TodaysPlanContent } from './TodaysPlanContent';
@@ -58,25 +54,12 @@ export default function TodaysPlanCard() {
         }
       }
 
-      // 2. If no saved plan OR forceRegenerate is true, generate a new one
-      const [timelineEvents, careerGoals, skills, userPreferences] = await Promise.all([
-        getTimelineEvents(user.uid),
-        getCareerGoals(user.uid),
-        getSkills(user.uid),
-        getUserPreferences(user.uid),
-      ]);
-
-      if (!userPreferences) {
-        throw new Error("Please set your weekly routine to generate a plan.");
-      }
-
+      // 2. If no saved plan OR forceRegenerate is true, generate a new one.
+      // The AI flow now fetches its own data.
       const result = await generateDailyPlan({
         apiKey,
         currentDate: new Date().toISOString(),
-        timelineEvents: timelineEvents.map(e => ({ ...e, date: e.date.toISOString(), endDate: e.endDate?.toISOString() })),
-        careerGoals: careerGoals.map(g => ({ ...g, deadline: g.deadline?.toISOString() })),
-        skills: skills.map(s => ({ ...s, lastUpdated: s.lastUpdated.toISOString() })),
-        userPreferences,
+        userId: user.uid,
       });
       
       // 3. Save the newly generated plan, overwriting any old one
@@ -87,6 +70,10 @@ export default function TodaysPlanCard() {
       console.error('Error in fetchAndGeneratePlan:', err);
       const errorMessage = err.message || "Failed to generate daily plan.";
       setError(errorMessage);
+      if (errorMessage.includes("routine")) {
+          // Give a specific hint if the error is about the routine
+          setError("Please set your weekly routine to generate a plan.");
+      }
       toast({ title: "Planning Error", description: errorMessage, variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -110,7 +97,7 @@ export default function TodaysPlanCard() {
       return (
         <div className="flex flex-col items-center justify-center h-48 text-center">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-muted-foreground">Checking for today's plan...</p>
+          <p className="mt-4 text-muted-foreground">Crafting today's plan...</p>
         </div>
       );
     }
@@ -154,11 +141,11 @@ export default function TodaysPlanCard() {
                   Your personalized schedule and goals for today.
                 </CardDescription>
               </div>
-              <div
+               <div
                 role="button"
                 aria-label="Edit routine"
                 onClick={(e) => {
-                  e.stopPropagation();
+                  e.stopPropagation(); // Prevents the accordion from toggling
                   setIsRoutineModalOpen(true);
                 }}
                 className="p-2 rounded-md hover:bg-accent/20 transition-colors"

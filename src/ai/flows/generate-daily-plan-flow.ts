@@ -3,58 +3,22 @@
 /**
  * @fileOverview An AI agent for generating a smart daily plan.
  *
- * - generateDailyPlan - A function that creates a personalized daily schedule.
+ * - generateDailyPlan - A function that creates a personalized daily schedule by fetching the user's data.
  * - GenerateDailyPlanInput - The input type for the generateDailyPlan function.
  * - GenerateDailyPlanOutput - The return type for the generateDailyPlan function.
  */
 
 import { ai, generateWithApiKey } from '@/ai/genkit';
 import { z } from 'genkit';
+import { getTimelineEvents } from '@/services/timelineService';
+import { getCareerGoals } from '@/services/careerGoalsService';
+import { getSkills } from '@/services/skillsService';
+import { getUserPreferences } from '@/services/userService';
 
-// Helper schemas for serialization
-const TimelineEventSchema = z.object({
-    id: z.string(),
-    date: z.string(),
-    endDate: z.string().optional(),
-    title: z.string(),
-    type: z.string(),
-    notes: z.string().optional(),
-    priority: z.string().optional(),
-    status: z.string().optional(),
-});
-
-const CareerGoalSchema = z.object({
-    id: z.string(),
-    title: z.string(),
-    progress: z.number(),
-    deadline: z.string().optional(),
-});
-
-const SkillSchema = z.object({
-    id: z.string(),
-    name: z.string(),
-    proficiency: z.string(),
-});
-
-const RoutineItemSchema = z.object({
-    id: z.string(),
-    activity: z.string().describe("The name of the routine activity, e.g., 'Sleep', 'College', 'Gym'."),
-    startTime: z.string().describe("The start time in HH:mm format."),
-    endTime: z.string().describe("The end time in HH:mm format."),
-    days: z.array(z.number()).describe("The days of the week this activity occurs on (0=Sun, 1=Mon, ..., 6=Sat).")
-});
-
-const UserPreferencesSchema = z.object({
-    routine: z.array(RoutineItemSchema).describe("User's typical weekly routine."),
-});
-
-// Main input schema for the payload
+// Main input schema for the payload - now much simpler
 const GenerateDailyPlanPayloadSchema = z.object({
   currentDate: z.string().describe("Today's date in ISO format."),
-  timelineEvents: z.array(TimelineEventSchema).describe("A list of all the user's scheduled events."),
-  careerGoals: z.array(CareerGoalSchema).describe("The user's long-term career goals."),
-  skills: z.array(SkillSchema).describe("The user's tracked skills and their proficiency."),
-  userPreferences: UserPreferencesSchema.describe("The user's daily preferences."),
+  userId: z.string().describe("The user's unique ID to fetch their data."),
 });
 
 // Full input schema including optional API key
@@ -76,22 +40,34 @@ const GenerateDailyPlanOutputSchema = z.object({
 });
 export type GenerateDailyPlanOutput = z.infer<typeof GenerateDailyPlanOutputSchema>;
 
+// This is the main exported function now.
 export async function generateDailyPlan(input: GenerateDailyPlanInput): Promise<GenerateDailyPlanOutput> {
+  // Fetch all necessary data *inside* the flow.
+  const [timelineEvents, careerGoals, skills, userPreferences] = await Promise.all([
+      getTimelineEvents(input.userId),
+      getCareerGoals(input.userId),
+      getSkills(input.userId),
+      getUserPreferences(input.userId),
+  ]);
+
+  if (!userPreferences) {
+    throw new Error("User preferences (routine) could not be loaded.");
+  }
+
+  // Pre-process the data for the prompt template
   const today = new Date(input.currentDate);
   const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
 
-  // Filter the routine to only include items for today.
-  const todaysRoutine = input.userPreferences.routine.filter(item => 
+  const todaysRoutine = userPreferences.routine.filter(item => 
     item.days.includes(dayOfWeek)
   );
 
-  // This is the complete context for our Handlebars template.
   const templateInput = {
     currentDate: input.currentDate,
     todaysRoutine: todaysRoutine,
-    timelineEvents: input.timelineEvents,
-    careerGoals: input.careerGoals,
-    skills: input.skills,
+    timelineEvents,
+    careerGoals,
+    skills,
   };
 
 

@@ -15,10 +15,6 @@ import { generateDailyPlan } from '@/ai/flows/generate-daily-plan-flow';
 import type { DailyPlan } from '@/types';
 import { useApiKey } from '@/hooks/use-api-key';
 import { useAuth } from '@/context/AuthContext';
-import { getTimelineEvents } from '@/services/timelineService';
-import { getCareerGoals } from '@/services/careerGoalsService';
-import { getSkills } from '@/services/skillsService';
-import { getUserPreferences } from '@/services/userService';
 import { getDailyPlan, saveDailyPlan } from '@/services/dailyPlanService';
 import { TodaysPlanContent } from './TodaysPlanContent';
 import { Calendar, AlertTriangle } from 'lucide-react';
@@ -61,29 +57,11 @@ export function TodaysPlanModal({ isOpen, onOpenChange }: TodaysPlanModalProps) 
         return;
       }
 
-      const [timelineEvents, careerGoals, skills, userPreferences] = await Promise.all([
-        getTimelineEvents(user.uid),
-        getCareerGoals(user.uid),
-        getSkills(user.uid),
-        getUserPreferences(user.uid),
-      ]);
-
-      if (!userPreferences) {
-        throw new Error("Please set your daily preferences in Settings to generate a plan.");
-      }
-
-      // Serialize data for the AI flow
-      const serializedEvents = timelineEvents.map(e => ({ ...e, date: e.date.toISOString(), endDate: e.endDate?.toISOString() }));
-      const serializedGoals = careerGoals.map(g => ({ ...g, deadline: g.deadline?.toISOString() }));
-      const serializedSkills = skills.map(s => ({ ...s, lastUpdated: s.lastUpdated.toISOString() }));
-      
+      // The AI flow now fetches its own data.
       const result = await generateDailyPlan({
         apiKey,
         currentDate: new Date().toISOString(),
-        timelineEvents: serializedEvents,
-        careerGoals: serializedGoals,
-        skills: serializedSkills,
-        userPreferences,
+        userId: user.uid
       });
 
       await saveDailyPlan(user.uid, todayStr, result);
