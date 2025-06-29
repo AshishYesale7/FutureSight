@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
@@ -7,10 +8,9 @@ import TimelineListView from '@/components/timeline/TimelineListView';
 import DayTimetableView from '@/components/timeline/DayTimetableView';
 import EditEventModal from '@/components/timeline/EditEventModal';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { AlertCircle, Bot, Calendar, Inbox, ExternalLink, List, CalendarDays as CalendarIconLucide, Edit3, PlusCircle } from 'lucide-react';
+import { AlertCircle, Bot, Calendar, List, CalendarDays as CalendarIconLucide, PlusCircle } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
 import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
 import { mockTimelineEvents } from '@/data/mock';
@@ -24,6 +24,7 @@ import { useAuth } from '@/context/AuthContext';
 import { getTimelineEvents, saveTimelineEvent, deleteTimelineEvent } from '@/services/timelineService';
 import { getGoogleCalendarEvents } from '@/services/googleCalendarService';
 import { getGoogleGmailMessages } from '@/services/googleGmailService';
+import ImportantEmailsCard from '@/components/timeline/ImportantEmailsCard';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 
@@ -254,6 +255,7 @@ export default function ActualDashboardPage() {
       } else {
         toastTitle = "No Actionable Insights";
         toastDescription = "The AI didn't find any new actionable items in your recent Google data.";
+        setAiInsights([]); // Clear old insights if none are returned
       }
     } catch (error: any) {
       console.error('Error processing Google data:', error);
@@ -303,18 +305,6 @@ export default function ActualDashboardPage() {
         // DO NOT REVERT UI. The change is saved locally.
         toast({ title: "Sync Error", description: "Could not delete from server. The item is removed locally and will sync later.", variant: "destructive" });
       }
-    }
-  };
-
-  const formatDateSafeWithTime = (dateString: string | undefined) => {
-    if (!dateString) return "N/A";
-    try {
-      const dateObj = parseISO(dateString);
-      if (isNaN(dateObj.valueOf())) return "Invalid Date";
-      const isMidnightTime = dateObj.getHours() === 0 && dateObj.getMinutes() === 0 && dateObj.getSeconds() === 0 && dateObj.getMilliseconds() === 0;
-      return format(dateObj, isMidnightTime ? 'MMM d, yyyy' : 'MMM d, yyyy, h:mm a');
-    } catch (e) {
-      return "Invalid Date";
     }
   };
 
@@ -422,7 +412,7 @@ export default function ActualDashboardPage() {
         <div className="flex justify-between items-center mb-4 gap-2">
           <TabsList className="inline-flex h-auto p-1 rounded-full bg-muted/50 backdrop-blur-sm border border-border/30">
             <TabsTrigger value="calendar" className="px-4 py-1.5 text-sm h-auto rounded-full data-[state=active]:shadow-md">
-              <CalendarIconLucide className="mr-2 h-4 w-4" /> Calendar
+              <Calendar className="mr-2 h-4 w-4" /> Calendar
             </TabsTrigger>
             <div className="w-px h-6 bg-border/50 self-center" />
             <TabsTrigger value="list" className="px-4 py-1.5 text-sm h-auto rounded-full data-[state=active]:shadow-md">
@@ -440,30 +430,38 @@ export default function ActualDashboardPage() {
         </div>
         
         <div className="flex-1 flex flex-col min-h-0">
-          <TabsContent key="calendar-view" value="calendar" className={cn("space-y-6 mt-0", viewMode === 'calendar' ? 'flex flex-1 flex-col min-h-0' : 'hidden')}>
-            <EventCalendarView
-              events={displayedTimelineEvents}
-              month={activeDisplayMonth}
-              onMonthChange={setActiveDisplayMonth}
-              onDayClick={handleDayClickFromCalendar}
-            />
-            {selectedDateForDayView ? (
-              <DayTimetableView
-                date={selectedDateForDayView}
-                events={eventsForDayView}
-                onClose={closeDayTimetableView}
-                onDeleteEvent={handleDeleteTimelineEvent}
-                onEditEvent={handleOpenEditModal}
-              />
-            ) : (
-              <SlidingTimelineView
-                events={displayedTimelineEvents}
-                onDeleteEvent={handleDeleteTimelineEvent}
-                onEditEvent={handleOpenEditModal}
-                currentDisplayMonth={activeDisplayMonth}
-                onNavigateMonth={handleMonthNavigationForSharedViews}
-              />
-            )}
+          <TabsContent key="calendar-view" value="calendar" className={cn("mt-0", viewMode === 'calendar' ? 'flex flex-1' : 'hidden')}>
+            <div className="flex flex-col lg:flex-row gap-6 w-full">
+              {/* Left column for calendar and timetable */}
+              <div className="flex-1 space-y-6 lg:min-w-0">
+                  <EventCalendarView
+                      events={displayedTimelineEvents}
+                      month={activeDisplayMonth}
+                      onMonthChange={setActiveDisplayMonth}
+                      onDayClick={handleDayClickFromCalendar}
+                  />
+                  {selectedDateForDayView ? (
+                      <DayTimetableView
+                          date={selectedDateForDayView}
+                          events={eventsForDayView}
+                          onClose={closeDayTimetableView}
+                          onDeleteEvent={handleDeleteTimelineEvent}
+                          onEditEvent={handleOpenEditModal}
+                      />
+                  ) : (
+                      <SlidingTimelineView
+                          events={displayedTimelineEvents}
+                          onDeleteEvent={handleDeleteTimelineEvent}
+                          onEditEvent={handleOpenEditModal}
+                          currentDisplayMonth={activeDisplayMonth}
+                          onNavigateMonth={handleMonthNavigationForSharedViews}
+                      />
+                  )}
+              </div>
+              
+              {/* Right column for emails */}
+              <ImportantEmailsCard insights={aiInsights} isLoading={isLoadingInsights} />
+            </div>
           </TabsContent>
           <TabsContent key="list-view" value="list" className={cn("mt-0", viewMode === 'list' ? 'flex flex-col h-[70vh]' : 'hidden')}>
             <TimelineListView
@@ -497,12 +495,6 @@ export default function ActualDashboardPage() {
         </CardContent>
       </Card>
 
-      {isLoadingInsights && !aiInsights.length && !insightsError && (
-        <div className="flex justify-center items-center py-8">
-          <LoadingSpinner size="lg" />
-        </div>
-      )}
-
       {insightsError && (
         <Card className="frosted-glass border-destructive/50">
           <CardHeader>
@@ -516,49 +508,6 @@ export default function ActualDashboardPage() {
         </Card>
       )}
 
-      {aiInsights.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="font-headline text-2xl font-semibold text-primary">Raw AI Generated Insights (for reference)</h2>
-          <CardDescription>These are the direct insights from the AI. Relevant items are added to your views above.</CardDescription>
-          <div className="grid gap-4 md:grid-cols-2 max-h-96 overflow-y-auto p-1">
-            {aiInsights.map((insight) => (
-              <Card key={insight.id} className="frosted-glass shadow-md flex flex-col">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg text-primary flex items-center">
-                      {insight.source === 'google_calendar' ?
-                        <Calendar className="mr-2 h-5 w-5 text-accent flex-shrink-0" /> :
-                        <Inbox className="mr-2 h-5 w-5 text-accent flex-shrink-0" />
-                      }
-                      {insight.title}
-                    </CardTitle>
-                    <Badge variant="outline" className={cn(insight.source === 'google_calendar' ? 'border-blue-500 text-blue-600' : 'border-green-500 text-green-600')}>
-                      {insight.source === 'google_calendar' ? 'Calendar' : 'Gmail'}
-                    </Badge>
-                  </div>
-                  <CardDescription className="text-xs text-muted-foreground">
-                     Start: {formatDateSafeWithTime(insight.date)}
-                     {insight.endDate && `, End: ${formatDateSafeWithTime(insight.endDate)}`}
-                     {insight.isAllDay && <span className="ml-2">(All day)</span>}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-sm text-foreground/80 line-clamp-3">{insight.summary}</p>
-                </CardContent>
-                {insight.originalLink && (
-                  <CardFooter>
-                    <a href={insight.originalLink} target="_blank" rel="noopener noreferrer" className="w-full">
-                      <Button variant="outline" size="sm" className="w-full">
-                        View Original <ExternalLink className="ml-2 h-4 w-4" />
-                      </Button>
-                    </a>
-                  </CardFooter>
-                )}
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
       {eventBeingEdited && (
         <EditEventModal
           isOpen={isEditModalOpen}
