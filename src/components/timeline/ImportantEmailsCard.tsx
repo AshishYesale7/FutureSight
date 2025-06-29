@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -176,7 +175,7 @@ export default function ImportantEmailsCard({ className }: ImportantEmailsCardPr
   }
 
   return (
-    <Card className={cn("hidden lg:flex flex-col frosted-glass shadow-lg w-full lg:w-1/3 lg:max-w-sm", className)}>
+    <Card className={cn("hidden lg:flex flex-col frosted-glass shadow-lg w-full max-h-[calc(100vh-10rem)]", className)}>
       <CardHeader className="p-4 border-b border-border/30">
         <div className="flex justify-between items-center">
             <CardTitle className="font-headline text-xl text-primary flex items-center">

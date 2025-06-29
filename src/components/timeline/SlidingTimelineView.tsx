@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { TimelineEvent } from '@/types';
@@ -255,7 +254,7 @@ export default function SlidingTimelineView({
   };
 
   return (
-    <Card className="frosted-glass w-full shadow-xl flex flex-col h-full">
+    <Card className="frosted-glass w-full shadow-xl flex flex-col max-h-[500px]">
       <CardHeader className="p-4 border-b border-border/30">
         <div className="flex justify-between items-center">
           <Button variant="ghost" size="icon" onClick={() => onNavigateMonth('prev')} aria-label="Previous month">
