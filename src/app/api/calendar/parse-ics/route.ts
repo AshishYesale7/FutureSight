@@ -1,4 +1,6 @@
 
+'use server';
+
 import { type NextRequest, NextResponse } from 'next/server';
 import * as ical from 'ical';
 
@@ -11,9 +13,16 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, message: 'ICS content is required and must be a string.' }, { status: 400 });
         }
         
-        // Robustly normalize all possible line endings to CRLF, the standard for iCalendar.
-        // This prevents parsing errors from files with mixed or incorrect line endings.
-        const normalizedIcsContent = icsContent.replace(/(\r\n|\n|\r)/gm, "\r\n");
+        // Sanitize the input string before parsing
+        let content = icsContent;
+        // 1. Remove BOM (Byte Order Mark) if it exists
+        if (content.charCodeAt(0) === 0xFEFF) {
+            content = content.substring(1);
+        }
+        // 2. Trim whitespace from start and end
+        content = content.trim();
+        // 3. Normalize all possible line endings to CRLF, the standard for iCalendar.
+        const normalizedIcsContent = content.replace(/(\r\n|\n|\r)/gm, "\r\n");
 
         const parsedData = ical.parseICS(normalizedIcsContent);
 
