@@ -95,9 +95,8 @@ export default function CareerGoalsPage() {
         await deleteCareerGoal(user.uid, goalId);
       } catch (error) {
         console.error("Failed to delete goal from Firestore", error);
-        setGoals(originalGoals); // Revert UI
-        syncToLocalStorage(originalGoals);
-        toast({ title: "Error", description: "Failed to delete goal from the server. Please try again.", variant: "destructive" });
+        // DO NOT REVERT UI. The change is saved locally.
+        toast({ title: "Sync Error", description: "Failed to delete goal from the server. It is removed locally.", variant: "destructive" });
       }
     }
   };
@@ -126,9 +125,8 @@ export default function CareerGoalsPage() {
             await saveCareerGoal(user.uid, goalToSave);
         } catch (error) {
             console.error("Failed to save goal to Firestore", error);
-            setGoals(originalGoals); // Revert UI
-            syncToLocalStorage(originalGoals);
-            toast({ title: "Error", description: "Failed to save goal to the server. Your changes have been saved locally.", variant: "destructive" });
+            // DO NOT REVERT UI. The changes are saved locally.
+            toast({ title: "Sync Error", description: "Could not save goal to the server. Your changes are saved locally.", variant: "destructive" });
         }
     }
   };

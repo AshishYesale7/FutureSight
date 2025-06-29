@@ -100,9 +100,8 @@ export default function SkillsPage() {
         await deleteSkill(user.uid, skillId);
       } catch (error) {
         console.error("Failed to delete skill from Firestore", error);
-        setSkills(originalSkills); // Revert
-        syncToLocalStorage(originalSkills);
-        toast({ title: "Error", description: "Failed to delete skill from the server. Please try again.", variant: "destructive" });
+        // DO NOT REVERT.
+        toast({ title: "Sync Error", description: "Failed to delete skill from the server. It is removed locally.", variant: "destructive" });
       }
     }
   };
@@ -133,9 +132,8 @@ export default function SkillsPage() {
         await saveSkill(user.uid, skillWithDate);
       } catch (error) {
         console.error("Failed to save skill to Firestore", error);
-        setSkills(originalSkills); // Revert
-        syncToLocalStorage(originalSkills);
-        toast({ title: "Error", description: "Failed to save skill to the server. Your changes have been saved locally.", variant: "destructive" });
+        // DO NOT REVERT.
+        toast({ title: "Sync Error", description: "Failed to save skill to the server. Your changes are saved locally.", variant: "destructive" });
       }
     }
   };

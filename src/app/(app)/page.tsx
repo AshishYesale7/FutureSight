@@ -302,9 +302,8 @@ export default function ActualDashboardPage() {
         await deleteTimelineEvent(user.uid, eventId);
       } catch (error) {
         console.error("Failed to delete event from Firestore", error);
-        setDisplayedTimelineEvents(originalEvents); // Revert
-        syncToLocalStorage(originalEvents);
-        toast({ title: "Sync Error", description: "Failed to delete event from the server.", variant: "destructive" });
+        // DO NOT REVERT UI. The change is saved locally.
+        toast({ title: "Sync Error", description: "Could not delete from server. The item is removed locally and will sync later.", variant: "destructive" });
       }
     }
   };
@@ -407,9 +406,8 @@ export default function ActualDashboardPage() {
             await saveTimelineEvent(user.uid, updatedEvent);
         } catch (error) {
             console.error("Failed to save event to Firestore", error);
-            setDisplayedTimelineEvents(originalEvents); // Revert
-            syncToLocalStorage(originalEvents);
-            toast({ title: "Sync Error", description: "Failed to save event to the server. Your changes have been saved locally.", variant: "destructive" });
+            // DO NOT REVERT UI. The changes are saved locally.
+            toast({ title: "Sync Error", description: "Could not save to server. Your changes are saved locally and will sync later.", variant: "destructive" });
         }
     }
   }, [displayedTimelineEvents, handleCloseEditModal, toast, isAddingNewEvent, user]);

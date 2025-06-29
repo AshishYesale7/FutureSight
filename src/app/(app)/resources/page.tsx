@@ -127,9 +127,8 @@ export default function ResourcesPage() {
             await deleteBookmarkedResource(user.uid, resourceId);
         } catch (error) {
             console.error("Failed to delete resource from Firestore", error);
-            setBookmarkedResources(originalResources); // Revert
-            syncToLocalStorage(originalResources);
-            toast({ title: "Error", description: "Failed to delete resource from the server. Please try again.", variant: "destructive" });
+            // DO NOT REVERT.
+            toast({ title: "Sync Error", description: "Failed to delete resource from the server. It is removed locally.", variant: "destructive" });
         }
     }
   };
@@ -157,9 +156,8 @@ export default function ResourcesPage() {
             await saveBookmarkedResource(user.uid, resourceToSave);
         } catch (error) {
             console.error("Failed to save resource to Firestore", error);
-            setBookmarkedResources(originalResources); // Revert
-            syncToLocalStorage(originalResources);
-            toast({ title: "Error", description: "Failed to save resource to the server. Your changes have been saved locally.", variant: "destructive" });
+            // DO NOT REVERT.
+            toast({ title: "Sync Error", description: "Failed to save resource to the server. Your changes have been saved locally.", variant: "destructive" });
         }
     }
   };
