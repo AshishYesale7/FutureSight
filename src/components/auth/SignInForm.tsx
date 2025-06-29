@@ -35,7 +35,7 @@ const formSchema = z.object({
 
 declare global {
   interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
+    recaptchaVerifier?: RecaptchaVerifier;
     confirmationResult?: ConfirmationResult;
   }
 }
@@ -64,48 +64,46 @@ export default function SignInForm() {
     if (!auth || view !== 'phone') {
       return;
     }
-
+  
     const recaptchaContainer = document.getElementById('recaptcha-container');
     if (!recaptchaContainer) {
       return;
     }
-
-    // Cleanup existing verifier if it exists
-    if (window.recaptchaVerifier) {
-      window.recaptchaVerifier.clear();
-      if (recaptchaContainer) {
-          recaptchaContainer.innerHTML = '';
+  
+    // Define a new verifier instance for this effect run
+    const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
+      'size': 'invisible',
+      'callback': () => console.log("reCAPTCHA verified"),
+      'expired-callback': () => {
+        toast({ title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
       }
-    }
-    
-    try {
-      const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
-          'size': 'invisible',
-          'callback': () => {
-              console.log("reCAPTCHA verified");
-          },
-          'expired-callback': () => {
-              toast({ title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
-          }
-      });
-      
-      verifier.render();
+    });
+  
+    // Render the verifier and attach it to the window
+    verifier.render().then(() => {
       window.recaptchaVerifier = verifier;
-
-      // Cleanup function to run when component unmounts or view changes
-      return () => {
-        verifier.clear();
-        if (recaptchaContainer) {
-            recaptchaContainer.innerHTML = '';
-        }
-      };
-    } catch (e: any) {
-        console.error("reCAPTCHA error", e);
-        if (e.code !== 'auth/recaptcha-already-rendered') {
-            toast({ title: 'reCAPTCHA Error', description: 'Could not initialize phone sign-in. Please refresh.', variant: 'destructive' });
-        }
-    }
-  }, [auth, view, toast]);
+    }).catch((e) => {
+      console.error("reCAPTCHA render error:", e);
+      // Avoid creating a toast for the common "already rendered" error which can happen during fast-toggling
+      if (e.code !== 'auth/recaptcha-already-rendered') {
+        toast({ title: 'reCAPTCHA Error', description: 'Could not initialize phone sign-in. Please refresh.', variant: 'destructive' });
+      }
+    });
+  
+    // Return a cleanup function
+    return () => {
+      // Use the verifier from this effect's closure to clear it
+      verifier.clear();
+      // Clear the container just in case
+      if (recaptchaContainer) {
+        recaptchaContainer.innerHTML = '';
+      }
+      // Also clear the global reference if it's the one we set
+      if (window.recaptchaVerifier === verifier) {
+        window.recaptchaVerifier = undefined;
+      }
+    };
+  }, [view, auth, toast]);
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -151,12 +149,15 @@ export default function SignInForm() {
       return;
     }
     if (!phoneNumber || !isValidPhoneNumber(phoneNumber)) {
-        toast({ title: 'Invalid Phone Number', description: 'Please enter a complete and valid phone number.', variant: 'destructive' });
+        toast({ title: 'Invalid Phone Number', description: 'Please enter a complete and valid phone number in international format (e.g., +1...).', variant: 'destructive' });
         return;
     }
     setLoading(true);
     try {
       const verifier = window.recaptchaVerifier;
+      if (!verifier) {
+        throw new Error("reCAPTCHA not initialized. Please wait a moment and try again.");
+      }
       const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
       window.confirmationResult = confirmationResult;
       setShowOtpInput(true);
@@ -276,7 +277,7 @@ export default function SignInForm() {
              {!showOtpInput ? (
                 <div className="space-y-8">
                     <div className="space-y-2 phone-input-container">
-                      <Label htmlFor="phone-number" className="block">Phone Number</Label>
+                      <Label htmlFor="phone-number" className="block text-sm font-medium text-foreground">Phone Number</Label>
                       <PhoneInput
                         id="phone-number"
                         international
@@ -294,7 +295,7 @@ export default function SignInForm() {
             ) : (
                 <div className="space-y-8">
                     <div className="space-y-2">
-                      <Label htmlFor="otp" className="block">Enter OTP</Label>
+                      <Label htmlFor="otp" className="block text-sm font-medium text-foreground">Enter OTP</Label>
                       <Input 
                         id="otp"
                         type="number"

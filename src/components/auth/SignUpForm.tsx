@@ -38,7 +38,7 @@ const formSchema = z.object({
 
 declare global {
   interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
+    recaptchaVerifier?: RecaptchaVerifier;
     confirmationResult?: ConfirmationResult;
   }
 }
@@ -68,47 +68,39 @@ export default function SignUpForm() {
     if (!auth || view !== 'phone') {
       return;
     }
-
+  
     const recaptchaContainer = document.getElementById('recaptcha-container-signup');
     if (!recaptchaContainer) {
       return;
     }
-
-    // Cleanup existing verifier if it exists
-    if (window.recaptchaVerifier) {
-      window.recaptchaVerifier.clear();
-      if (recaptchaContainer) {
-          recaptchaContainer.innerHTML = '';
+  
+    const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
+      'size': 'invisible',
+      'callback': () => console.log("reCAPTCHA verified"),
+      'expired-callback': () => {
+        toast({ title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
       }
-    }
-    
-    try {
-      const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
-        'size': 'invisible',
-        'callback': () => {
-          console.log("reCAPTCHA verified");
-        },
-        'expired-callback': () => {
-          toast({ title: 'reCAPTCHA Expired', description: 'Please try sending the OTP again.', variant: 'destructive' });
-        }
-      });
-
-      verifier.render();
+    });
+  
+    verifier.render().then(() => {
       window.recaptchaVerifier = verifier;
-
-      return () => {
-        verifier.clear();
-        if (recaptchaContainer) {
-            recaptchaContainer.innerHTML = '';
-        }
-      };
-    } catch (e: any) {
-        console.error("reCAPTCHA error", e);
-        if (e.code !== 'auth/recaptcha-already-rendered') {
-            toast({ title: 'reCAPTCHA Error', description: 'Could not initialize phone sign-up. Please refresh.', variant: 'destructive' });
-        }
-    }
-  }, [auth, view, toast]);
+    }).catch((e) => {
+      console.error("reCAPTCHA render error:", e);
+      if (e.code !== 'auth/recaptcha-already-rendered') {
+        toast({ title: 'reCAPTCHA Error', description: 'Could not initialize phone sign-up. Please refresh.', variant: 'destructive' });
+      }
+    });
+  
+    return () => {
+      verifier.clear();
+      if (recaptchaContainer) {
+        recaptchaContainer.innerHTML = '';
+      }
+      if (window.recaptchaVerifier === verifier) {
+        window.recaptchaVerifier = undefined;
+      }
+    };
+  }, [view, auth, toast]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
@@ -153,12 +145,15 @@ export default function SignUpForm() {
       return;
     }
     if (!phoneNumber || !isValidPhoneNumber(phoneNumber)) {
-        toast({ title: 'Invalid Phone Number', description: 'Please enter a complete and valid phone number.', variant: 'destructive' });
+        toast({ title: 'Invalid Phone Number', description: 'Please enter a complete and valid phone number in international format (e.g., +1...).', variant: 'destructive' });
         return;
     }
     setLoading(true);
     try {
       const verifier = window.recaptchaVerifier;
+      if (!verifier) {
+        throw new Error("reCAPTCHA not initialized. Please wait a moment and try again.");
+      }
       const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
       window.confirmationResult = confirmationResult;
       setShowOtpInput(true);
@@ -307,7 +302,7 @@ export default function SignUpForm() {
              {!showOtpInput ? (
                 <div className="space-y-8">
                     <div className="space-y-2 phone-input-container">
-                      <Label htmlFor="phone-number-signup" className="block">Phone Number</Label>
+                      <Label htmlFor="phone-number-signup" className="block text-sm font-medium text-foreground">Phone Number</Label>
                       <PhoneInput
                         id="phone-number-signup"
                         international
@@ -325,7 +320,7 @@ export default function SignUpForm() {
             ) : (
                 <div className="space-y-8">
                     <div className="space-y-2">
-                      <Label htmlFor="otp-signup" className="block">Enter OTP</Label>
+                      <Label htmlFor="otp-signup" className="block text-sm font-medium text-foreground">Enter OTP</Label>
                       <Input 
                         id="otp-signup"
                         type="number"
