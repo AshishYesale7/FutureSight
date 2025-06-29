@@ -239,9 +239,9 @@ export default function SlidingTimelineView({
                 </div>
               )}
               {event.url && (
-                <div className="text-xs flex items-center gap-1.5 min-w-0">
+                <div className="text-xs flex items-center gap-1.5">
                   <LinkIcon size={12} className="flex-shrink-0"/>
-                  <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate">
+                  <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline truncate min-w-0">
                     {event.url}
                   </a>
                 </div>
