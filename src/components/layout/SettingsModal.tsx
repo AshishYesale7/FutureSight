@@ -106,20 +106,20 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
       }
     };
 
-    if (!isOpen || linkingPhoneState !== 'input') {
+    if (!isOpen || linkingPhoneState !== 'input' || !auth) {
       cleanup();
       return;
     }
-
-    if (!recaptchaContainer || !auth) {
-      console.warn('reCAPTCHA container or auth not available for settings modal.');
+    
+    if (!recaptchaContainer) {
+      console.warn('reCAPTCHA container for settings not found.');
       return;
     }
-    
+
     cleanup();
 
     try {
-      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container-settings', {
+      const verifier = new RecaptchaVerifier(auth, recaptchaContainer, {
         'size': 'invisible',
         'callback': () => console.log('reCAPTCHA for settings verified'),
         'expired-callback': () => {
