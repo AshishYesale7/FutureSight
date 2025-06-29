@@ -121,27 +121,36 @@ export default function SignUpForm() {
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
+    const provider = new GoogleAuthProvider();
     try {
       if (!auth) throw new Error("Firebase Auth is not initialized.");
-      const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
       // After sign-up, start the authorization flow immediately.
-      // The user will be redirected to Google to grant permissions for Calendar/Gmail.
       toast({ title: 'Account Created! Connecting Google...', description: 'Please authorize access to your Google Calendar and Gmail.' });
       const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
       window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
 
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to sign in with Google.',
-        variant: 'destructive',
-      });
-      setLoading(false); // Only set loading to false on error
+      if (error.code === 'auth/account-exists-with-different-credential') {
+        const email = error.customData.email;
+        toast({
+          title: 'Account Exists',
+          description: `An account with ${email} already exists. Please go to the login page to sign in.`,
+          variant: 'destructive',
+          duration: 8000,
+        });
+        router.push('/auth/signin'); // Redirect to sign in page
+      } else {
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to sign up with Google.',
+          variant: 'destructive',
+        });
+      }
+      setLoading(false);
     }
-    // Do not set loading to false on success because of the redirect.
   };
 
   const handleSendOtp = async () => {

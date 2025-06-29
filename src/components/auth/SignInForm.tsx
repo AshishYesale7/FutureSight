@@ -1,6 +1,6 @@
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult, linkWithPopup, fetchSignInMethodsForEmail } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -50,6 +50,7 @@ export default function SignInForm() {
   const [phoneNumber, setPhoneNumber] = useState<string | undefined>();
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
 
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -126,17 +127,26 @@ export default function SignInForm() {
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
+    const provider = new GoogleAuthProvider();
     try {
       if (!auth) throw new Error("Firebase Auth is not initialized.");
-      const provider = new GoogleAuthProvider();
+
+      // If a user is already logged in (e.g., with phone), link the Google account.
+      if (auth.currentUser) {
+          await linkWithPopup(auth.currentUser, provider);
+          toast({ title: 'Success', description: 'Your Google account has been linked.' });
+          router.push('/');
+          return; // Stop execution
+      }
+
+      // If no user is logged in, proceed with standard sign-in.
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
       // After sign-in, check if Google integration is already connected
       const tokens = await getGoogleTokensFromFirestore(user.uid);
       if (!tokens) {
-        // If not connected, start the authorization flow immediately.
-        // The user will be redirected to Google to grant permissions.
+        // If not connected, start the authorization flow.
         toast({ title: 'Connecting Google Account...', description: 'Please authorize access to your Google Calendar and Gmail.' });
         const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
         window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
@@ -146,11 +156,22 @@ export default function SignInForm() {
         router.push('/');
       }
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to sign in with Google.',
-        variant: 'destructive',
-      });
+        if (error.code === 'auth/account-exists-with-different-credential') {
+             const email = error.customData.email;
+             const methods = await fetchSignInMethodsForEmail(auth, email);
+             toast({
+                title: 'Account Exists',
+                description: `You've previously signed in with ${methods.join(', ')}. Please use that method to sign in first, then link your accounts from the settings page.`,
+                variant: 'destructive',
+                duration: 9000,
+            });
+        } else {
+            toast({
+                title: 'Error',
+                description: error.message || 'Failed to sign in with Google.',
+                variant: 'destructive',
+            });
+        }
       setLoading(false); // Only set loading to false on error
     }
     // Do not set loading to false on success because of the potential redirect.
@@ -171,10 +192,21 @@ export default function SignInForm() {
       if (!verifier) {
         throw new Error("reCAPTCHA not initialized. Please wait a moment and try again.");
       }
-      const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+      
+      let confirmationResult: ConfirmationResult;
+      // If a user is logged in, link the phone number. Otherwise, sign in.
+      if (auth.currentUser) {
+          setIsLinking(true);
+          confirmationResult = await linkWithPopup(auth.currentUser, phoneNumber, verifier);
+          toast({ title: 'OTP Sent', description: 'Check your phone to link your number.' });
+      } else {
+          setIsLinking(false);
+          confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+          toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.' });
+      }
       window.confirmationResult = confirmationResult;
       setShowOtpInput(true);
-      toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.' });
+
     } catch (error: any) {
       if (error.code === 'auth/billing-not-enabled') {
         toast({
@@ -203,7 +235,13 @@ export default function SignInForm() {
           throw new Error("No confirmation result found. Please send OTP again.");
       }
       await window.confirmationResult.confirm(otp);
-      toast({ title: 'Success', description: 'Signed in successfully.' });
+      
+      if (isLinking) {
+         toast({ title: 'Success', description: 'Phone number linked successfully.' });
+      } else {
+         toast({ title: 'Success', description: 'Signed in successfully.' });
+      }
+
       router.push('/');
     } catch (error: any) {
        console.error(error);
