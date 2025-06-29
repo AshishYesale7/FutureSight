@@ -3,9 +3,16 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Calendar, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Calendar, AlertTriangle, Edit } from 'lucide-react';
 import { generateDailyPlan } from '@/ai/flows/generate-daily-plan-flow';
-import type { DailyPlan, TimelineEvent, CareerGoal, Skill, UserPreferences } from '@/types';
+import type { DailyPlan } from '@/types';
 import { useApiKey } from '@/hooks/use-api-key';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -13,8 +20,11 @@ import { getTimelineEvents } from '@/services/timelineService';
 import { getCareerGoals } from '@/services/careerGoalsService';
 import { getSkills } from '@/services/skillsService';
 import { getUserPreferences } from '@/services/userService';
+import { getDailyPlan, saveDailyPlan } from '@/services/dailyPlanService';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { TodaysPlanContent } from './TodaysPlanContent';
+import EditPreferencesModal from './EditPreferencesModal';
+import { format } from 'date-fns';
 
 export default function TodaysPlanCard() {
   const { user } = useAuth();
@@ -24,6 +34,7 @@ export default function TodaysPlanCard() {
   const [plan, setPlan] = useState<DailyPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPrefModalOpen, setIsPrefModalOpen] = useState(false);
 
   const fetchAndGeneratePlan = useCallback(async () => {
     if (!user) {
@@ -34,8 +45,18 @@ export default function TodaysPlanCard() {
 
     setIsLoading(true);
     setError(null);
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     try {
+      // 1. Check for a saved plan first
+      const savedPlan = await getDailyPlan(user.uid, todayStr);
+      if (savedPlan) {
+        setPlan(savedPlan);
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. If no saved plan, generate a new one
       const [timelineEvents, careerGoals, skills, userPreferences] = await Promise.all([
         getTimelineEvents(user.uid),
         getCareerGoals(user.uid),
@@ -47,24 +68,22 @@ export default function TodaysPlanCard() {
         throw new Error("Please set your daily preferences in Settings to generate a plan.");
       }
 
-      // Serialize data for the AI flow
-      const serializedEvents = timelineEvents.map(e => ({ ...e, date: e.date.toISOString(), endDate: e.endDate?.toISOString() }));
-      const serializedGoals = careerGoals.map(g => ({ ...g, deadline: g.deadline?.toISOString() }));
-      const serializedSkills = skills.map(s => ({ ...s, lastUpdated: s.lastUpdated.toISOString() }));
-
       const result = await generateDailyPlan({
         apiKey,
         currentDate: new Date().toISOString(),
-        timelineEvents: serializedEvents,
-        careerGoals: serializedGoals,
-        skills: serializedSkills,
+        timelineEvents: timelineEvents.map(e => ({ ...e, date: e.date.toISOString(), endDate: e.endDate?.toISOString() })),
+        careerGoals: careerGoals.map(g => ({ ...g, deadline: g.deadline?.toISOString() })),
+        skills: skills.map(s => ({ ...s, lastUpdated: s.lastUpdated.toISOString() })),
         userPreferences,
       });
-
+      
+      // 3. Save the newly generated plan
+      await saveDailyPlan(user.uid, todayStr, result);
       setPlan(result);
+
     } catch (err: any) {
-      console.error('Error generating daily plan:', err);
-      const errorMessage = err.message || "Failed to generate daily plan. Please try again later.";
+      console.error('Error in fetchAndGeneratePlan:', err);
+      const errorMessage = err.message || "Failed to generate daily plan.";
       setError(errorMessage);
       toast({ title: "Planning Error", description: errorMessage, variant: "destructive" });
     } finally {
@@ -73,15 +92,18 @@ export default function TodaysPlanCard() {
   }, [user, apiKey, toast]);
 
   useEffect(() => {
-    fetchAndGeneratePlan();
-  }, [fetchAndGeneratePlan]);
+    // Re-fetch plan if preferences are changed and saved
+    if (!isPrefModalOpen) {
+      fetchAndGeneratePlan();
+    }
+  }, [fetchAndGeneratePlan, isPrefModalOpen]);
 
   const renderContent = () => {
     if (isLoading) {
       return (
         <div className="flex flex-col items-center justify-center h-48 text-center">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-muted-foreground">The AI is crafting your personalized plan...</p>
+          <p className="mt-4 text-muted-foreground">Checking for today's plan...</p>
         </div>
       );
     }
@@ -103,23 +125,38 @@ export default function TodaysPlanCard() {
     return (
       <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
         <p>No plan available for today.</p>
+        <Button onClick={fetchAndGeneratePlan} className="mt-4">Generate Plan</Button>
       </div>
     );
   };
 
   return (
-    <Card className="frosted-glass shadow-lg">
-      <CardHeader>
-        <CardTitle className="font-headline text-xl text-primary flex items-center">
-          <Calendar className="mr-2 h-5 w-5 text-accent" /> AI-Powered Daily Plan
-        </CardTitle>
-        <CardDescription>
-          Your personalized schedule and goals for today, generated by AI.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {renderContent()}
-      </CardContent>
-    </Card>
+    <>
+      <Accordion type="single" collapsible className="w-full frosted-glass shadow-lg rounded-lg">
+        <AccordionItem value="item-1" className="border-b-0">
+          <AccordionTrigger className="p-6 hover:no-underline">
+            <div className='flex justify-between items-center w-full'>
+              <div className="text-left">
+                <CardTitle className="font-headline text-xl text-primary flex items-center">
+                  <Calendar className="mr-2 h-5 w-5 text-accent" /> AI-Powered Daily Plan
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  Your personalized schedule and goals for today, generated by AI.
+                </CardDescription>
+              </div>
+              <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); setIsPrefModalOpen(true); }} className="mr-4">
+                <Edit className="h-4 w-4" />
+              </Button>
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <CardContent className="pt-0">
+              {renderContent()}
+            </CardContent>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+      <EditPreferencesModal isOpen={isPrefModalOpen} onOpenChange={setIsPrefModalOpen} />
+    </>
   );
 }

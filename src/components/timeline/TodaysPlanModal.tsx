@@ -19,10 +19,13 @@ import { getTimelineEvents } from '@/services/timelineService';
 import { getCareerGoals } from '@/services/careerGoalsService';
 import { getSkills } from '@/services/skillsService';
 import { getUserPreferences } from '@/services/userService';
+import { getDailyPlan, saveDailyPlan } from '@/services/dailyPlanService';
 import { TodaysPlanContent } from './TodaysPlanContent';
 import { Calendar, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { format } from 'date-fns';
+
 
 interface TodaysPlanModalProps {
   isOpen: boolean;
@@ -48,8 +51,16 @@ export function TodaysPlanModal({ isOpen, onOpenChange }: TodaysPlanModalProps) 
     setIsLoading(true);
     setError(null);
     setPlan(null);
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
 
     try {
+      const savedPlan = await getDailyPlan(user.uid, todayStr);
+      if (savedPlan) {
+        setPlan(savedPlan);
+        setIsLoading(false);
+        return;
+      }
+
       const [timelineEvents, careerGoals, skills, userPreferences] = await Promise.all([
         getTimelineEvents(user.uid),
         getCareerGoals(user.uid),
@@ -75,6 +86,7 @@ export function TodaysPlanModal({ isOpen, onOpenChange }: TodaysPlanModalProps) 
         userPreferences,
       });
 
+      await saveDailyPlan(user.uid, todayStr, result);
       setPlan(result);
     } catch (err: any) {
       console.error('Error generating daily plan in modal:', err);
@@ -134,7 +146,7 @@ export function TodaysPlanModal({ isOpen, onOpenChange }: TodaysPlanModalProps) 
             A quick look at your AI-generated goals and schedule to get you started.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
+        <div className="py-4 max-h-[60vh] overflow-y-auto">
           {renderContent()}
         </div>
         <DialogFooter>
