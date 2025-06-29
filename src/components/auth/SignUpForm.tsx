@@ -1,3 +1,4 @@
+
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
@@ -163,7 +164,6 @@ export default function SignUpForm() {
       setShowOtpInput(true);
       toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.' });
     } catch (error: any) {
-      console.error("Phone Auth Error:", error);
        if (error.code === 'auth/billing-not-enabled') {
         toast({
             title: 'Service Not Available',
@@ -172,6 +172,7 @@ export default function SignUpForm() {
             duration: 8000
         });
       } else {
+       console.error("Phone Auth Error:", error);
        toast({ title: 'Error', description: error.message || 'Failed to send OTP. Please refresh the page and try again.', variant: 'destructive' });
       }
     } finally {
@@ -306,7 +307,7 @@ export default function SignUpForm() {
              {!showOtpInput ? (
                 <div className="space-y-8">
                     <div className="space-y-2 phone-input-container">
-                      <Label htmlFor="phone-number-signup" className="text-center block">Phone Number</Label>
+                      <Label htmlFor="phone-number-signup" className="block">Phone Number</Label>
                       <PhoneInput
                         id="phone-number-signup"
                         international
@@ -324,7 +325,7 @@ export default function SignUpForm() {
             ) : (
                 <div className="space-y-8">
                     <div className="space-y-2">
-                      <Label htmlFor="otp-signup" className="text-center block">Enter OTP</Label>
+                      <Label htmlFor="otp-signup" className="block">Enter OTP</Label>
                       <Input 
                         id="otp-signup"
                         type="number"

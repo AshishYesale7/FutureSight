@@ -1,3 +1,4 @@
+
 'use client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from 'firebase/auth';
@@ -150,7 +151,7 @@ export default function SignInForm() {
       return;
     }
     if (!phoneNumber || !isValidPhoneNumber(phoneNumber)) {
-        toast({ title: 'Invalid Phone Number', description: 'Please enter a complete and valid phone number in international format (e.g., +14155552671).', variant: 'destructive' });
+        toast({ title: 'Invalid Phone Number', description: 'Please enter a complete and valid phone number.', variant: 'destructive' });
         return;
     }
     setLoading(true);
@@ -161,7 +162,6 @@ export default function SignInForm() {
       setShowOtpInput(true);
       toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.' });
     } catch (error: any) {
-      console.error("Phone Auth Error:", error);
       if (error.code === 'auth/billing-not-enabled') {
         toast({
             title: 'Service Not Available',
@@ -170,6 +170,7 @@ export default function SignInForm() {
             duration: 8000
         });
       } else {
+        console.error("Phone Auth Error:", error);
         toast({ title: 'Error', description: error.message || 'Failed to send OTP. Please refresh the page and try again.', variant: 'destructive' });
       }
     } finally {
@@ -275,7 +276,7 @@ export default function SignInForm() {
              {!showOtpInput ? (
                 <div className="space-y-8">
                     <div className="space-y-2 phone-input-container">
-                      <Label htmlFor="phone-number" className="text-center block">Phone Number</Label>
+                      <Label htmlFor="phone-number" className="block">Phone Number</Label>
                       <PhoneInput
                         id="phone-number"
                         international
@@ -293,7 +294,7 @@ export default function SignInForm() {
             ) : (
                 <div className="space-y-8">
                     <div className="space-y-2">
-                      <Label htmlFor="otp" className="text-center block">Enter OTP</Label>
+                      <Label htmlFor="otp" className="block">Enter OTP</Label>
                       <Input 
                         id="otp"
                         type="number"
