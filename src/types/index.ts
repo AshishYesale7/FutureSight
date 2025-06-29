@@ -93,11 +93,11 @@ export interface ActionableInsight {
   originalLink?: string;
 }
 
-export type SubscriptionStatus = 'active' | 'inactive' | 'cancelled';
+export type SubscriptionStatus = 'active' | 'inactive' | 'cancelled' | 'trial';
 
 export interface UserSubscription {
-  plan: 'monthly' | 'yearly';
+  plan?: 'monthly' | 'yearly';
   status: SubscriptionStatus;
   endDate: Date;
-  razorpaySubscriptionId: string;
+  razorpaySubscriptionId?: string;
 }

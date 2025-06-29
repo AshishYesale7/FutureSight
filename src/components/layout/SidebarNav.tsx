@@ -37,7 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from '@/hooks/use-theme';
-import { useState, useEffect } from 'react'; 
+import { useState, useEffect, useMemo } from 'react'; 
 import CustomizeThemeModal from './CustomizeThemeModal';
 import ProfileModal from './ProfileModal';
 import SettingsModal from './SettingsModal';
@@ -55,7 +55,7 @@ const navItems = [
 
 export default function SidebarNav() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, subscription } = useAuth();
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
@@ -64,7 +64,15 @@ export default function SidebarNav() {
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
-  // const stripeSrc = `https://climate.stripe.com/badge/qBqsdE?theme=${theme}&size=small&locale=en-IN`;
+  const daysLeftInTrial = useMemo(() => {
+    if (subscription?.status !== 'trial' || !subscription.endDate) return null;
+    const now = new Date();
+    const endDate = new Date(subscription.endDate);
+    if (endDate < now) return 0; // Trial has expired
+    const diffTime = endDate.getTime() - now.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }, [subscription]);
+
 
   useEffect(() => {
     const handleFullScreenChange = () => {
@@ -123,18 +131,13 @@ export default function SidebarNav() {
           ))}
         </nav>
         <div className="mt-auto p-4">
-          {/* <div className="p-4 pt-0">
-              <a href="https://climate.stripe.com/EYRGZr" target="_blank" rel="noopener noreferrer" className="block mb-4 h-[38px]">
-                <iframe
-                  src={stripeSrc}
-                  frameBorder="0"
-                  scrolling="no"
-                  style={{ width: '100%', height: '100%', pointerEvents: 'none' }}
-                  title="Stripe Climate Badge"
-                ></iframe>
-              </a>
-          </div>
-          <div className="border-t border-sidebar-border -mx-4 mb-4" /> */}
+          {subscription?.status === 'trial' && typeof daysLeftInTrial === 'number' && daysLeftInTrial >= 0 && (
+            <div className="text-center p-2 mx-2 mb-2 rounded-md bg-accent/10 border border-accent/20">
+              <p className="text-sm font-semibold text-accent">{daysLeftInTrial} days left in your trial</p>
+              <Button size="sm" className="mt-2 w-full h-8 text-xs bg-accent hover:bg-accent/90 text-accent-foreground" onClick={() => router.push('/subscription')}>Upgrade Now</Button>
+            </div>
+          )}
+          <div className="border-t border-sidebar-border -mx-4 mb-4" />
           <Button variant="ghost" onClick={toggleTheme} className="w-full justify-start gap-3 mb-2 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
             {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             <span>{theme === 'dark' ? "Light Mode" : "Dark Mode"}</span>

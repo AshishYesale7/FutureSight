@@ -53,7 +53,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
 
-  const isSubscribed = !!subscription && subscription.status === 'active' && new Date(subscription.endDate) > new Date();
+  const isSubscribed = !!subscription && 
+    (subscription.status === 'active' || subscription.status === 'trial') && 
+    new Date(subscription.endDate) > new Date();
 
   useEffect(() => {
     setMounted(true);
