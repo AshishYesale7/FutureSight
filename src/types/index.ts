@@ -30,6 +30,7 @@ export interface TimelineEvent {
   isDeletable?: boolean;
   isAllDay?: boolean; // Flag for all-day events
   color?: string; // Optional custom color for the event
+  googleEventId?: string; // ID of the event in Google Calendar
 }
 
 export interface CareerGoal {
@@ -117,6 +118,7 @@ export interface GmailLabel {
 
 export interface ActionableInsight {
   id:string; // e.g., 'cal:original_event_id' or 'mail:original_message_id'
+  googleEventId?: string; // The original Google Calendar event ID.
   title: string;
   date: string; // ISO 8601 format, should include time (start time for events)
   endDate?: string; // ISO 8601 format, end time for events, optional

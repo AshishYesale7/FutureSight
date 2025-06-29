@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AlertCircle, Bot, Calendar, List, CalendarDays as CalendarIconLucide, PlusCircle } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
-import type { ProcessGoogleDataInput } from '@/ai/flows/process-google-data-flow';
+import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
 import { mockTimelineEvents } from '@/data/mock';
 import type { TimelineEvent } from '@/types';
 import { format, parseISO, addMonths, subMonths, startOfMonth, isSameDay, startOfDay as dfnsStartOfDay } from 'date-fns';
@@ -58,6 +58,7 @@ const syncToLocalStorage = (events: TimelineEvent[]) => {
             date: (event.date instanceof Date && !isNaN(event.date.valueOf())) ? event.date.toISOString() : new Date().toISOString(),
             endDate: (event.endDate instanceof Date && !isNaN(event.endDate.valueOf())) ? event.endDate.toISOString() : undefined,
             color: event.color, // Include color
+            googleEventId: event.googleEventId, // Include googleEventId
             };
         });
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serializableEvents));
@@ -160,16 +161,17 @@ export default function ActualDashboardPage() {
     }
   }, [user]);
 
-  const transformInsightToEvent = useCallback((insight: any): TimelineEvent | null => {
+  const transformInsightToEvent = useCallback((insight: ActionableInsight): TimelineEvent | null => {
     const eventDate = parseDatePreservingTime(insight.date);
-    if (!eventDate) {
-      console.warn(`Invalid date format for insight ${insight.id}: ${insight.date}. Skipping insight.`);
+    if (!eventDate || !insight.googleEventId) {
+      console.warn(`Invalid data for insight. Skipping insight.`);
       return null;
     }
     const eventEndDate = parseDatePreservingTime(insight.endDate);
 
     return {
-      id: `ai-${insight.id}`,
+      id: `gcal-${insight.googleEventId}`,
+      googleEventId: insight.googleEventId,
       date: eventDate,
       endDate: eventEndDate,
       title: insight.title,
@@ -232,7 +234,8 @@ export default function ActualDashboardPage() {
             for (const event of uniqueNewEventsToAdd) {
               const { icon, ...data } = event;
               const payload = { ...data, date: data.date.toISOString(), endDate: data.endDate ? data.endDate.toISOString() : null };
-              await saveTimelineEvent(user.uid, payload);
+              // Imported events are already on GoogleCal, so we don't sync them back.
+              await saveTimelineEvent(user.uid, payload, { syncToGoogle: false });
             }
             toast({ title: "Timeline Updated", description: `${uniqueNewEventsToAdd.length} new calendar event(s) added.` });
         } else {
@@ -347,14 +350,19 @@ export default function ActualDashboardPage() {
     setIsAddingNewEvent(false);
   }, []);
 
-  const handleSaveEditedEvent = useCallback(async (updatedEvent: TimelineEvent) => {
+  const handleSaveEditedEvent = useCallback(async (updatedEvent: TimelineEvent, syncToGoogle: boolean) => {
+    if (!user) {
+      toast({ title: 'Not signed in', description: 'You must be signed in to save events.', variant: 'destructive' });
+      return;
+    }
     const originalEvents = displayedTimelineEvents;
     const eventExists = originalEvents.some(event => event.id === updatedEvent.id);
     
-    const newEvents = eventExists
+    let newEvents = eventExists
       ? originalEvents.map(event => (event.id === updatedEvent.id ? updatedEvent : event))
       : [...originalEvents, updatedEvent].sort((a,b) => a.date.getTime() - b.date.getTime());
 
+    // Optimistic UI update
     setDisplayedTimelineEvents(newEvents);
     syncToLocalStorage(newEvents);
 
@@ -364,26 +372,31 @@ export default function ActualDashboardPage() {
     });
     handleCloseEditModal();
     
-    if (user) {
-        try {
-            const { icon, ...data } = updatedEvent;
-            const payload = {
-                ...data,
-                date: data.date.toISOString(),
-                endDate: data.endDate ? data.endDate.toISOString() : null,
-            };
-            await saveTimelineEvent(user.uid, payload);
-        } catch (error) {
-            console.error("Failed to save event to Firestore", error);
-            // DO NOT REVERT UI. The changes are saved locally.
-            toast({ title: "Sync Error", description: "Could not save to server. Your changes are saved locally and will sync later.", variant: "destructive" });
-        }
+    try {
+        const { icon, ...data } = updatedEvent;
+        const payload = {
+            ...data,
+            date: data.date.toISOString(),
+            endDate: data.endDate ? data.endDate.toISOString() : null,
+        };
+        await saveTimelineEvent(user.uid, payload, { syncToGoogle });
+        // After successful save, we might want to refetch to get the latest state (e.g., googleEventId)
+        const firestoreEvents = await getTimelineEvents(user.uid);
+        setDisplayedTimelineEvents(firestoreEvents);
+        syncToLocalStorage(firestoreEvents);
+    } catch (error) {
+        console.error("Failed to save event:", error);
+        // Revert UI on failure
+        setDisplayedTimelineEvents(originalEvents);
+        syncToLocalStorage(originalEvents);
+        toast({ title: "Sync Error", description: "Could not save to server. Your changes have been reverted.", variant: "destructive" });
     }
   }, [displayedTimelineEvents, handleCloseEditModal, toast, isAddingNewEvent, user]);
 
+
   const handleEventStatusUpdate = useCallback(async (eventId: string, newStatus: 'completed' | 'missed') => {
     const eventToUpdate = displayedTimelineEvents.find(event => event.id === eventId);
-    if (!eventToUpdate) return;
+    if (!eventToUpdate || !user) return;
 
     const updatedEvent = { ...eventToUpdate, status: newStatus };
 
@@ -399,19 +412,18 @@ export default function ActualDashboardPage() {
       description: `"${updatedEvent.title}" marked as ${newStatus}.`
     });
 
-    if (user) {
-      try {
-        const { icon, ...data } = updatedEvent;
-        const payload = {
-          ...data,
-          date: data.date.toISOString(),
-          endDate: data.endDate ? data.endDate.toISOString() : null,
-        };
-        await saveTimelineEvent(user.uid, payload);
-      } catch (error) {
-        console.error("Failed to save event status to Firestore", error);
-        toast({ title: "Sync Error", description: "Could not save status to server. Change is saved locally.", variant: "destructive" });
-      }
+    try {
+      const { icon, ...data } = updatedEvent;
+      const payload = {
+        ...data,
+        date: data.date.toISOString(),
+        endDate: data.endDate ? data.endDate.toISOString() : null,
+      };
+      // Status changes on their own don't trigger a google sync
+      await saveTimelineEvent(user.uid, payload, { syncToGoogle: !!updatedEvent.googleEventId });
+    } catch (error) {
+      console.error("Failed to save event status to Firestore", error);
+      toast({ title: "Sync Error", description: "Could not save status to server. Change is saved locally.", variant: "destructive" });
     }
   }, [displayedTimelineEvents, user, toast]);
 
@@ -533,6 +545,7 @@ export default function ActualDashboardPage() {
           eventToEdit={eventBeingEdited}
           onSubmit={handleSaveEditedEvent}
           isAddingNewEvent={isAddingNewEvent}
+          isGoogleConnected={!!isGoogleConnected}
         />
       )}
     </div>

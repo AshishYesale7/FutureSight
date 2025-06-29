@@ -54,9 +54,8 @@ async function getOAuth2Client(request?: NextRequest) {
 export async function getGoogleAuthUrl(request: NextRequest, state?: string | null): Promise<string> {
     const oauth2Client = await getOAuth2Client(request); // Await the result
     const scopes = [
-        'https://www.googleapis.com/auth/calendar.readonly',
-        'https://www.googleapis.com/auth/gmail.readonly',
-        'https://www.googleapis.com/auth/calendar.events'
+        'https://www.googleapis.com/auth/calendar.events',
+        'https://www.googleapis.com/auth/gmail.readonly'
     ];
 
     return oauth2Client.generateAuthUrl({

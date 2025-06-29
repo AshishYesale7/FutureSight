@@ -3,8 +3,85 @@
 
 import { google } from 'googleapis';
 import { getAuthenticatedClient } from './googleAuthService';
-import type { RawCalendarEvent } from '@/types';
-import { startOfMonth, endOfMonth, formatISO } from 'date-fns';
+import type { RawCalendarEvent, TimelineEvent } from '@/types';
+import { startOfMonth, endOfMonth, formatISO, format, addDays, addHours } from 'date-fns';
+
+function timelineEventToGoogleEvent(event: TimelineEvent) {
+  const googleEvent: any = {
+    summary: event.title,
+    description: event.notes,
+    location: event.location,
+    // You can add more mappings here, like for attendees, etc.
+  };
+
+  if (event.isAllDay) {
+    googleEvent.start = { date: format(event.date, 'yyyy-MM-dd') };
+    // Google's end date for all-day events is exclusive, so add a day.
+    const endDate = event.endDate ? addDays(event.endDate, 1) : addDays(event.date, 1);
+    googleEvent.end = { date: format(endDate, 'yyyy-MM-dd') };
+  } else {
+    googleEvent.start = { dateTime: event.date.toISOString(), timeZone: 'UTC' };
+    const endDate = event.endDate || addHours(event.date, 1);
+    googleEvent.end = { dateTime: endDate.toISOString(), timeZone: 'UTC' };
+  }
+  return googleEvent;
+}
+
+export async function createGoogleCalendarEvent(userId: string, event: TimelineEvent) {
+  const client = await getAuthenticatedClient(userId);
+  if (!client) throw new Error("User is not authenticated with Google.");
+
+  const calendar = google.calendar({ version: 'v3', auth: client });
+  const googleEvent = timelineEventToGoogleEvent(event);
+
+  const response = await calendar.events.insert({
+    calendarId: 'primary',
+    requestBody: googleEvent,
+  });
+
+  return response.data;
+}
+
+export async function updateGoogleCalendarEvent(userId: string, googleEventId: string, event: TimelineEvent) {
+  const client = await getAuthenticatedClient(userId);
+  if (!client) throw new Error("User is not authenticated with Google.");
+  
+  const calendar = google.calendar({ version: 'v3', auth: client });
+  const googleEvent = timelineEventToGoogleEvent(event);
+
+  const response = await calendar.events.update({
+    calendarId: 'primary',
+    eventId: googleEventId,
+    requestBody: googleEvent,
+  });
+  
+  return response.data;
+}
+
+export async function deleteGoogleCalendarEvent(userId: string, googleEventId: string) {
+    const client = await getAuthenticatedClient(userId);
+    if (!client) {
+        console.warn(`User ${userId} not authenticated. Skipping Google Calendar event deletion.`);
+        return;
+    }
+    
+    const calendar = google.calendar({ version: 'v3', auth: client });
+    try {
+        await calendar.events.delete({
+            calendarId: 'primary',
+            eventId: googleEventId,
+        });
+    } catch (error: any) {
+        // If the event is already deleted on Google's side (410 Gone), we don't need to throw an error.
+        if (error.code === 410) {
+            console.log(`Event ${googleEventId} already deleted in Google Calendar.`)
+        } else {
+            console.error(`Error deleting Google Calendar event for user ${userId}:`, error);
+            throw new Error('Failed to delete Google Calendar event.');
+        }
+    }
+}
+
 
 export async function getGoogleCalendarEvents(userId: string): Promise<RawCalendarEvent[]> {
   const client = await getAuthenticatedClient(userId);

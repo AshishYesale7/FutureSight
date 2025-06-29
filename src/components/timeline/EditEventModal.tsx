@@ -11,13 +11,15 @@ import {
 } from '@/components/ui/dialog';
 import type { TimelineEvent } from '@/types';
 import EditEventForm from './EditEventForm';
+import type { EditEventFormValues } from './EditEventForm';
 
 interface EditEventModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   eventToEdit: TimelineEvent | null;
-  onSubmit: (updatedEvent: TimelineEvent) => void;
-  isAddingNewEvent?: boolean; // To help differentiate title
+  onSubmit: (updatedEvent: TimelineEvent, syncToGoogle: boolean) => void;
+  isAddingNewEvent?: boolean;
+  isGoogleConnected: boolean;
 }
 
 const EditEventModal: FC<EditEventModalProps> = ({
@@ -26,13 +28,41 @@ const EditEventModal: FC<EditEventModalProps> = ({
   eventToEdit,
   onSubmit,
   isAddingNewEvent,
+  isGoogleConnected,
 }) => {
   if (!eventToEdit) {
     return null;
   }
 
-  const handleFormSubmit = (updatedEventFromForm: TimelineEvent) => {
-    onSubmit(updatedEventFromForm);
+  const handleFormSubmit = (values: EditEventFormValues) => {
+    let startDate = new Date(values.startDateTime);
+    let endDate: Date | undefined = values.endDateTime ? new Date(values.endDateTime) : undefined;
+
+    if (values.isAllDay) {
+      startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
+      if (endDate) {
+        endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 0, 0, 0, 0);
+      }
+    }
+    
+    const updatedEvent: TimelineEvent = {
+      ...eventToEdit,
+      title: values.title,
+      notes: values.notes,
+      date: startDate,
+      endDate: endDate,
+      type: values.type,
+      isAllDay: values.isAllDay || false,
+      color: values.color,
+      status: values.status || 'pending',
+      tags: values.tags || '',
+      location: values.location || '',
+      priority: values.priority || 'None',
+      url: values.url || '',
+      imageUrl: values.imageUrl || '',
+    };
+    
+    onSubmit(updatedEvent, values.syncToGoogle);
     onOpenChange(false);
   };
 
@@ -61,6 +91,7 @@ const EditEventModal: FC<EditEventModalProps> = ({
             onSubmit={handleFormSubmit}
             onCancel={handleCancel}
             isAddingNewEvent={isAddingNewEvent}
+            isGoogleConnected={isGoogleConnected}
           />
         </div>
       </DialogContent>
@@ -69,4 +100,3 @@ const EditEventModal: FC<EditEventModalProps> = ({
 };
 
 export default EditEventModal;
-

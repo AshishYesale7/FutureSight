@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { Slash } from 'lucide-react';
+import { Globe, Slash } from 'lucide-react';
 
 import type { TimelineEvent} from '@/types';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,8 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
+import { Switch } from '../ui/switch';
+import { Separator } from '../ui/separator';
 
 const eventTypes: TimelineEvent['type'][] = [
   'exam',
@@ -85,6 +87,7 @@ const editEventFormSchema = z.object({
   priority: z.enum(eventPriorities).optional(),
   url: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   imageUrl: z.string().url({ message: 'Please enter a valid image URL.' }).optional().or(z.literal('')),
+  syncToGoogle: z.boolean().default(false),
 }).refine(data => {
   if (data.startDateTime && data.endDateTime) {
     return new Date(data.endDateTime) >= new Date(data.startDateTime);
@@ -99,10 +102,11 @@ export type EditEventFormValues = z.infer<typeof editEventFormSchema>;
 
 interface EditEventFormProps {
   eventToEdit: TimelineEvent;
-  onSubmit: (updatedEvent: TimelineEvent) => void;
+  onSubmit: (values: EditEventFormValues) => void;
   onCancel: () => void;
   className?: string;
   isAddingNewEvent?: boolean;
+  isGoogleConnected: boolean;
 }
 
 const formatDateForInput = (date?: Date): string => {
@@ -124,6 +128,7 @@ const EditEventForm: FC<EditEventFormProps> = ({
   onSubmit,
   onCancel,
   className,
+  isGoogleConnected,
 }) => {
   const form = useForm<EditEventFormValues>({
     resolver: zodResolver(editEventFormSchema),
@@ -140,6 +145,7 @@ const EditEventForm: FC<EditEventFormProps> = ({
       location: '',
       url: '',
       imageUrl: '',
+      syncToGoogle: false,
     },
   });
 
@@ -158,42 +164,13 @@ const EditEventForm: FC<EditEventFormProps> = ({
       priority: eventToEdit.priority || 'None',
       url: eventToEdit.url || '',
       imageUrl: eventToEdit.imageUrl || '',
+      syncToGoogle: !!eventToEdit.googleEventId,
     });
   }, [eventToEdit, form]);
 
-  const handleSubmit = (values: EditEventFormValues) => {
-    let startDate = new Date(values.startDateTime);
-    let endDate: Date | undefined = values.endDateTime ? new Date(values.endDateTime) : undefined;
-
-    if (values.isAllDay) {
-      startDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
-      if (endDate) {
-        endDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 0, 0, 0, 0);
-      }
-    }
-    
-    const updatedEvent: TimelineEvent = {
-      ...eventToEdit,
-      title: values.title,
-      notes: values.notes,
-      date: startDate,
-      endDate: endDate,
-      type: values.type,
-      isAllDay: values.isAllDay || false,
-      color: values.color,
-      status: values.status || 'pending',
-      tags: values.tags || '',
-      location: values.location || '',
-      priority: values.priority || 'None',
-      url: values.url || '',
-      imageUrl: values.imageUrl || '',
-    };
-    onSubmit(updatedEvent);
-  };
-
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className={cn('space-y-6', className)}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className={cn('space-y-6', className)}>
         <FormField
           control={form.control}
           name="title"
@@ -442,6 +419,30 @@ const EditEventForm: FC<EditEventFormProps> = ({
                 <FormMessage />
                 </FormItem>
             )}
+        />
+
+        <Separator />
+        
+        <FormField
+          control={form.control}
+          name="syncToGoogle"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+              <div className="space-y-0.5">
+                <FormLabel className="flex items-center gap-2"><Globe className="h-4 w-4"/>Sync to Google Calendar</FormLabel>
+                <FormDescription>
+                  {isGoogleConnected ? "Add/update this event in your primary Google Calendar." : "Connect your Google account in Settings to enable sync."}
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={!isGoogleConnected}
+                />
+              </FormControl>
+            </FormItem>
+          )}
         />
         
         <div className="flex justify-end space-x-3 pt-4">

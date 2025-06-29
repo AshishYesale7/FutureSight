@@ -35,6 +35,7 @@ export type ProcessGoogleDataInput = z.infer<typeof ProcessGoogleDataInputSchema
 
 const ActionableInsightSchema = z.object({
   id: z.string().describe("A unique ID for this insight (e.g., 'cal:original_event_id')."),
+  googleEventId: z.string().describe("The original, unmodified event ID from the Google Calendar API."),
   title: z.string().describe("A concise title for the actionable item or event. If there's a specific time associated (e.g., 'Meeting at 10:00 AM'), include it here."),
   date: z.string().datetime().describe("The primary date/time for this item (ISO 8601 format). For calendar events, use the startDateTime."),
   endDate: z.string().datetime().optional().describe("The end date/time for this item (ISO 8601 format), if applicable (e.g., from calendar events)."),
@@ -82,8 +83,10 @@ Calendar Processing Instructions:
 4.  Use the full ISO 8601 'startDateTime' and 'endDateTime' for the 'date' and 'endDate' fields.
 5.  Correctly identify all-day events and set the 'isAllDay' flag to true.
 6.  Create a brief 'summary' for each insight from the event description.
-7.  Set the 'source' to 'google_calendar' and construct the 'id' by prefixing 'cal:'.
-8.  Include the 'originalLink' (htmlLink) if available.
+7.  Use the original, unmodified 'Event ID' from the input for the 'googleEventId' field.
+8.  Construct the 'id' by prefixing 'cal:' to the original event ID.
+9.  Set the 'source' to 'google_calendar'.
+10. Include the 'originalLink' (htmlLink) if available.
 
 Structure your final output strictly according to the 'ActionableInsightSchema'.
 Generate the list of actionable insights based on the provided data.
