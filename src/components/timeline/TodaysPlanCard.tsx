@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { CardContent, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Accordion,
   AccordionContent,
@@ -21,7 +21,6 @@ import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { TodaysPlanContent } from './TodaysPlanContent';
 import { format, subDays, addDays, isToday, isTomorrow, isYesterday, startOfDay, differenceInDays } from 'date-fns';
 import EditRoutineModal from './EditRoutineModal';
-import { cn } from '@/lib/utils';
 
 export default function TodaysPlanCard() {
   const { user } = useAuth();
@@ -88,14 +87,14 @@ export default function TodaysPlanCard() {
     }
   };
 
-  const handleStatusChange = (itemId: string, newStatus: 'completed' | 'missed') => {
+  const handleStatusChange = (itemIndex: number, newStatus: 'completed' | 'missed') => {
     if (!plan || !user) return;
     
-    const updatedSchedule = plan.schedule.map(item =>
-        item.id === itemId ? { ...item, status: newStatus } : item
+    const updatedSchedule = plan.schedule.map((item, index) =>
+        index === itemIndex ? { ...item, status: newStatus } : item
     );
     const updatedPlan = { ...plan, schedule: updatedSchedule };
-    setPlan(updatedPlan); // Optimistic update
+    setPlan(updatedPlan); // Optimistic UI update
 
     const dateStr = format(displayDate, 'yyyy-MM-dd');
     saveDailyPlan(user.uid, dateStr, updatedPlan)

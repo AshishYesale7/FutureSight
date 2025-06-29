@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 interface TodaysPlanContentProps {
   plan: DailyPlan;
   displayDate: Date;
-  onStatusChange?: (itemId: string, newStatus: 'completed' | 'missed') => void;
+  onStatusChange?: (itemIndex: number, newStatus: 'completed' | 'missed') => void;
 }
 
 export function TodaysPlanContent({ plan, displayDate, onStatusChange }: TodaysPlanContentProps) {
@@ -88,11 +88,15 @@ export function TodaysPlanContent({ plan, displayDate, onStatusChange }: TodaysP
 
             const isPast = isToday && hour24 < currentHour;
             const isCurrent = isToday && hour24 === currentHour;
+            
+            // The item is checked if its status is 'completed'.
+            // For items that are still 'pending', they will appear checked if they are in the past,
+            // giving the user a chance to mark them as 'missed' if they were not done.
             const isChecked = item.status === 'completed' || (item.status !== 'missed' && isPast);
 
             const handleCheckboxChange = (checked: boolean) => {
                 if (onStatusChange) {
-                    onStatusChange(item.id, checked ? 'completed' : 'missed');
+                    onStatusChange(index, checked ? 'completed' : 'missed');
                 }
             };
 
@@ -102,13 +106,13 @@ export function TodaysPlanContent({ plan, displayDate, onStatusChange }: TodaysP
                     <div className="absolute left-[-4px] top-1/2 -translate-y-1/2 h-2 w-2 rounded-full bg-accent animate-pulse"></div>
                 )}
                 <Checkbox 
-                    id={`plan-item-${item.id}`} 
+                    id={`plan-item-${item.id}-${index}`}
                     className="mr-3" 
                     checked={isChecked}
                     onCheckedChange={handleCheckboxChange}
                     disabled={!onStatusChange}
                 />
-                <label htmlFor={`plan-item-${item.id}`} className="flex items-center">
+                <label htmlFor={`plan-item-${item.id}-${index}`} className="flex items-center cursor-pointer">
                   <span className="font-medium w-24">{item.time}</span>
                   <span>{item.activity}</span>
                 </label>
