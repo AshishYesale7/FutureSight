@@ -93,39 +93,45 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     const recaptchaContainer = document.getElementById('recaptcha-container-settings');
 
     const cleanup = () => {
-        if (window.recaptchaVerifierSettings) {
-            window.recaptchaVerifierSettings.clear();
-            window.recaptchaVerifierSettings = undefined;
-        }
-        if (recaptchaContainer) {
-            recaptchaContainer.innerHTML = '';
-        }
+      if (window.recaptchaVerifierSettings) {
+        window.recaptchaVerifierSettings.clear();
+        window.recaptchaVerifierSettings = undefined;
+      }
+      if (recaptchaContainer) {
+        recaptchaContainer.innerHTML = '';
+      }
     };
 
-    if (!isOpen || linkingPhoneState !== 'input' || !auth) {
-        cleanup();
-        return;
+    // Exit conditions for the phone linking flow. Cleanup when flow is done or modal is closed.
+    if (!isOpen || linkingPhoneState === 'idle' || linkingPhoneState === 'success') {
+      cleanup();
+      return;
     }
 
-    if (!recaptchaContainer) return;
-    
-    cleanup();
+    // At this point, we are actively in the linking flow.
+    // We only create the verifier ONCE when entering the 'input' state.
+    if (linkingPhoneState === 'input' && !window.recaptchaVerifierSettings) {
+      if (!recaptchaContainer || !auth) return;
 
-    try {
+      try {
         const verifier = new RecaptchaVerifier(auth, 'recaptcha-container-settings', {
-            'size': 'invisible',
-            'callback': () => console.log('reCAPTCHA for settings verified'),
-            'expired-callback': () => {
-                toast({ title: 'reCAPTCHA Expired', description: 'Please try again.', variant: 'destructive' });
-                cleanup();
-            }
+          'size': 'invisible',
+          'callback': () => console.log('reCAPTCHA for settings verified'),
+          'expired-callback': () => {
+            toast({ title: 'reCAPTCHA Expired', description: 'Please try again.', variant: 'destructive' });
+            cleanup();
+            setLinkingPhoneState('input'); // Reset state to allow user to retry
+          },
         });
         window.recaptchaVerifierSettings = verifier;
         verifier.render();
-    } catch (e: any) {
+      } catch (e: any) {
         console.error("reCAPTCHA settings error:", e);
+        toast({ title: "reCAPTCHA Error", description: "Could not initialize reCAPTCHA. Please refresh and try again.", variant: "destructive"});
+      }
     }
-    
+
+    // This cleanup will be called when the component unmounts.
     return cleanup;
   }, [isOpen, linkingPhoneState, auth, toast]);
 
@@ -182,7 +188,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   }
 
   const handleConnectGoogle = async () => {
-    if (!user || !auth?.currentUser) {
+    if (!user) {
         toast({ title: 'Error', description: 'You must be logged in to connect a Google account.', variant: 'destructive' });
         return;
     }
@@ -203,7 +209,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     provider.addScope('https://www.googleapis.com/auth/calendar.events');
 
     try {
-        await linkWithPopup(auth.currentUser, provider);
+        await linkWithPopup(user, provider);
         await refreshUser(); 
         
         toast({ title: 'Account Linked!', description: 'Now granting permissions in the new tab.' });
@@ -258,13 +264,13 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   const handleSendLinkOtp = async () => {
       const verifier = window.recaptchaVerifierSettings;
       const fullPhoneNumber = typeof phoneForLinking === 'string' ? phoneForLinking : '';
-      if (!auth.currentUser || !verifier || !fullPhoneNumber || !isValidPhoneNumber(fullPhoneNumber)) {
-        toast({ title: 'Invalid Phone Number', variant: 'destructive'});
+      if (!user || !verifier || !fullPhoneNumber || !isValidPhoneNumber(fullPhoneNumber)) {
+        toast({ title: 'Invalid Phone Number', description: "Please enter a valid phone number.", variant: 'destructive'});
         return;
       }
       setLinkingPhoneState('loading');
       try {
-        const confirmationResult = await linkWithPhoneNumber(auth.currentUser, fullPhoneNumber, verifier);
+        const confirmationResult = await linkWithPhoneNumber(user, fullPhoneNumber, verifier);
         window.confirmationResultSettings = confirmationResult;
         setLinkingPhoneState('otp-sent');
         toast({ title: 'OTP Sent', description: 'Please check your phone for the verification code.'});
