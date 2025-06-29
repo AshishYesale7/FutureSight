@@ -4,7 +4,7 @@
 import { google } from 'googleapis';
 import { getAuthenticatedClient } from './googleAuthService';
 import type { RawCalendarEvent, TimelineEvent } from '@/types';
-import { startOfMonth, endOfMonth, formatISO, format, addDays, addHours } from 'date-fns';
+import { startOfMonth, endOfMonth, formatISO, format, addDays, addHours, addMonths } from 'date-fns';
 
 function timelineEventToGoogleEvent(event: TimelineEvent) {
   const googleEvent: any = {
@@ -94,16 +94,16 @@ export async function getGoogleCalendarEvents(userId: string): Promise<RawCalend
 
   const calendar = google.calendar({ version: 'v3', auth: client });
   const now = new Date();
-  // Fetch events from the start of the current month to the end of the current month
+  // Fetch events from the start of the current month to 3 months in the future
   const timeMin = startOfMonth(now).toISOString();
-  const timeMax = endOfMonth(now).toISOString();
+  const timeMax = endOfMonth(addMonths(now, 3)).toISOString();
 
   try {
     const response = await calendar.events.list({
       calendarId: 'primary',
       timeMin: timeMin,
       timeMax: timeMax,
-      maxResults: 50,
+      maxResults: 100, // Increased to fetch more events in the wider range
       singleEvents: true,
       orderBy: 'startTime',
     });

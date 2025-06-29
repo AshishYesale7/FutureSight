@@ -234,7 +234,7 @@ export default function ActualDashboardPage() {
       ]);
 
       if (calendarEvents.length === 0 && googleTasks.length === 0) {
-        toast({ title: "No New Items", description: "No new events or tasks found in your Google account." });
+        toast({ title: "No New Items", description: "No new events or tasks found in your Google account to process." });
         setIsLoading(false);
         return;
       }
@@ -248,30 +248,31 @@ export default function ActualDashboardPage() {
 
       const result = await processGoogleData(input);
       
-      if (result.insights) {
-        const transformedEvents = result.insights.map(transformInsightToEvent).filter(event => event !== null) as TimelineEvent[];
-        
-        const currentEventIds = new Set(displayedTimelineEvents.map(e => e.id));
-        const uniqueNewEventsToAdd = transformedEvents.filter(newEvent => !currentEventIds.has(newEvent.id));
-        
-        if (uniqueNewEventsToAdd.length > 0) {
-            const updatedEvents = [...displayedTimelineEvents, ...uniqueNewEventsToAdd];
-            setDisplayedTimelineEvents(updatedEvents);
-            syncToLocalStorage(updatedEvents);
-
-            for (const event of uniqueNewEventsToAdd) {
-              const { icon, ...data } = event;
-              const payload = { ...data, date: data.date.toISOString(), endDate: data.endDate ? data.endDate.toISOString() : null };
-              // Imported events are already on Google, so we don't sync them back.
-              await saveTimelineEvent(user.uid, payload, { syncToGoogle: false });
-            }
-            toast({ title: "Timeline Updated", description: `${uniqueNewEventsToAdd.length} new item(s) from Google added.` });
-        } else {
-            toast({ title: "Already Synced", description: "Your calendar and tasks are up-to-date." });
-        }
-      } else {
-        toast({ title: "No Actionable Insights", description: "The AI didn't find any new actionable items in your data." });
+      if (!result.insights || result.insights.length === 0) {
+        toast({ title: "No Actionable Insights", description: "The AI analyzed your data but didn't find any new items to add." });
+        setIsLoading(false);
+        return;
       }
+        
+      const transformedEvents = result.insights.map(transformInsightToEvent).filter(event => event !== null) as TimelineEvent[];
+      const currentEventIds = new Set(displayedTimelineEvents.map(e => e.id));
+      const uniqueNewEventsToAdd = transformedEvents.filter(newEvent => !currentEventIds.has(newEvent.id));
+      
+      if (uniqueNewEventsToAdd.length > 0) {
+          const updatedEvents = [...displayedTimelineEvents, ...uniqueNewEventsToAdd];
+          setDisplayedTimelineEvents(updatedEvents);
+          syncToLocalStorage(updatedEvents);
+
+          for (const event of uniqueNewEventsToAdd) {
+            const { icon, ...data } = event;
+            const payload = { ...data, date: data.date.toISOString(), endDate: data.endDate ? data.endDate.toISOString() : null };
+            await saveTimelineEvent(user.uid, payload, { syncToGoogle: false });
+          }
+          toast({ title: "Timeline Updated", description: `${uniqueNewEventsToAdd.length} new item(s) from Google were added.` });
+      } else {
+          toast({ title: "Already Synced", description: "Your timeline already contains all the latest items from Google." });
+      }
+
     } catch (error: any) {
       console.error('Error processing Google data:', error);
       const errorMessage = error.message || 'Failed to fetch or process Google data.';
