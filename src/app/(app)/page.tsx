@@ -123,7 +123,6 @@ export default function ActualDashboardPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
   const { toast } = useToast();
-  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [activeDisplayMonth, setActiveDisplayMonth] = useState<Date>(startOfMonth(new Date()));
   const [selectedDateForDayView, setSelectedDateForDayView] = useState<Date | null>(null);
 
@@ -339,11 +338,6 @@ export default function ActualDashboardPage() {
         isSameDay(dfnsStartOfDay(event.date), dfnsStartOfDay(selectedDateForDayView))
     ).sort((a,b) => a.date.getTime() - b.date.getTime());
   }, [displayedTimelineEvents, selectedDateForDayView]);
-
-  const handleViewModeChange = (newMode: 'calendar' | 'list') => {
-    setViewMode(newMode);
-    setSelectedDateForDayView(null);
-  };
 
   const handleOpenEditModal = useCallback((event?: TimelineEvent) => {
     if (event) {
@@ -586,78 +580,76 @@ export default function ActualDashboardPage() {
 
 
   return (
-    <div className={cn("space-y-8 h-full flex flex-col")}>
+    <div className="space-y-8">
       <TodaysPlanCard />
-      
-      <Tabs
-        value={viewMode}
-        onValueChange={(value) => handleViewModeChange(value as 'calendar' | 'list')}
-        className="flex flex-col flex-1 min-h-0"
-      >
-        <div className="flex justify-between items-center mb-4 gap-2">
-          <TabsList className="inline-flex h-auto p-1 rounded-full bg-muted/50 backdrop-blur-sm border border-border/30">
-            <TabsTrigger value="calendar" className="px-4 py-1.5 text-sm h-auto rounded-full data-[state=active]:shadow-md">
-              <Calendar className="mr-2 h-4 w-4" /> Calendar
-            </TabsTrigger>
-            <div className="w-px h-6 bg-border/50 self-center" />
-            <TabsTrigger value="list" className="px-4 py-1.5 text-sm h-auto rounded-full data-[state=active]:shadow-md">
-              <List className="mr-2 h-4 w-4" /> List
-            </TabsTrigger>
-          </TabsList>
-          
-          <Button 
-            onClick={() => handleOpenEditModal()} 
-            className="bg-accent hover:bg-accent/90 text-accent-foreground flex-shrink-0 justify-center w-10 h-10 p-0 rounded-full md:w-auto md:px-4 md:rounded-md"
-          >
-            <PlusCircle className="h-5 w-5" />
-            <span className="hidden md:inline md:ml-2">Add New Event</span>
-          </Button>
-        </div>
-        
-        <div className="flex-1 flex flex-col min-h-0">
-          <TabsContent key="calendar-view" value="calendar" className={cn("mt-0", viewMode === 'calendar' ? 'flex flex-1' : 'hidden')}>
-            <div className="flex flex-col lg:flex-row gap-6 w-full">
-              {/* Left column for calendar and timetable */}
-              <div className="flex-1 space-y-6 lg:min-w-0">
-                  <EventCalendarView
-                      events={displayedTimelineEvents}
-                      month={activeDisplayMonth}
-                      onMonthChange={setActiveDisplayMonth}
-                      onDayClick={handleDayClickFromCalendar}
-                  />
-                  {selectedDateForDayView ? (
-                      <DayTimetableView
-                          date={selectedDateForDayView}
-                          events={eventsForDayView}
-                          onClose={closeDayTimetableView}
-                          onDeleteEvent={handleDeleteTimelineEvent}
-                          onEditEvent={handleOpenEditModal}
-                          onEventStatusChange={handleEventStatusUpdate}
-                      />
-                  ) : (
-                      <SlidingTimelineView
-                          events={displayedTimelineEvents}
-                          onDeleteEvent={handleDeleteTimelineEvent}
-                          onEditEvent={handleOpenEditModal}
-                          currentDisplayMonth={activeDisplayMonth}
-                          onNavigateMonth={handleMonthNavigationForSharedViews}
-                      />
-                  )}
-              </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Left Column */}
+        <div className="lg:col-span-2 space-y-8">
+          <Tabs defaultValue="calendar">
+            <div className="flex justify-between items-center mb-4 gap-2">
+              <TabsList className="inline-flex h-auto p-1 rounded-full bg-muted/50 backdrop-blur-sm border border-border/30">
+                <TabsTrigger value="calendar" className="px-4 py-1.5 text-sm h-auto rounded-full data-[state=active]:shadow-md">
+                  <Calendar className="mr-2 h-4 w-4" /> Calendar
+                </TabsTrigger>
+                <div className="w-px h-6 bg-border/50 self-center" />
+                <TabsTrigger value="list" className="px-4 py-1.5 text-sm h-auto rounded-full data-[state=active]:shadow-md">
+                  <List className="mr-2 h-4 w-4" /> List
+                </TabsTrigger>
+              </TabsList>
               
-              {/* Right column for emails */}
-              <ImportantEmailsCard />
+              <Button 
+                onClick={() => handleOpenEditModal()} 
+                className="bg-accent hover:bg-accent/90 text-accent-foreground flex-shrink-0 justify-center w-10 h-10 p-0 rounded-full md:w-auto md:px-4 md:rounded-md"
+              >
+                <PlusCircle className="h-5 w-5" />
+                <span className="hidden md:inline md:ml-2">Add New Event</span>
+              </Button>
             </div>
-          </TabsContent>
-          <TabsContent key="list-view" value="list" className={cn("mt-0", viewMode === 'list' ? 'flex flex-col h-[70vh]' : 'hidden')}>
-            <TimelineListView
-              events={displayedTimelineEvents}
-              onDeleteEvent={handleDeleteTimelineEvent}
-              onEditEvent={handleOpenEditModal}
-            />
-          </TabsContent>
+            
+            <TabsContent value="calendar" className="mt-0 space-y-8">
+               <EventCalendarView
+                  events={displayedTimelineEvents}
+                  month={activeDisplayMonth}
+                  onMonthChange={setActiveDisplayMonth}
+                  onDayClick={handleDayClickFromCalendar}
+              />
+              {selectedDateForDayView ? (
+                  <DayTimetableView
+                      date={selectedDateForDayView}
+                      events={eventsForDayView}
+                      onClose={closeDayTimetableView}
+                      onDeleteEvent={handleDeleteTimelineEvent}
+                      onEditEvent={handleOpenEditModal}
+                      onEventStatusChange={handleEventStatusUpdate}
+                  />
+              ) : (
+                  <SlidingTimelineView
+                      events={displayedTimelineEvents}
+                      onDeleteEvent={handleDeleteTimelineEvent}
+                      onEditEvent={handleOpenEditModal}
+                      currentDisplayMonth={activeDisplayMonth}
+                      onNavigateMonth={handleMonthNavigationForSharedViews}
+                  />
+              )}
+            </TabsContent>
+
+            <TabsContent value="list" className="mt-0">
+              <TimelineListView
+                events={displayedTimelineEvents}
+                onDeleteEvent={handleDeleteTimelineEvent}
+                onEditEvent={handleOpenEditModal}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
-      </Tabs>
+
+        {/* Right Column */}
+        <div className="lg:col-span-1 space-y-8">
+          <ImportantEmailsCard />
+        </div>
+      </div>
+
 
       <Card className="frosted-glass shadow-lg">
         <CardHeader>
