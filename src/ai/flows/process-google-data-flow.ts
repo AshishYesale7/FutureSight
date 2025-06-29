@@ -13,6 +13,8 @@
 import { generateWithApiKey } from '@/ai/genkit';
 import {z} from 'genkit';
 import type { TimelineEvent } from '@/types';
+import { getGoogleCalendarEvents } from '@/services/googleCalendarService';
+import { getGoogleGmailMessages } from '@/services/googleGmailService';
 
 // Schemas for Google API Data (adapt as needed for actual API responses)
 const RawCalendarEventSchema = z.object({
@@ -38,7 +40,8 @@ const ProcessGoogleDataPayloadSchema = z.object({
     .describe("A list of Google Calendar events for a relevant period. Can be empty."),
   gmailMessages: z.array(RawGmailMessageSchema)
     .optional()
-    .describe("A list of potentially important Gmail messages for a relevant period. Can be empty.")
+    .describe("A list of potentially important Gmail messages for a relevant period. Can be empty."),
+  userId: z.string().describe("The user's unique ID.")
 });
 
 const ProcessGoogleDataInputSchema = ProcessGoogleDataPayloadSchema.extend({
@@ -64,15 +67,21 @@ const ProcessGoogleDataOutputSchema = z.object({
 export type ProcessGoogleDataOutput = z.infer<typeof ProcessGoogleDataOutputSchema>;
 
 export async function processGoogleData(input: ProcessGoogleDataInput): Promise<ProcessGoogleDataOutput> {
-  if ((!input.calendarEvents || input.calendarEvents.length === 0) && (!input.gmailMessages || input.gmailMessages.length === 0)) {
+  // Now we fetch the data inside the flow
+  const [calendarEvents, gmailMessages] = await Promise.all([
+    getGoogleCalendarEvents(input.userId),
+    getGoogleGmailMessages(input.userId),
+  ]);
+
+  if (calendarEvents.length === 0 && gmailMessages.length === 0) {
     return { insights: [] };
   }
-
+  
   const currentDate = new Date().toISOString();
 
   let calendarEventsSection = 'No calendar events provided.';
-  if (input.calendarEvents && input.calendarEvents.length > 0) {
-    calendarEventsSection = input.calendarEvents.map(event => `
+  if (calendarEvents.length > 0) {
+    calendarEventsSection = calendarEvents.map(event => `
 - Event ID: ${event.id}
   Title: ${event.summary}
   Description: ${event.description || ''}
@@ -83,8 +92,8 @@ export async function processGoogleData(input: ProcessGoogleDataInput): Promise<
   }
 
   let gmailMessagesSection = 'No Gmail messages provided.';
-  if (input.gmailMessages && input.gmailMessages.length > 0) {
-    gmailMessagesSection = input.gmailMessages.map(msg => {
+  if (gmailMessages.length > 0) {
+    gmailMessagesSection = gmailMessages.map(msg => {
         const receivedDate = new Date(parseInt(msg.internalDate, 10));
         const receivedDateISO = !isNaN(receivedDate.valueOf()) ? receivedDate.toISOString() : 'Invalid Date';
         return `

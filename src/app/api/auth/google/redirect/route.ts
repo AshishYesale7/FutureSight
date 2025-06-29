@@ -4,7 +4,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
     try {
-        const url = await getGoogleAuthUrl();
+        const { searchParams } = new URL(request.url);
+        const state = searchParams.get('state');
+        const url = await getGoogleAuthUrl(state);
         return NextResponse.redirect(url);
     } catch (error: any) {
         console.error("Failed to get Google Auth URL:", error.message);

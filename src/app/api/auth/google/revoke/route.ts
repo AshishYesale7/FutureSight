@@ -1,23 +1,27 @@
-import { clearTokens, getTokens } from '@/services/googleAuthService';
+import { clearGoogleTokensFromFirestore, getAuthenticatedClient } from '@/services/googleAuthService';
 import { google } from 'googleapis';
-import { NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
     try {
-        const tokens = await getTokens();
-        // Attempt to revoke the token with Google first
-        if (tokens && tokens.access_token) {
-            const oauth2Client = new google.auth.OAuth2();
-            oauth2Client.setCredentials(tokens);
-            try {
-                await oauth2Client.revokeCredentials();
-                console.log("Successfully revoked Google token.");
+        const { userId } = await request.json();
+        if (!userId) {
+            return NextResponse.json({ success: false, message: 'User ID is required.' }, { status: 400 });
+        }
+
+        const client = await getAuthenticatedClient(userId);
+        
+        if (client) {
+             try {
+                // This revokes both access and refresh tokens.
+                await client.revokeCredentials();
+                console.log(`Successfully revoked Google token for user ${userId}.`);
             } catch (revokeError) {
-                console.warn("Failed to revoke Google token, it may already be invalid. Clearing local tokens anyway.", revokeError);
+                console.warn(`Failed to revoke Google token for user ${userId}, it may already be invalid. Clearing from DB anyway.`, revokeError);
             }
         }
 
-        await clearTokens();
+        await clearGoogleTokensFromFirestore(userId);
         return NextResponse.json({ success: true, message: 'Google session cleared.' });
     } catch (error) {
         console.error('Error revoking Google session:', error);

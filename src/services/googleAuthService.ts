@@ -1,13 +1,14 @@
 'use server';
 
 import { google } from 'googleapis';
-import { cookies } from 'next/headers';
 import type { Credentials } from 'google-auth-library';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { deleteField } from 'firebase/firestore';
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const NEXT_PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
-const GOOGLE_TOKEN_COOKIE = 'google_auth_tokens';
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET || !NEXT_PUBLIC_BASE_URL) {
     console.error("Missing Google OAuth credentials or base URL in environment variables.");
@@ -24,7 +25,7 @@ function getOAuth2Client() {
     );
 }
 
-export async function getGoogleAuthUrl(): Promise<string> {
+export async function getGoogleAuthUrl(state?: string | null): Promise<string> {
     const oauth2Client = getOAuth2Client();
     const scopes = [
         'https://www.googleapis.com/auth/calendar.readonly',
@@ -36,6 +37,7 @@ export async function getGoogleAuthUrl(): Promise<string> {
         access_type: 'offline',
         prompt: 'consent',
         scope: scopes,
+        state: state ?? undefined,
     });
 }
 
@@ -48,34 +50,36 @@ export async function getTokensFromCode(code: string): Promise<Credentials> {
     return tokens;
 }
 
-export async function saveTokens(tokens: Credentials): Promise<void> {
-    cookies().set(GOOGLE_TOKEN_COOKIE, JSON.stringify(tokens), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV !== 'development',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 30, // 30 days
-    });
+// Firestore-based token management
+export async function saveGoogleTokensToFirestore(userId: string, tokens: Credentials): Promise<void> {
+    if (!db) throw new Error("Firestore is not initialized.");
+    if (!tokens.refresh_token) {
+        console.warn("Attempting to save Google tokens without a refresh token. User may need to re-authenticate later.");
+    }
+    const userDocRef = doc(db, 'users', userId);
+    await setDoc(userDocRef, { google_tokens: tokens }, { merge: true });
 }
 
-export async function getTokens(): Promise<Credentials | null> {
-    const tokenCookie = cookies().get(GOOGLE_TOKEN_COOKIE);
-    if (tokenCookie) {
-        try {
-            return JSON.parse(tokenCookie.value);
-        } catch (error) {
-            console.error("Failed to parse token cookie:", error);
-            return null;
-        }
+export async function getGoogleTokensFromFirestore(userId: string): Promise<Credentials | null> {
+    if (!db) throw new Error("Firestore is not initialized.");
+    const userDocRef = doc(db, 'users', userId);
+    const docSnap = await getDoc(userDocRef);
+    if (docSnap.exists() && docSnap.data().google_tokens) {
+        return docSnap.data().google_tokens as Credentials;
     }
     return null;
 }
 
-export async function clearTokens(): Promise<void> {
-    cookies().delete(GOOGLE_TOKEN_COOKIE);
+export async function clearGoogleTokensFromFirestore(userId: string): Promise<void> {
+    if (!db) throw new Error("Firestore is not initialized.");
+    const userDocRef = doc(db, 'users', userId);
+    await updateDoc(userDocRef, {
+        google_tokens: deleteField()
+    });
 }
 
-export async function getAuthenticatedClient() {
-    const tokens = await getTokens();
+export async function getAuthenticatedClient(userId: string) {
+    const tokens = await getGoogleTokensFromFirestore(userId);
     if (!tokens) {
         return null;
     }
@@ -85,15 +89,17 @@ export async function getAuthenticatedClient() {
 
     // Check if the access token is expired (within 1 minute of expiry) and refresh if necessary
     if (tokens.expiry_date && tokens.expiry_date < (Date.now() + 60000)) {
-        console.log("Google access token may be expired, attempting to refresh...");
+        console.log(`Google access token for user ${userId} may be expired, attempting to refresh...`);
         try {
             const { credentials } = await client.refreshAccessToken();
-            client.setCredentials(credentials);
-            await saveTokens(credentials); // Save the new tokens
-            console.log("Google access token refreshed successfully.");
+            // The new credentials might not include a refresh token, so merge them
+            const newTokens = { ...tokens, ...credentials };
+            client.setCredentials(newTokens);
+            await saveGoogleTokensToFirestore(userId, newTokens); // Save the new tokens
+            console.log(`Google access token for user ${userId} refreshed successfully.`);
         } catch (error) {
-            console.error("Error refreshing access token:", error);
-            await clearTokens(); // The refresh token might be invalid, clear everything.
+            console.error(`Error refreshing access token for user ${userId}:`, error);
+            await clearGoogleTokensFromFirestore(userId); // The refresh token might be invalid, clear everything.
             return null;
         }
     }

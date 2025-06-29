@@ -152,10 +152,16 @@ export default function ActualDashboardPage() {
   }, [user, toast]);
 
   useEffect(() => {
-    fetch('/api/auth/google/status')
+    if(user) {
+        fetch('/api/auth/google/status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: user.uid }),
+        })
         .then(res => res.json())
         .then(data => setIsGoogleConnected(data.isConnected));
-  }, []);
+    }
+  }, [user]);
 
   const transformInsightToEvent = (insight: ActionableInsight): TimelineEvent | null => {
     const eventDate = parseDatePreservingTime(insight.date);
@@ -212,8 +218,8 @@ export default function ActualDashboardPage() {
     try {
       // Fetch real data instead of mock data
       const [calendarEvents, gmailMessages] = await Promise.all([
-        getGoogleCalendarEvents(),
-        getGoogleGmailMessages()
+        getGoogleCalendarEvents(user.uid),
+        getGoogleGmailMessages(user.uid)
       ]);
 
       if (calendarEvents.length === 0 && gmailMessages.length === 0) {
@@ -226,6 +232,7 @@ export default function ActualDashboardPage() {
         calendarEvents,
         gmailMessages,
         apiKey,
+        userId: user.uid,
       };
 
       const result = await processGoogleData(input);

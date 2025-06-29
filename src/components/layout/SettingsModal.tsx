@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { KeyRound, Globe, Unplug, CheckCircle } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { useAuth } from '@/context/AuthContext';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ interface SettingsModalProps {
 export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalProps) {
   const { apiKey: currentApiKey, setApiKey } = useApiKey();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [apiKeyInput, setApiKeyInput] = useState(currentApiKey || '');
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean | null>(null);
 
@@ -33,17 +35,22 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     // Sync input field if modal opens and key has changed elsewhere
     if (isOpen) {
         setApiKeyInput(currentApiKey || '');
-        // Check Google connection status when modal opens
-        setIsGoogleConnected(null); // Set to loading
-        fetch('/api/auth/google/status')
+        if (user) {
+            setIsGoogleConnected(null); // Set to loading
+            fetch('/api/auth/google/status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.uid }),
+            })
             .then(res => res.json())
             .then(data => setIsGoogleConnected(data.isConnected))
             .catch(() => {
                 setIsGoogleConnected(false); // Assume not connected on error
                 toast({ title: 'Error', description: 'Could not verify Google connection status.', variant: 'destructive' });
             });
+        }
     }
-  }, [currentApiKey, isOpen, toast]);
+  }, [currentApiKey, isOpen, toast, user]);
 
   const handleApiKeySave = () => {
     const trimmedKey = apiKeyInput.trim();
@@ -58,13 +65,25 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   };
   
   const handleConnectGoogle = () => {
-    // Redirects to the Google auth URL which is handled by our API route
-    window.location.href = '/api/auth/google/redirect';
+    if (!user) {
+        toast({ title: 'Error', description: 'You must be logged in to connect a Google account.', variant: 'destructive' });
+        return;
+    }
+    const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
+    window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
   };
 
   const handleDisconnectGoogle = async () => {
+      if (!user) {
+        toast({ title: 'Error', description: 'You must be logged in.', variant: 'destructive' });
+        return;
+      }
       try {
-        const response = await fetch('/api/auth/google/revoke', { method: 'POST' });
+        const response = await fetch('/api/auth/google/revoke', {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify({ userId: user.uid }),
+        });
         if (response.ok) {
             setIsGoogleConnected(false);
             toast({ title: 'Success', description: 'Disconnected from Google account.' });

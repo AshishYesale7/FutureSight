@@ -6,10 +6,10 @@ import { getAuthenticatedClient } from './googleAuthService';
 import type { RawGmailMessage } from '@/types';
 import { subDays } from 'date-fns';
 
-export async function getGoogleGmailMessages(): Promise<RawGmailMessage[]> {
-  const client = await getAuthenticatedClient();
+export async function getGoogleGmailMessages(userId: string): Promise<RawGmailMessage[]> {
+  const client = await getAuthenticatedClient(userId);
   if (!client) {
-    console.log("Not authenticated with Google. Cannot fetch Gmail messages.");
+    console.log(`Not authenticated with Google for user ${userId}. Cannot fetch Gmail messages.`);
     return [];
   }
 
@@ -68,7 +68,7 @@ export async function getGoogleGmailMessages(): Promise<RawGmailMessage[]> {
     return detailedMessages.filter((msg): msg is RawGmailMessage => msg !== null);
 
   } catch (error) {
-    console.error('Error fetching Gmail messages:', error);
+    console.error(`Error fetching Gmail messages for user ${userId}:`, error);
     throw new Error('Failed to fetch Gmail messages.');
   }
 }

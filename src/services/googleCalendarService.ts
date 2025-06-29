@@ -6,12 +6,12 @@ import { getAuthenticatedClient } from './googleAuthService';
 import type { RawCalendarEvent } from '@/types';
 import { startOfMonth, endOfMonth, formatISO } from 'date-fns';
 
-export async function getGoogleCalendarEvents(): Promise<RawCalendarEvent[]> {
-  const client = await getAuthenticatedClient();
+export async function getGoogleCalendarEvents(userId: string): Promise<RawCalendarEvent[]> {
+  const client = await getAuthenticatedClient(userId);
   if (!client) {
     // This case should be handled by the UI before calling this function,
     // but as a safeguard, we return an empty array.
-    console.log("Not authenticated with Google. Cannot fetch calendar events.");
+    console.log(`Not authenticated with Google for user ${userId}. Cannot fetch calendar events.`);
     return [];
   }
 
@@ -57,7 +57,7 @@ export async function getGoogleCalendarEvents(): Promise<RawCalendarEvent[]> {
     }).filter((event): event is RawCalendarEvent => event !== null);
 
   } catch (error) {
-    console.error('Error fetching Google Calendar events:', error);
+    console.error(`Error fetching Google Calendar events for user ${userId}:`, error);
     // This could be due to expired tokens or insufficient permissions.
     // The error will be caught by the calling function.
     throw new Error('Failed to fetch Google Calendar events.');
