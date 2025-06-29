@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import TodaysPlanCard from '@/components/timeline/TodaysPlanCard';
@@ -20,6 +21,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from '@/lib/utils';
 import { useApiKey } from '@/hooks/use-api-key';
+import { useAuth } from '@/context/AuthContext';
+import { getTimelineEvents, saveTimelineEvent, deleteTimelineEvent } from '@/services/timelineService';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
 
@@ -45,23 +48,22 @@ const parseDatePreservingTime = (dateInput: string | Date | undefined): Date | u
   return undefined;
 };
 
+const syncToLocalStorage = (events: TimelineEvent[]) => {
+    if (typeof window !== 'undefined') {
+        const serializableEvents = events.map(event => {
+            const { icon, ...rest } = event; // Exclude icon from serialization
+            return {
+            ...rest,
+            date: (event.date instanceof Date && !isNaN(event.date.valueOf())) ? event.date.toISOString() : new Date().toISOString(),
+            endDate: (event.endDate instanceof Date && !isNaN(event.endDate.valueOf())) ? event.endDate.toISOString() : undefined,
+            color: event.color, // Include color
+            };
+        });
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serializableEvents));
+    }
+};
 
-export default function ActualDashboardPage() {
-  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
-  const [aiInsights, setAiInsights] = useState<ActionableInsight[]>([]);
-  const [insightsError, setInsightsError] = useState<string | null>(null);
-  const { toast } = useToast();
-  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
-  const [activeDisplayMonth, setActiveDisplayMonth] = useState<Date>(startOfMonth(new Date()));
-  const [selectedDateForDayView, setSelectedDateForDayView] = useState<Date | null>(null);
-
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [eventBeingEdited, setEventBeingEdited] = useState<TimelineEvent | null>(null);
-  const [isAddingNewEvent, setIsAddingNewEvent] = useState(false);
-  
-  const { apiKey } = useApiKey();
-
-  const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(() => {
+const loadFromLocalStorage = (): TimelineEvent[] => {
     if (typeof window === 'undefined') {
       return mockTimelineEvents.map(event => ({
         ...event,
@@ -109,23 +111,47 @@ export default function ActualDashboardPage() {
         color: event.color,
       };
     }).filter(event => event !== null) as TimelineEvent[];
-  });
+};
+
+
+export default function ActualDashboardPage() {
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
+  const [aiInsights, setAiInsights] = useState<ActionableInsight[]>([]);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
+  const [activeDisplayMonth, setActiveDisplayMonth] = useState<Date>(startOfMonth(new Date()));
+  const [selectedDateForDayView, setSelectedDateForDayView] = useState<Date | null>(null);
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [eventBeingEdited, setEventBeingEdited] = useState<TimelineEvent | null>(null);
+  const [isAddingNewEvent, setIsAddingNewEvent] = useState(false);
+  
+  const { apiKey } = useApiKey();
+  const [displayedTimelineEvents, setDisplayedTimelineEvents] = useState<TimelineEvent[]>(loadFromLocalStorage);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const serializableEvents = displayedTimelineEvents.map(event => {
-        const { icon, ...rest } = event; // Exclude icon from serialization
-        return {
-          ...rest,
-          date: (event.date instanceof Date && !isNaN(event.date.valueOf())) ? event.date.toISOString() : new Date().toISOString(),
-          endDate: (event.endDate instanceof Date && !isNaN(event.endDate.valueOf())) ? event.endDate.toISOString() : undefined,
-          color: event.color, // Include color
-        };
-      });
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serializableEvents));
-    }
-  }, [displayedTimelineEvents]);
+    const loadEvents = async () => {
+      setIsLoading(true);
+      if (user) {
+        try {
+          const firestoreEvents = await getTimelineEvents(user.uid);
+          setDisplayedTimelineEvents(firestoreEvents);
+          syncToLocalStorage(firestoreEvents);
+        } catch (error) {
+          console.error("Failed to fetch timeline from Firestore, using local storage.", error);
+          // state is already pre-populated from localStorage, just show toast
+          toast({ title: "Offline Mode", description: "Could not connect to server. Displaying local data.", variant: "destructive"});
+        }
+      }
+      // If no user, it will just keep the data from localStorage from the initial useState.
+      setIsLoading(false);
+    };
 
+    loadEvents();
+  }, [user, toast]);
 
   const transformInsightToEvent = (insight: ActionableInsight): TimelineEvent | null => {
     const eventDate = parseDatePreservingTime(insight.date);
@@ -186,7 +212,9 @@ export default function ActualDashboardPage() {
           const currentEventIds = new Set(prevEvents.map(e => e.id));
           const uniqueNewEventsToAdd = newTimelineEventsFromAI.filter(newEvent => !currentEventIds.has(newEvent.id));
           trulyNewEventsForToastCount = uniqueNewEventsToAdd.length;
-          return [...prevEvents, ...uniqueNewEventsToAdd];
+          const updatedEvents = [...prevEvents, ...uniqueNewEventsToAdd];
+          syncToLocalStorage(updatedEvents);
+          return updatedEvents;
         });
 
       } else {
@@ -217,17 +245,37 @@ export default function ActualDashboardPage() {
     }
   };
 
-  const handleDeleteTimelineEvent = (eventId: string) => {
-    setDisplayedTimelineEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
+  const handleDeleteTimelineEvent = async (eventId: string) => {
+    const originalEvents = displayedTimelineEvents;
+    const eventToDelete = originalEvents.find(event => event.id === eventId);
+    if (!eventToDelete) return;
+    
+    // Optimistic UI Update
+    const newEvents = originalEvents.filter(event => event.id !== eventId);
+    setDisplayedTimelineEvents(newEvents);
+    syncToLocalStorage(newEvents);
+    
+    toast({ title: "Event Deleted", description: `"${eventToDelete.title}" has been removed.` });
+
     if (selectedDateForDayView) {
-        const remainingEventsOnDay = displayedTimelineEvents.filter(event =>
-            event.id !== eventId &&
+        const remainingEventsOnDay = newEvents.filter(event =>
             event.date instanceof Date && !isNaN(event.date.valueOf()) &&
             isSameDay(dfnsStartOfDay(event.date), dfnsStartOfDay(selectedDateForDayView))
         );
         if (remainingEventsOnDay.length === 0) {
             setSelectedDateForDayView(null);
         }
+    }
+    
+    if (user) {
+      try {
+        await deleteTimelineEvent(user.uid, eventId);
+      } catch (error) {
+        console.error("Failed to delete event from Firestore", error);
+        setDisplayedTimelineEvents(originalEvents); // Revert
+        syncToLocalStorage(originalEvents);
+        toast({ title: "Sync Error", description: "Failed to delete event from the server.", variant: "destructive" });
+      }
     }
   };
 
@@ -307,28 +355,38 @@ export default function ActualDashboardPage() {
     setIsAddingNewEvent(false);
   }, []);
 
-  const handleSaveEditedEvent = useCallback((updatedEvent: TimelineEvent) => {
-    setDisplayedTimelineEvents(prevEvents => {
-      const eventExists = prevEvents.some(event => event.id === updatedEvent.id);
-      if (eventExists) {
-        return prevEvents.map(event => (event.id === updatedEvent.id ? updatedEvent : event));
-      } else {
-        return [...prevEvents, updatedEvent].sort((a, b) => {
-            const dateA = a.date instanceof Date ? a.date.getTime() : 0;
-            const dateB = b.date instanceof Date ? b.date.getTime() : 0;
-            return dateA - dateB;
-        });
-      }
-    });
-    // This toast is now handled within the EventEditorPanel, so we can remove it here to avoid duplicates.
-    // However, for the modal, it's still needed. Let's keep it for now.
+  const handleSaveEditedEvent = useCallback(async (updatedEvent: TimelineEvent) => {
+    const originalEvents = displayedTimelineEvents;
+    const eventExists = originalEvents.some(event => event.id === updatedEvent.id);
+    
+    const newEvents = eventExists
+      ? originalEvents.map(event => (event.id === updatedEvent.id ? updatedEvent : event))
+      : [...originalEvents, updatedEvent].sort((a,b) => a.date.getTime() - b.date.getTime());
+
+    setDisplayedTimelineEvents(newEvents);
+    syncToLocalStorage(newEvents);
+
     toast({
       title: isAddingNewEvent ? "Event Added" : "Event Updated",
       description: `"${updatedEvent.title}" has been successfully ${isAddingNewEvent ? "added" : "updated"}.`
     });
     handleCloseEditModal();
-  }, [handleCloseEditModal, toast, isAddingNewEvent]);
+    
+    if (user) {
+        try {
+            await saveTimelineEvent(user.uid, updatedEvent);
+        } catch (error) {
+            console.error("Failed to save event to Firestore", error);
+            setDisplayedTimelineEvents(originalEvents); // Revert
+            syncToLocalStorage(originalEvents);
+            toast({ title: "Sync Error", description: "Failed to save event to the server. Your changes have been saved locally.", variant: "destructive" });
+        }
+    }
+  }, [displayedTimelineEvents, handleCloseEditModal, toast, isAddingNewEvent, user]);
 
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-full"><LoadingSpinner size="lg" /></div>;
+  }
 
   return (
     <div className={cn("space-y-8 h-full flex flex-col")}>
