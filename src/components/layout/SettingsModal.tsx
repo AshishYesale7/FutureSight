@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -42,16 +43,17 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   const [apiKeyInput, setApiKeyInput] = useState(currentApiKey || '');
   const [isGoogleConnected, setIsGoogleConnected] = useState<boolean | null>(null);
 
-  // State for phone linking
   const [phoneForLinking, setPhoneForLinking] = useState<string | undefined>();
   const [otpForLinking, setOtpForLinking] = useState('');
   const [linkingPhoneState, setLinkingPhoneState] = useState<'idle' | 'input' | 'otp-sent' | 'loading' | 'success'>('idle');
   
+  const isGoogleProviderLinked = user?.providerData.some(p => p.providerId === GoogleAuthProvider.PROVIDER_ID);
+
   useEffect(() => {
     if (isOpen) {
         setApiKeyInput(currentApiKey || '');
         if (user) {
-            setIsGoogleConnected(null); // Set to loading
+            setIsGoogleConnected(null); 
             fetch('/api/auth/google/status', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -60,19 +62,17 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
             .then(res => res.json())
             .then(data => setIsGoogleConnected(data.isConnected))
             .catch(() => {
-                setIsGoogleConnected(false); // Assume not connected on error
+                setIsGoogleConnected(false);
                 toast({ title: 'Error', description: 'Could not verify Google connection status.', variant: 'destructive' });
             });
         }
     } else {
-       // Reset phone linking state when modal closes
        setLinkingPhoneState('idle');
        setPhoneForLinking(undefined);
        setOtpForLinking('');
     }
   }, [currentApiKey, isOpen, toast, user]);
 
-  // Effect to manage reCAPTCHA for phone linking
   useEffect(() => {
     let verifier: RecaptchaVerifier | undefined;
     if (isOpen && linkingPhoneState === 'input') {
@@ -113,6 +113,15 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
         return;
     }
 
+    // If Google is already a provider, we just need to re-run the OAuth flow for API permissions.
+    if (isGoogleProviderLinked) {
+        toast({ title: 'Redirecting to Google...', description: 'Please re-authorize to sync your Calendar and Gmail.' });
+        const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
+        window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
+        return;
+    }
+
+    // If Google is NOT a provider, we need to link it first.
     const provider = new GoogleAuthProvider();
     provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
     provider.addScope('https://www.googleapis.com/auth/gmail.readonly');
@@ -120,16 +129,28 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
 
     try {
         await linkWithPopup(auth.currentUser, provider);
-        setIsGoogleConnected(true);
-        toast({ title: 'Success!', description: 'Your Google account has been successfully connected.' });
+        
+        // After a successful link, we must run the redirect flow to get the offline refresh token for the backend APIs.
+        toast({ title: 'Account Linked!', description: 'Now redirecting to grant Calendar & Gmail permissions.' });
+        const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
+        setTimeout(() => {
+            window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
+        }, 1500);
+
     } catch (error: any) {
         if (error.code === 'auth/credential-already-in-use') {
             toast({
                 title: 'Google Account In Use',
-                description: "This Google account is already linked to another user. Please sign out and sign in with Google to merge accounts.",
+                description: "To link, please: 1. Sign out. 2. Sign back in using Google. 3. Go to Settings and link this phone number to your Google account.",
                 variant: 'destructive',
-                duration: 10000,
+                duration: 12000,
             });
+        } else if (error.code === 'auth/provider-already-linked') {
+             // This is an edge case where the provider is linked but our state is out of sync.
+             // We can treat this as success and just run the re-auth flow to get tokens.
+             toast({ title: 'Re-authorizing...', description: 'Your account is already linked. Redirecting to grant permissions.' });
+             const state = Buffer.from(JSON.stringify({ userId: user.uid })).toString('base64');
+             window.location.href = `/api/auth/google/redirect?state=${encodeURIComponent(state)}`;
         } else {
             console.error("Google link error:", error);
             toast({
@@ -197,7 +218,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     setLinkingPhoneState('loading');
     try {
         await confirmationResult.confirm(otpForLinking);
-        await refreshUser(); // Refresh user data to get the new phone number
+        await refreshUser(); 
         setLinkingPhoneState('success');
         toast({ title: 'Success!', description: 'Your phone number has been linked.' });
     } catch (error: any) {
@@ -220,7 +241,6 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
           </DialogDescription>
         </DialogHeader>
         <div className="py-4 space-y-4">
-            {/* Google Integration Section */}
             <div className="space-y-3">
                  <Label className="font-semibold text-base flex items-center text-primary">
                     <Globe className="mr-2 h-4 w-4" /> Google Integration
@@ -252,7 +272,6 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
             
             <Separator/>
 
-            {/* Phone Number Linking Section */}
             <div className="space-y-3">
                 <Label className="font-semibold text-base flex items-center text-primary">
                     <Smartphone className="mr-2 h-4 w-4" /> Phone Number
@@ -262,14 +281,13 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                         <p className="text-sm text-green-400 font-medium flex items-center">
                             <CheckCircle className="mr-2 h-4 w-4" /> Linked: {user.phoneNumber}
                         </p>
-                        {/* Unlink button can be added here in the future */}
                     </div>
                 ) : (
                     <>
                     {linkingPhoneState === 'idle' && (
                         <Button onClick={() => setLinkingPhoneState('input')} variant="outline" className="w-full">Link Phone Number</Button>
                     )}
-                    {(linkingPhoneState === 'input' || linkingPhoneState === 'loading') && (
+                    {(linkingPhoneState === 'input' || linkingPhoneState === 'loading' && phoneForLinking) && (
                         <div className="space-y-4">
                             <div className="space-y-2 phone-input-container">
                                 <Label htmlFor="phone-link" className="text-xs">Enter your phone number</Label>
@@ -288,7 +306,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                             </Button>
                         </div>
                     )}
-                    {(linkingPhoneState === 'otp-sent' || linkingPhoneState === 'loading') && (
+                    {(linkingPhoneState === 'otp-sent' || linkingPhoneState === 'loading' && otpForLinking) && (
                         <div className="space-y-4">
                              <div className="space-y-2">
                                 <Label htmlFor="otp-link" className="text-xs">Enter 6-digit OTP</Label>
@@ -318,7 +336,6 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
 
             <Separator />
             
-            {/* API Key Section */}
             <div className="space-y-3">
                  <Label className="font-semibold text-base flex items-center text-primary">
                     <KeyRound className="mr-2 h-4 w-4" /> Custom API Key
