@@ -6,7 +6,12 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get('code');
     const error = searchParams.get('error');
 
-    const redirectUrl = new URL('/', request.url)
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+    if (!baseUrl) {
+        return new NextResponse('Configuration error: NEXT_PUBLIC_BASE_URL is not set.', { status: 500 });
+    }
+    const redirectUrl = new URL(baseUrl);
+
 
     if (error) {
         console.error('Google Auth Error:', error);
