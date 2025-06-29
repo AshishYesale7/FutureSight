@@ -85,8 +85,8 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
     } catch (error: any) {
         if (error.code === 'auth/credential-already-in-use') {
             toast({
-                title: 'Account Already Exists',
-                description: "This Google account is already linked to another user. Please sign out and sign in with Google to merge accounts.",
+                title: 'Google Account In Use',
+                description: "To link, please: 1. Sign out. 2. Sign back in using Google. 3. Go to Settings and link this phone number to your Google account.",
                 variant: 'destructive',
                 duration: 10000,
             });
