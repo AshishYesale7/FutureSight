@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { TimelineEvent } from '@/types';
@@ -238,13 +239,11 @@ export default function SlidingTimelineView({
                 </div>
               )}
               {event.url && (
-                <div className="text-xs text-primary/90 flex items-center gap-1.5 min-w-0">
-                  <LinkIcon size={12} className="flex-shrink-0"/>
-                  <div className="truncate">
-                    <a href={event.url} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
-                      {event.url}
-                    </a>
-                  </div>
+                <div className="text-xs text-primary/90 flex items-center gap-1.5">
+                  <a href={event.url} target="_blank" rel="noopener noreferrer" title={event.url} className="text-accent hover:text-accent/80 flex items-center gap-1.5 hover:underline">
+                    <LinkIcon size={12} />
+                    <span>Link</span>
+                  </a>
                 </div>
               )}
             </div>
