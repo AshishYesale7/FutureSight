@@ -130,7 +130,7 @@ Analyze all the provided information and generate a complete daily plan. Follow 
 3.  **Build the Schedule:**
     a.  The schedule must start from the user's first waking activity (e.g., if 'Sleep' ends at 7 AM, the schedule must begin at or after 7 AM).
     b.  First, place all items from the "CRITICAL: User's Fixed Schedule for Today" into the timetable.
-    c.  **IMPORTANT: Consolidate long, repetitive activities.** If an activity like 'Sleep' or 'College' spans several hours, represent it as a single entry with a time range (e.g., "time": "11:00 PM - 07:00 AM", "activity": "Sleep"). Do not create separate entries for each hour.
+    c.  **IMPORTANT: Consolidate ONLY the 'Sleep' activity.** If the 'Sleep' activity spans several hours, you MUST represent it as a single entry with a time range (e.g., "time": "11:00 PM - 07:00 AM", "activity": "Sleep"). Do not create separate hourly entries for it. For all other activities, create distinct blocks exactly as they are defined in the fixed schedule.
     d.  Place the sleep block for the upcoming night at the very end of the schedule.
     e.  Then, intelligently fill the remaining empty time slots with tasks to achieve the micro-goals. Mix focused work with short breaks.
     f.  All times in the final 'schedule' output must use a 12-hour clock with AM/PM (e.g., '9:00 AM', '1:30 PM', '11:00 PM - 07:00 AM').
