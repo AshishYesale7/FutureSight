@@ -166,40 +166,43 @@ export default function TodaysPlanCard() {
       <div className="w-full frosted-glass shadow-lg rounded-lg">
         <Accordion type="single" collapsible className="w-full">
           <AccordionItem value="item-1" className="border-b-0">
-            <div className="flex items-center p-6">
-                <div className="flex-1 min-w-0 pr-4">
-                     <CardTitle className="font-headline text-xl text-primary flex items-center">
-                        <Calendar className="mr-2 h-5 w-5 text-accent shrink-0" />
-                        <span className="truncate">{getDisplayDateTitle(displayDate)}</span>
-                    </CardTitle>
-                    <CardDescription className="mt-1 truncate">
-                        Your personalized schedule for {format(displayDate, 'MMMM d, yyyy')}.
-                    </CardDescription>
-                </div>
-                
+            <div className="flex items-center justify-between p-6">
+              <div className="flex items-center gap-4 flex-1 min-w-0">
                 <div className="flex items-center gap-1">
-                     <Button variant="outline" size="icon" onClick={handlePrevDay} disabled={!canGoBack} className="h-8 w-8">
-                        <ChevronLeft className="h-5 w-5" />
-                        <span className="sr-only">Previous day</span>
-                    </Button>
-                    <Button variant="outline" size="icon" onClick={handleNextDay} disabled={!canGoForward} className="h-8 w-8">
-                        <ChevronRight className="h-5 w-5" />
-                        <span className="sr-only">Next day</span>
-                    </Button>
-                     <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setIsRoutineModalOpen(true);
-                        }}
-                        className="h-8 w-8 p-0 ml-2 shrink-0"
-                        aria-label="Edit routine"
-                    >
-                        <Edit className="h-5 w-5 text-muted-foreground" />
-                    </Button>
-                    <AccordionTrigger className="p-2 -mr-2" />
+                  <Button variant="outline" size="icon" onClick={handlePrevDay} disabled={!canGoBack} className="h-8 w-8 shrink-0">
+                    <ChevronLeft className="h-5 w-5" />
+                    <span className="sr-only">Previous day</span>
+                  </Button>
+                  <Button variant="outline" size="icon" onClick={handleNextDay} disabled={!canGoForward} className="h-8 w-8 shrink-0">
+                    <ChevronRight className="h-5 w-5" />
+                    <span className="sr-only">Next day</span>
+                  </Button>
                 </div>
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="font-headline text-xl text-primary flex items-center">
+                    <Calendar className="mr-2 h-5 w-5 text-accent shrink-0" />
+                    <span className="truncate">{getDisplayDateTitle(displayDate)}</span>
+                  </CardTitle>
+                  <CardDescription className="mt-1 truncate">
+                    Your personalized schedule for {format(displayDate, 'MMMM d, yyyy')}.
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 pl-4">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsRoutineModalOpen(true);
+                  }}
+                  className="h-8 w-8 p-0 shrink-0"
+                  aria-label="Edit routine"
+                >
+                  <Edit className="h-5 w-5 text-muted-foreground" />
+                </Button>
+                <AccordionTrigger className="p-2 -mr-2" />
+              </div>
             </div>
             <AccordionContent className="px-6 pb-6 pt-0">
               <CardContent className="p-0">
