@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { TimelineEvent } from '@/types';
@@ -7,7 +8,6 @@ import { CalendarDays, Bot, Trash2, ChevronLeft, ChevronRight, Clock, ExternalLi
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval, isToday as dfnsIsToday, formatDistanceToNowStrict, isFuture, isPast, startOfDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -268,16 +268,14 @@ export default function SlidingTimelineView({
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="p-0 flex-1 min-h-0">
+      <CardContent className="p-4 flex-1 min-h-0 overflow-y-auto">
         {(upcomingEvents.length === 0 && pastEvents.length === 0) ? (
-          <div className="flex items-center justify-center h-full p-6">
+          <div className="flex items-center justify-center h-full">
             <p className="text-foreground/70">No events for {format(currentDisplayMonth, 'MMMM yyyy')}.</p>
           </div>
         ) : (
-          <ScrollArea className="h-full p-4 pr-2">
             <div className="relative pl-5"> 
               <div className="absolute left-[9px] top-0 bottom-0 w-0.5 bg-border/70 z-0" />
-
               <div className="space-y-6">
                 {upcomingEvents.map(event => renderEvent(event))}
                 
@@ -305,7 +303,6 @@ export default function SlidingTimelineView({
                 )}
               </div>
             </div>
-          </ScrollArea>
         )}
       </CardContent>
     </Card>

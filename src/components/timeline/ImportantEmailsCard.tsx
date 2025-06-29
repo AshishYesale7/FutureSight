@@ -1,7 +1,7 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import type { RawGmailMessage, GmailLabel } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -203,9 +203,8 @@ export default function ImportantEmailsCard({ className }: ImportantEmailsCardPr
           </div>
         </CardDescription>
       </CardHeader>
-      <CardContent className="p-0 flex-1 min-h-0">
-        <ScrollArea className="h-full">
-          <div className="p-4 space-y-4">
+      <CardContent className="p-4 flex-1 min-h-0 overflow-y-auto">
+        <div className="space-y-4">
             {isLoading ? (
               <div className="flex justify-center items-center h-48">
                 <LoadingSpinner />
@@ -266,7 +265,6 @@ export default function ImportantEmailsCard({ className }: ImportantEmailsCardPr
               ))
             )}
           </div>
-        </ScrollArea>
       </CardContent>
     </Card>
   );
