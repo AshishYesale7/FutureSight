@@ -12,9 +12,6 @@
 
 import { generateWithApiKey } from '@/ai/genkit';
 import {z} from 'genkit';
-import type { TimelineEvent } from '@/types';
-import { getGoogleCalendarEvents } from '@/services/googleCalendarService';
-import { getGoogleGmailMessages } from '@/services/googleGmailService';
 
 // Schemas for Google API Data (adapt as needed for actual API responses)
 const RawCalendarEventSchema = z.object({
@@ -67,21 +64,11 @@ const ProcessGoogleDataOutputSchema = z.object({
 export type ProcessGoogleDataOutput = z.infer<typeof ProcessGoogleDataOutputSchema>;
 
 export async function processGoogleData(input: ProcessGoogleDataInput): Promise<ProcessGoogleDataOutput> {
-  // Now we fetch the data inside the flow
-  const [calendarEvents, gmailMessages] = await Promise.all([
-    getGoogleCalendarEvents(input.userId),
-    getGoogleGmailMessages(input.userId),
-  ]);
-
-  if (calendarEvents.length === 0 && gmailMessages.length === 0) {
-    return { insights: [] };
-  }
-  
   const currentDate = new Date().toISOString();
 
   let calendarEventsSection = 'No calendar events provided.';
-  if (calendarEvents.length > 0) {
-    calendarEventsSection = calendarEvents.map(event => `
+  if (input.calendarEvents && input.calendarEvents.length > 0) {
+    calendarEventsSection = input.calendarEvents.map(event => `
 - Event ID: ${event.id}
   Title: ${event.summary}
   Description: ${event.description || ''}
@@ -92,8 +79,8 @@ export async function processGoogleData(input: ProcessGoogleDataInput): Promise<
   }
 
   let gmailMessagesSection = 'No Gmail messages provided.';
-  if (gmailMessages.length > 0) {
-    gmailMessagesSection = gmailMessages.map(msg => {
+  if (input.gmailMessages && input.gmailMessages.length > 0) {
+    gmailMessagesSection = input.gmailMessages.map(msg => {
         const receivedDate = new Date(parseInt(msg.internalDate, 10));
         const receivedDateISO = !isNaN(receivedDate.valueOf()) ? receivedDate.toISOString() : 'Invalid Date';
         return `
@@ -105,11 +92,11 @@ export async function processGoogleData(input: ProcessGoogleDataInput): Promise<
 `;}).join('');
   }
 
-  const promptText = `You are an expert personal assistant AI. Your task is to analyze a user's Google Calendar events and Gmail messages to identify important upcoming events, deadlines, tasks, and actionable information.
+  const promptText = `You are an expert personal assistant AI. Your task is to analyze a user's Google Calendar events and/or Gmail messages to identify important upcoming events, deadlines, tasks, and actionable information.
 
 Context:
 - Today's date is ${currentDate}.
-- The user wants to track important items from their Google Calendar and Gmail.
+- The user wants to track important items from their Google account.
 
 Provided Data:
 Google Calendar Events:
@@ -118,27 +105,29 @@ ${calendarEventsSection}
 Gmail Messages:
 ${gmailMessagesSection}
 
-Instructions:
-1.  Review all provided calendar events and Gmail messages.
-2.  For each item, determine if it represents an important event, task, deadline, or contains actionable information relevant for the user to track.
-3.  Generate a concise 'title' for each insight. If there's a specific time associated with the item (e.g., "Meeting at 10:00 AM", "Webinar starts 3 PM"), try to include this time information naturally within the title.
-4.  For the 'date' field of the insight (start time):
-    a.  For calendar events, use the full ISO 8601 string from the 'startDateTime' field of the event. This must include the time.
-    b.  For Gmail messages, use the value from their 'Received Date (ISO 8601)' field.
-5.  For the 'endDate' field of the insight:
-    a.  For calendar events, use the full ISO 8601 string from the 'endDateTime' field of the event. This must include the time.
-    b.  Gmail messages typically do not have an end date; leave this field undefined for them unless an explicit duration or end time is mentioned in the email body that you can reliably parse into ISO 8601 format.
-6.  For the 'isAllDay' field:
-    a.  For calendar events, determine if it's an all-day event. An event is all-day if its 'startDateTime' and 'endDateTime' represent just dates (e.g., 'YYYY-MM-DD') or if the time components are midnight and the duration spans exactly 24 hours (or multiples thereof, ending at midnight). If it is an all-day event, set 'isAllDay' to true. Otherwise, set it to false or omit. The 'date' field should still be the start of the day (e.g. 'YYYY-MM-DDT00:00:00Z') for all-day events.
-    b.  Gmail messages are not typically all-day events in this context; omit 'isAllDay' or set to false.
-7.  Create a brief 'summary' for each insight. For emails, summarize the key point from the subject and snippet. For calendar events, use the event description or summarize its purpose. If a specific time is crucial (e.g., "Deadline: Today 5:00 PM") and not adequately covered in the title, mention it in the summary.
-8.  Set the 'source' field to either 'google_calendar' or 'gmail'.
-9.  Construct the 'id' for each insight by prefixing the original ID with 'cal:' for calendar events or 'mail:' for Gmail messages.
-10. If an 'originalLink' is available in the source data (htmlLink for calendar, link for gmail), include it. Ensure it's a valid URL.
-11. If an email appears to be a newsletter, promotional content, or not directly actionable, you may choose to omit it or provide a very brief, low-priority insight. Focus on what helps the user manage their time and tasks.
-12. Structure your output according to the 'ActionableInsightSchema'.
+Calendar Processing Instructions:
+1.  Review all provided calendar events.
+2.  For each item, determine if it represents an important event, task, or deadline.
+3.  Generate a concise 'title' for each insight. If there's a specific time, include it in the title (e.g., "Meeting at 10:00 AM").
+4.  Use the full ISO 8601 'startDateTime' and 'endDateTime' for the 'date' and 'endDate' fields.
+5.  Correctly identify all-day events and set the 'isAllDay' flag to true.
+6.  Create a brief 'summary' for each insight from the event description.
+7.  Set the 'source' to 'google_calendar' and construct the 'id' by prefixing 'cal:'.
+8.  Include the 'originalLink' (htmlLink) if available.
 
-Generate the list of actionable insights.
+Gmail Processing Instructions:
+1.  Scrutinize each email's subject and snippet to identify TRULY ACTIONABLE items.
+2.  Give HIGH PRIORITY to emails containing explicit deadlines or keywords like "urgent," "action required," "due date," "submit by," "confirm," or "invoice."
+3.  Identify emails that seem to be personal correspondence or direct requests, and summarize their key point.
+4.  Actively filter out and OMIT any insights from emails that are clearly promotional, newsletters, social media notifications, or general announcements unless they contain a specific, personal deadline or action item. Your goal is to reduce noise, not add to it.
+5.  For actionable emails, create a brief 'summary' of the key point.
+6.  When creating the 'title' for an email insight, make it an action-oriented summary (e.g., "Confirm Subscription for Newsletter" or "Review Project Digest").
+7.  Use the 'Received Date (ISO 8601)' for the 'date' field. Do not create an 'endDate'.
+8.  Set the 'source' to 'gmail' and construct the 'id' by prefixing 'mail:'.
+9.  Include the 'originalLink' if available.
+
+Structure your final output strictly according to the 'ActionableInsightSchema'.
+Generate the list of actionable insights based on the provided data.
 `;
 
   const { output } = await generateWithApiKey(input.apiKey, {

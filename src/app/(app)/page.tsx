@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AlertCircle, Bot, Calendar, List, CalendarDays as CalendarIconLucide, PlusCircle } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
-import type { ProcessGoogleDataInput, ActionableInsight } from '@/ai/flows/process-google-data-flow';
+import type { ProcessGoogleDataInput } from '@/ai/flows/process-google-data-flow';
 import { mockTimelineEvents } from '@/data/mock';
 import type { TimelineEvent } from '@/types';
 import { format, parseISO, addMonths, subMonths, startOfMonth, isSameDay, startOfDay as dfnsStartOfDay } from 'date-fns';
@@ -23,11 +23,9 @@ import { useApiKey } from '@/hooks/use-api-key';
 import { useAuth } from '@/context/AuthContext';
 import { getTimelineEvents, saveTimelineEvent, deleteTimelineEvent } from '@/services/timelineService';
 import { getGoogleCalendarEvents } from '@/services/googleCalendarService';
-import { getGoogleGmailMessages } from '@/services/googleGmailService';
 import ImportantEmailsCard from '@/components/timeline/ImportantEmailsCard';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
-const AI_INSIGHTS_STORAGE_KEY = 'futureSightAiInsights';
 
 const parseDatePreservingTime = (dateInput: string | Date | undefined): Date | undefined => {
   if (!dateInput) return undefined;
@@ -116,33 +114,10 @@ const loadFromLocalStorage = (): TimelineEvent[] => {
     }).filter(event => event !== null) as TimelineEvent[];
 };
 
-const syncInsightsToLocalStorage = (insights: ActionableInsight[]) => {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem(AI_INSIGHTS_STORAGE_KEY, JSON.stringify(insights));
-    }
-};
-
-const loadInsightsFromLocalStorage = (): ActionableInsight[] => {
-    if (typeof window === 'undefined') {
-        return [];
-    }
-    try {
-        const storedInsightsString = localStorage.getItem(AI_INSIGHTS_STORAGE_KEY);
-        if (storedInsightsString) {
-            return JSON.parse(storedInsightsString);
-        }
-    } catch (error) {
-        console.error("Error reading AI insights from localStorage:", error);
-    }
-    return [];
-};
-
-
 export default function ActualDashboardPage() {
   const { user } = useAuth();
-  const [isLoadingInsights, setIsLoadingInsights] = useState(false);
-  const [aiInsights, setAiInsights] = useState<ActionableInsight[]>(loadInsightsFromLocalStorage);
-  const [insightsError, setInsightsError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar');
   const [activeDisplayMonth, setActiveDisplayMonth] = useState<Date>(startOfMonth(new Date()));
@@ -185,7 +160,7 @@ export default function ActualDashboardPage() {
     }
   }, [user]);
 
-  const transformInsightToEvent = (insight: ActionableInsight): TimelineEvent | null => {
+  const transformInsightToEvent = useCallback((insight: any): TimelineEvent | null => {
     const eventDate = parseDatePreservingTime(insight.date);
     if (!eventDate) {
       console.warn(`Invalid date format for insight ${insight.id}: ${insight.date}. Skipping insight.`);
@@ -207,45 +182,36 @@ export default function ActualDashboardPage() {
       isAllDay: insight.isAllDay || false,
       priority: 'None',
     };
-  };
+  }, []);
 
-  const handleFetchAndProcessGoogleData = useCallback(async (options?: { silent?: boolean }) => {
-    const isSilent = options?.silent || false;
-
+  const handleSyncCalendarData = useCallback(async () => {
     if (isGoogleConnected === null) {
-      if (!isSilent) toast({ title: "Please wait", description: "Checking Google connection status..." });
+      toast({ title: "Please wait", description: "Checking Google connection status..." });
       return;
     }
     if (!isGoogleConnected) {
-      if (!isSilent) toast({ title: "Not Connected", description: "Please connect your Google account in Settings to sync data.", variant: "destructive" });
+      toast({ title: "Not Connected", description: "Please connect your Google account in Settings to sync data.", variant: "destructive" });
       return;
     }
     if (!user) {
-      if (!isSilent) toast({ title: "Authentication Error", description: "You must be signed in to perform this action.", variant: "destructive" });
+      toast({ title: "Authentication Error", description: "You must be signed in to perform this action.", variant: "destructive" });
       return;
     }
 
-    setIsLoadingInsights(true);
-    setInsightsError(null);
-    let toastTitle = "";
-    let toastDescription = "";
-    let processingErrorOccurred = false;
-
+    setIsLoading(true);
+    setSyncError(null);
+    
     try {
-      const [calendarEvents, gmailMessages] = await Promise.all([
-        getGoogleCalendarEvents(user.uid),
-        getGoogleGmailMessages(user.uid)
-      ]);
+      const calendarEvents = await getGoogleCalendarEvents(user.uid);
 
-      if (calendarEvents.length === 0 && gmailMessages.length === 0) {
-        if (!isSilent) toast({ title: "No New Data", description: "No new events or important emails found in your primary calendar and inbox." });
-        setIsLoadingInsights(false);
+      if (calendarEvents.length === 0) {
+        toast({ title: "No New Calendar Events", description: "No new events found in your primary calendar." });
+        setIsLoading(false);
         return;
       }
 
       const input: ProcessGoogleDataInput = {
         calendarEvents,
-        gmailMessages,
         apiKey,
         userId: user.uid,
       };
@@ -253,9 +219,6 @@ export default function ActualDashboardPage() {
       const result = await processGoogleData(input);
       
       if (result.insights) {
-        setAiInsights(result.insights);
-        syncInsightsToLocalStorage(result.insights); // Save to local storage
-
         const transformedEvents = result.insights.map(transformInsightToEvent).filter(event => event !== null) as TimelineEvent[];
         
         const currentEventIds = new Set(displayedTimelineEvents.map(e => e.id));
@@ -271,49 +234,21 @@ export default function ActualDashboardPage() {
               const payload = { ...data, date: data.date.toISOString(), endDate: data.endDate ? data.endDate.toISOString() : null };
               await saveTimelineEvent(user.uid, payload);
             }
-            
-            toastTitle = "Timeline Updated";
-            toastDescription = `${uniqueNewEventsToAdd.length} new item(s) have been synced from your Google account.`;
+            toast({ title: "Timeline Updated", description: `${uniqueNewEventsToAdd.length} new calendar event(s) added.` });
         } else {
-            toastTitle = "Already Synced";
-            toastDescription = "Your timeline is up-to-date with your Google data.";
+            toast({ title: "Already Synced", description: "Your calendar is up-to-date." });
         }
       } else {
-        toastTitle = "No Actionable Insights";
-        toastDescription = "The AI didn't find any new actionable items in your recent Google data.";
-        setAiInsights([]);
-        syncInsightsToLocalStorage([]);
+        toast({ title: "No Actionable Insights", description: "The AI didn't find any new actionable items in your calendar data." });
       }
     } catch (error: any) {
-      console.error('Error processing Google data:', error);
-      const errorMessage = error.message || 'Failed to fetch or process AI insights.';
-      setInsightsError(errorMessage);
-      processingErrorOccurred = true;
-      toastTitle = "Sync Error";
-      toastDescription = errorMessage;
+      console.error('Error processing Google Calendar data:', error);
+      const errorMessage = error.message || 'Failed to fetch or process calendar data.';
+      setSyncError(errorMessage);
+      toast({ title: "Sync Error", description: errorMessage, variant: "destructive" });
     }
-
-    setIsLoadingInsights(false);
-
-    if (!isSilent || processingErrorOccurred) {
-        toast({ 
-          title: toastTitle, 
-          description: toastDescription, 
-          variant: processingErrorOccurred ? "destructive" : "default" 
-        });
-    }
-  }, [user, apiKey, isGoogleConnected, toast, displayedTimelineEvents]);
-  
-  // This useEffect will run once on mount and set up the hourly refresh
-  useEffect(() => {
-    if (isGoogleConnected) {
-      const intervalId = setInterval(() => {
-        handleFetchAndProcessGoogleData({ silent: true });
-      }, 3600000); // 1 hour
-
-      return () => clearInterval(intervalId);
-    }
-  }, [isGoogleConnected, handleFetchAndProcessGoogleData]);
+    setIsLoading(false);
+  }, [user, apiKey, isGoogleConnected, toast, displayedTimelineEvents, transformInsightToEvent]);
 
   const handleDeleteTimelineEvent = async (eventId: string) => {
     const originalEvents = displayedTimelineEvents;
@@ -506,11 +441,7 @@ export default function ActualDashboardPage() {
               </div>
               
               {/* Right column for emails */}
-              <ImportantEmailsCard 
-                insights={aiInsights} 
-                isLoading={isLoadingInsights}
-                onRefresh={() => handleFetchAndProcessGoogleData()} 
-              />
+              <ImportantEmailsCard />
             </div>
           </TabsContent>
           <TabsContent key="list-view" value="list" className={cn("mt-0", viewMode === 'list' ? 'flex flex-col h-[70vh]' : 'hidden')}>
@@ -526,34 +457,34 @@ export default function ActualDashboardPage() {
       <Card className="frosted-glass shadow-lg">
         <CardHeader>
           <CardTitle className="font-headline text-xl text-primary flex items-center">
-            <Bot className="mr-2 h-5 w-5 text-accent" /> AI-Powered Google Sync
+            <Bot className="mr-2 h-5 w-5 text-accent" /> AI-Powered Calendar Sync
           </CardTitle>
           <CardDescription>
-            Get actionable insights from your Google Calendar and Gmail data to update your timeline.
+            Sync your Google Calendar to get AI-powered insights and add events to your timeline.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button onClick={() => handleFetchAndProcessGoogleData()} disabled={isLoadingInsights} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            {isLoadingInsights ? (
+          <Button onClick={handleSyncCalendarData} disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            {isLoading ? (
               <>
-                <LoadingSpinner size="sm" className="mr-2" /> Processing & Updating Timeline...
+                <LoadingSpinner size="sm" className="mr-2" /> Syncing Calendar...
               </>
             ) : (
-              'Sync Google Data to Timeline'
+              'Sync Google Calendar'
             )}
           </Button>
         </CardContent>
       </Card>
 
-      {insightsError && (
+      {syncError && (
         <Card className="frosted-glass border-destructive/50">
           <CardHeader>
             <CardTitle className="text-destructive flex items-center">
-              <AlertCircle className="mr-2 h-5 w-5" /> Error Fetching Insights
+              <AlertCircle className="mr-2 h-5 w-5" /> Error Syncing Data
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-destructive/90">{insightsError}</p>
+            <p className="text-destructive/90">{syncError}</p>
           </CardContent>
         </Card>
       )}

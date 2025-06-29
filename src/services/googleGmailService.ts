@@ -3,10 +3,35 @@
 
 import { google } from 'googleapis';
 import { getAuthenticatedClient } from './googleAuthService';
-import type { RawGmailMessage } from '@/types';
+import type { RawGmailMessage, GmailLabel } from '@/types';
 import { subDays } from 'date-fns';
 
-export async function getGoogleGmailMessages(userId: string): Promise<RawGmailMessage[]> {
+export async function getGoogleGmailLabels(userId: string): Promise<GmailLabel[]> {
+  const client = await getAuthenticatedClient(userId);
+  if (!client) {
+    console.log(`Not authenticated with Google for user ${userId}. Cannot fetch Gmail labels.`);
+    return [];
+  }
+  const gmail = google.gmail({ version: 'v1', auth: client });
+
+  try {
+    const response = await gmail.users.labels.list({ userId: 'me' });
+    const labels = response.data.labels;
+    if (!labels) {
+      return [];
+    }
+    // Filter out category labels and return a clean list. Include some important system labels.
+    const systemLabelsToShow = ['INBOX', 'IMPORTANT', 'STARRED', 'UNREAD'];
+    return labels
+      .filter(label => label.id && label.name && (label.type === 'user' || systemLabelsToShow.includes(label.id!)))
+      .map(label => ({ id: label.id!, name: label.name!.replace(/_/g, ' ') }));
+  } catch (error) {
+    console.error(`Error fetching Gmail labels for user ${userId}:`, error);
+    throw new Error('Failed to fetch Gmail labels.');
+  }
+}
+
+export async function getGoogleGmailMessages(userId: string, labelId?: string): Promise<RawGmailMessage[]> {
   const client = await getAuthenticatedClient(userId);
   if (!client) {
     console.log(`Not authenticated with Google for user ${userId}. Cannot fetch Gmail messages.`);
@@ -16,13 +41,14 @@ export async function getGoogleGmailMessages(userId: string): Promise<RawGmailMe
   const gmail = google.gmail({ version: 'v1', auth: client });
   const twoWeeksAgo = Math.floor(subDays(new Date(), 14).getTime() / 1000);
 
+  // Use a dynamic query based on whether a label is selected
+  const query = labelId ? `in:${labelId} after:${twoWeeksAgo}` : `(is:important OR is:starred) after:${twoWeeksAgo}`;
+  
   try {
-    // 1. List messages from the last 14 days that are important or starred.
-    // This query is a good starting point to find actionable emails.
     const listResponse = await gmail.users.messages.list({
       userId: 'me',
-      q: `is:important OR is:starred after:${twoWeeksAgo}`,
-      maxResults: 20, // Limit to a reasonable number of messages
+      q: query,
+      maxResults: 20, 
     });
 
     const messages = listResponse.data.messages;
@@ -30,8 +56,6 @@ export async function getGoogleGmailMessages(userId: string): Promise<RawGmailMe
       return [];
     }
 
-    // 2. Fetch details for each message ID.
-    // Using Promise.all to fetch them in parallel for better performance.
     const messagePromises = messages.map(async (message) => {
       if (!message.id) return null;
       try {
@@ -39,14 +63,14 @@ export async function getGoogleGmailMessages(userId: string): Promise<RawGmailMe
           userId: 'me',
           id: message.id,
           format: 'metadata',
-          metadataHeaders: ['subject'], // Only fetch the subject header to be efficient
+          metadataHeaders: ['subject'],
         });
 
         const data = msgResponse.data;
         const subjectHeader = data.payload?.headers?.find(h => h.name?.toLowerCase() === 'subject');
         
         if (!data.id || !data.internalDate || !subjectHeader?.value || !data.snippet) {
-            return null; // Skip if essential data is missing
+            return null;
         }
 
         return {
@@ -58,13 +82,11 @@ export async function getGoogleGmailMessages(userId: string): Promise<RawGmailMe
         };
       } catch (err) {
         console.error(`Failed to fetch details for message ${message.id}`, err);
-        return null; // Skip this message on error
+        return null;
       }
     });
 
     const detailedMessages = await Promise.all(messagePromises);
-
-    // Filter out any messages that failed to fetch
     return detailedMessages.filter((msg): msg is RawGmailMessage => msg !== null);
 
   } catch (error) {

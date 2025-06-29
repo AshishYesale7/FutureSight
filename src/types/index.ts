@@ -82,6 +82,11 @@ export interface RawGmailMessage {
   link?: string;
 }
 
+export interface GmailLabel {
+  id: string;
+  name: string;
+}
+
 export interface ActionableInsight {
   id:string; // e.g., 'cal:original_event_id' or 'mail:original_message_id'
   title: string;
