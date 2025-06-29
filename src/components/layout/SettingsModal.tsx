@@ -110,7 +110,7 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
             {/* API Key Section */}
             <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                    Provide your own Google Gemini API key. Your key is saved only in your browser and is never sent to our servers.
+                    Optionally provide your own Google Gemini API key. Your key is saved securely to your account and is never shared.
                 </p>
                 <div className="space-y-2">
                     <Label htmlFor="geminiApiKey" className="text-sm font-medium">Your Gemini API Key</Label>

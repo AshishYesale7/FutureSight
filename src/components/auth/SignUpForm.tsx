@@ -25,7 +25,6 @@ import { Label } from '@/components/ui/label';
 
 import 'react-phone-number-input/style.css';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
-import { getGoogleTokensFromFirestore } from '@/services/googleAuthService';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
