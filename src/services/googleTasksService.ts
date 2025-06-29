@@ -49,8 +49,17 @@ export async function getGoogleTasks(userId: string): Promise<RawGoogleTask[]> {
         };
       }).filter((task): task is RawGoogleTask => task !== null);
 
-  } catch (error) {
+  } catch (error: any) {
+    // Specific error handling for disabled API
+    if (error.code === 403 && error.errors?.[0]?.reason === 'accessNotConfigured') {
+        const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '[your-project-id]';
+        const errorMessage = `Google Tasks API has not been used in project ${projectId} or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/tasks.googleapis.com/overview?project=${projectId} and then retry.`;
+        console.error(errorMessage, error);
+        throw new Error(errorMessage);
+    }
+    
     console.error(`Error fetching Google Tasks for user ${userId}:`, error);
-    throw new Error('Failed to fetch Google Tasks.');
+    // Generic error for other issues
+    throw new Error('Failed to fetch Google Tasks. Please try re-connecting your Google account in Settings.');
   }
 }
