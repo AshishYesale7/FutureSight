@@ -10,7 +10,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Calendar, AlertTriangle, Edit } from 'lucide-react';
+import { Calendar, AlertTriangle, Edit, ChevronLeft, ChevronRight } from 'lucide-react';
 import { generateDailyPlan } from '@/ai/flows/generate-daily-plan-flow';
 import type { DailyPlan } from '@/types';
 import { useApiKey } from '@/hooks/use-api-key';
@@ -19,7 +19,7 @@ import { useAuth } from '@/context/AuthContext';
 import { getDailyPlan, saveDailyPlan } from '@/services/dailyPlanService';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { TodaysPlanContent } from './TodaysPlanContent';
-import { format } from 'date-fns';
+import { format, subDays, addDays, isToday, isTomorrow, isYesterday, startOfDay, differenceInDays } from 'date-fns';
 import EditRoutineModal from './EditRoutineModal';
 
 export default function TodaysPlanCard() {
@@ -27,12 +27,13 @@ export default function TodaysPlanCard() {
   const { apiKey } = useApiKey();
   const { toast } = useToast();
   
+  const [displayDate, setDisplayDate] = useState(new Date());
   const [plan, setPlan] = useState<DailyPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRoutineModalOpen, setIsRoutineModalOpen] = useState(false);
 
-  const fetchAndGeneratePlan = useCallback(async (forceRegenerate: boolean = false) => {
+  const fetchAndGeneratePlan = useCallback(async (date: Date, forceRegenerate: boolean = false) => {
     if (!user) {
       setIsLoading(false);
       setError("Please sign in to generate a plan.");
@@ -41,12 +42,12 @@ export default function TodaysPlanCard() {
 
     setIsLoading(true);
     setError(null);
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    setPlan(null); // Clear previous plan when fetching new one
+    const dateStr = format(date, 'yyyy-MM-dd');
 
     try {
-      // 1. Check for a saved plan first, unless regeneration is forced
       if (!forceRegenerate) {
-        const savedPlan = await getDailyPlan(user.uid, todayStr);
+        const savedPlan = await getDailyPlan(user.uid, dateStr);
         if (savedPlan) {
           setPlan(savedPlan);
           setIsLoading(false);
@@ -54,16 +55,13 @@ export default function TodaysPlanCard() {
         }
       }
 
-      // 2. If no saved plan OR forceRegenerate is true, generate a new one.
-      // The AI flow now fetches its own data.
       const result = await generateDailyPlan({
         apiKey,
-        currentDate: new Date().toISOString(),
+        currentDate: date.toISOString(),
         userId: user.uid,
       });
       
-      // 3. Save the newly generated plan, overwriting any old one
-      await saveDailyPlan(user.uid, todayStr, result);
+      await saveDailyPlan(user.uid, dateStr, result);
       setPlan(result);
 
     } catch (err: any) {
@@ -71,7 +69,6 @@ export default function TodaysPlanCard() {
       const errorMessage = err.message || "Failed to generate daily plan.";
       setError(errorMessage);
       if (errorMessage.includes("routine")) {
-          // Give a specific hint if the error is about the routine
           setError("Please set your weekly routine to generate a plan.");
       }
       toast({ title: "Planning Error", description: errorMessage, variant: "destructive" });
@@ -81,15 +78,30 @@ export default function TodaysPlanCard() {
   }, [user, apiKey, toast]);
 
   useEffect(() => {
-    // On initial load, don't force a regeneration
-    fetchAndGeneratePlan(false);
-  }, [fetchAndGeneratePlan]);
+    fetchAndGeneratePlan(displayDate, false);
+  }, [fetchAndGeneratePlan, displayDate]);
 
   const handleRoutineSaved = () => {
     if (user) {
-      // Force the regeneration of the plan after routine has been saved
-      fetchAndGeneratePlan(true);
+      fetchAndGeneratePlan(displayDate, true);
     }
+  };
+
+  const handlePrevDay = () => setDisplayDate(prev => subDays(prev, 1));
+  const handleNextDay = () => setDisplayDate(prev => addDays(prev, 1));
+
+  const today = startOfDay(new Date());
+  const normalizedDisplayDate = startOfDay(displayDate);
+  const daysFromToday = differenceInDays(normalizedDisplayDate, today);
+
+  const canGoBack = daysFromToday > -3;
+  const canGoForward = daysFromToday < 3;
+
+  const getDisplayDateTitle = (date: Date): string => {
+    if (isToday(date)) return "AI-Powered Daily Plan";
+    if (isTomorrow(date)) return "Tomorrow's Plan";
+    if (isYesterday(date)) return "Yesterday's Plan";
+    return `Plan for ${format(date, 'MMMM d')}`;
   };
   
   const renderContent = () => {
@@ -97,7 +109,7 @@ export default function TodaysPlanCard() {
       return (
         <div className="flex flex-col items-center justify-center h-48 text-center">
           <LoadingSpinner size="lg" />
-          <p className="mt-4 text-muted-foreground">Crafting today's plan...</p>
+          <p className="mt-4 text-muted-foreground">Crafting plan for {format(displayDate, 'MMMM d')}...</p>
         </div>
       );
     }
@@ -108,9 +120,11 @@ export default function TodaysPlanCard() {
           <AlertTriangle className="h-10 w-10 mb-2" />
           <p className="font-semibold">Could not generate plan</p>
           <p className="text-sm">{error}</p>
-          <Button onClick={() => setIsRoutineModalOpen(true)} className="mt-4">
-            <Edit className="mr-2 h-4 w-4" /> Edit Routine
-          </Button>
+          {isToday(displayDate) && (
+            <Button onClick={() => setIsRoutineModalOpen(true)} className="mt-4">
+              <Edit className="mr-2 h-4 w-4" /> Edit Routine
+            </Button>
+          )}
         </div>
       );
     }
@@ -121,31 +135,42 @@ export default function TodaysPlanCard() {
 
     return (
       <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
-        <p>No plan available for today.</p>
-        <Button onClick={() => fetchAndGeneratePlan(true)} className="mt-4">Generate Plan</Button>
+        <p>No plan available for {format(displayDate, 'MMMM d')}.</p>
+        <Button onClick={() => fetchAndGeneratePlan(displayDate, true)} className="mt-4">Generate Plan</Button>
       </div>
     );
   };
 
   return (
     <>
-      <Accordion type="single" collapsible className="w-full frosted-glass shadow-lg rounded-lg">
+      <Accordion type="single" collapsible className="w-full frosted-glass shadow-lg rounded-lg" defaultValue='item-1'>
         <AccordionItem value="item-1" className="border-b-0">
           <AccordionTrigger className="p-6 hover:no-underline">
-            <div className='flex justify-between items-center w-full'>
-              <div className="text-left">
+            <div className='flex justify-between items-center w-full gap-4'>
+               <div className="flex items-center gap-1">
+                <Button variant="outline" size="icon" onClick={(e) => { e.stopPropagation(); handlePrevDay(); }} disabled={!canGoBack} className="h-8 w-8">
+                  <ChevronLeft className="h-5 w-5" />
+                   <span className="sr-only">Previous day</span>
+                </Button>
+                <Button variant="outline" size="icon" onClick={(e) => { e.stopPropagation(); handleNextDay(); }} disabled={!canGoForward} className="h-8 w-8">
+                  <ChevronRight className="h-5 w-5" />
+                  <span className="sr-only">Next day</span>
+                </Button>
+              </div>
+
+              <div className="text-left flex-1">
                 <CardTitle className="font-headline text-xl text-primary flex items-center">
-                  <Calendar className="mr-2 h-5 w-5 text-accent" /> AI-Powered Daily Plan
+                  <Calendar className="mr-2 h-5 w-5 text-accent" /> {getDisplayDateTitle(displayDate)}
                 </CardTitle>
                 <CardDescription className="mt-1">
-                  Your personalized schedule and goals for today.
+                  Your personalized schedule for {format(displayDate, 'MMMM d, yyyy')}.
                 </CardDescription>
               </div>
                <div
                 role="button"
                 aria-label="Edit routine"
                 onClick={(e) => {
-                  e.stopPropagation(); // Prevents the accordion from toggling
+                  e.stopPropagation();
                   setIsRoutineModalOpen(true);
                 }}
                 className="p-2 rounded-md hover:bg-accent/20 transition-colors"
