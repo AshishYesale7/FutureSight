@@ -85,20 +85,23 @@ export async function generateDailyPlan(input: GenerateDailyPlanInput): Promise<
     item.days.includes(dayOfWeek)
   );
 
-  // The new input object for the Handlebars template
+  // This is the complete context for our Handlebars template.
   const templateInput = {
-    ...input,
-    todaysRoutine,
+    currentDate: input.currentDate,
+    todaysRoutine: todaysRoutine,
+    timelineEvents: input.timelineEvents,
+    careerGoals: input.careerGoals,
+    skills: input.skills,
   };
 
 
-  const promptText = `You are an expert productivity and career coach AI named 'FutureSight'. Your goal is to create a highly personalized, actionable, and motivating daily plan for a user.
+  const dailyPlanPromptTemplate = `You are an expert productivity and career coach AI named 'FutureSight'. Your goal is to create a highly personalized, actionable, and motivating daily plan for a user.
 
-Today's date is: ${input.currentDate}
+Today's date is: {{{currentDate}}}
 
 **1. User's Typical Routine for Today:**
 These are the user's fixed activities for today. Do NOT schedule over them. Only use 'Free Time' blocks for planning productive tasks.
-{{#if todaysRoutine.length}}
+{{#if todaysRoutine}}
   {{#each todaysRoutine}}
   - Activity: {{this.activity}} from {{this.startTime}} to {{this.endTime}}
   {{/each}}
@@ -131,7 +134,7 @@ Your entire output MUST be a single, valid JSON object that adheres to the outpu
 
   const { output } = await generateWithApiKey(input.apiKey, {
     model: 'googleai/gemini-2.0-flash',
-    prompt: promptText,
+    prompt: dailyPlanPromptTemplate,
     output: {
       schema: GenerateDailyPlanOutputSchema,
     },
