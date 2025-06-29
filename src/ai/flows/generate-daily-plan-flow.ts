@@ -77,16 +77,35 @@ const GenerateDailyPlanOutputSchema = z.object({
 export type GenerateDailyPlanOutput = z.infer<typeof GenerateDailyPlanOutputSchema>;
 
 export async function generateDailyPlan(input: GenerateDailyPlanInput): Promise<GenerateDailyPlanOutput> {
+  const today = new Date(input.currentDate);
+  const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+  // Filter the routine to only include items for today.
+  const todaysRoutine = input.userPreferences.routine.filter(item => 
+    item.days.includes(dayOfWeek)
+  );
+
+  // The new input object for the Handlebars template
+  const templateInput = {
+    ...input,
+    todaysRoutine,
+  };
+
+
   const promptText = `You are an expert productivity and career coach AI named 'FutureSight'. Your goal is to create a highly personalized, actionable, and motivating daily plan for a user.
 
 Today's date is: ${input.currentDate}
-The user's day is defined by their routine. Do NOT schedule over their fixed activities like 'Sleep', 'College', or 'Gym'. Only use 'Free Time' blocks for planning productive tasks.
 
 **1. User's Typical Routine for Today:**
-Determine which activities from the user's routine apply to today.
-{{#each userPreferences.routine}}
-- Activity: {{this.activity}} from {{this.startTime}} to {{this.endTime}} (Applies on days: {{#each this.days}}{{@index}}, {{/each}})
-{{/each}}
+These are the user's fixed activities for today. Do NOT schedule over them. Only use 'Free Time' blocks for planning productive tasks.
+{{#if todaysRoutine.length}}
+  {{#each todaysRoutine}}
+  - Activity: {{this.activity}} from {{this.startTime}} to {{this.endTime}}
+  {{/each}}
+{{else}}
+- The user has no fixed routine activities scheduled for today. You can plan for the entire day.
+{{/if}}
+
 
 **2. User's Long-Term Goals & Vision:**
 - Career Goals:
@@ -100,7 +119,7 @@ Determine which activities from the user's routine apply to today.
 {{/each}}
 
 **Instructions:**
-1.  **Identify Free Time:** Look at the user's routine for today and their one-off timeline events to find all available blocks of "Free Time".
+1.  **Identify Free Time:** Look at the user's routine for today (from section 1) and their one-off timeline events (from section 3) to find all available blocks of "Free Time".
 2.  **Proactive Planning (CRITICAL):** Scrutinize all future events. If there is a major exam or deadline (e.g., "GATE Exam", "TOEFL Exam Slot", "Submit University Applications") coming up in the next 1-2 weeks, you MUST allocate dedicated preparation blocks in today's free time. Prioritize these over less urgent goals.
 3.  **Create Daily Micro-Goals:** Based on the user's career goals, skills, and upcoming deadlines, generate 2-4 specific, achievable "micro-goals" for today. These should be concrete actions that can be done in free time, like "Complete Chapter 2 of the OS book" or "Solve one 'Medium' LeetCode problem related to Graphs."
 4.  **Build the Schedule:** Create a schedule for the entire 24-hour day. First, fill in all the fixed routine activities (Sleep, College, etc.). Then, fill the user's "Free Time" with activities that accomplish the micro-goals. Mix focused work with short breaks (e.g., a 15-minute break after a 90-minute study block). Be realistic.
@@ -119,7 +138,7 @@ Your entire output MUST be a single, valid JSON object that adheres to the outpu
     // Use Handlebars for templating
     template: {
       type: 'handlebars',
-      input: input,
+      input: templateInput, // Pass the pre-processed input
     },
   });
 
