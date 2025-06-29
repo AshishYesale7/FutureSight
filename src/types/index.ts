@@ -62,6 +62,21 @@ export interface TodaysPlan {
   microGoals: string[];
 }
 
+// AI-Generated Daily Plan
+export interface DailyPlan {
+  schedule: { time: string; activity: string }[];
+  microGoals: string[];
+  reminders: string[];
+  motivationalQuote: string;
+}
+
+// User preferences for AI scheduling
+export interface UserPreferences {
+  wakeUpTime: string; // e.g., "07:00"
+  bedtime: string; // e.g., "23:00"
+}
+
+
 // Types for Google Data Processing Flow
 export interface RawCalendarEvent {
   id: string;

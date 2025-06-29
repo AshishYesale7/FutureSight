@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -10,13 +11,18 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { generateMotivationalQuote } from '@/ai/flows/motivational-quote';
-import { mockTodaysPlan } from '@/data/mock';
-import type { TodaysPlan } from '@/types';
+import { generateDailyPlan } from '@/ai/flows/generate-daily-plan-flow';
+import type { DailyPlan } from '@/types';
 import { useApiKey } from '@/hooks/use-api-key';
+import { useAuth } from '@/context/AuthContext';
+import { getTimelineEvents } from '@/services/timelineService';
+import { getCareerGoals } from '@/services/careerGoalsService';
+import { getSkills } from '@/services/skillsService';
+import { getUserPreferences } from '@/services/userService';
 import { TodaysPlanContent } from './TodaysPlanContent';
-import { Calendar } from 'lucide-react';
+import { Calendar, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
 
 interface TodaysPlanModalProps {
   isOpen: boolean;
@@ -24,53 +30,98 @@ interface TodaysPlanModalProps {
 }
 
 export function TodaysPlanModal({ isOpen, onOpenChange }: TodaysPlanModalProps) {
-  const [quote, setQuote] = useState('');
-  const [isLoadingQuote, setIsLoadingQuote] = useState(true);
-  const [todaysPlan] = useState<TodaysPlan>(mockTodaysPlan);
+  const { user } = useAuth();
   const { apiKey } = useApiKey();
   const { toast } = useToast();
-  
-  const fetchQuote = async () => {
-    // Check local storage first
-    const cachedQuoteData = localStorage.getItem('motivationalQuote');
-    if (cachedQuoteData) {
-      const { quote: cachedQuote, date } = JSON.parse(cachedQuoteData);
-      const todayStr = new Date().toISOString().split('T')[0];
-      if (date === todayStr) {
-        setQuote(cachedQuote);
-        setIsLoadingQuote(false);
-        return;
-      }
+
+  const [plan, setPlan] = useState<DailyPlan | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAndGeneratePlan = useCallback(async () => {
+    if (!user) {
+      setIsLoading(false);
+      setError("Please sign in to generate a plan.");
+      return;
     }
 
-    setIsLoadingQuote(true);
+    setIsLoading(true);
+    setError(null);
+    setPlan(null);
+
     try {
-      const result = await generateMotivationalQuote({ 
-        topic: 'achieving daily goals and academic success',
-        apiKey
+      const [timelineEvents, careerGoals, skills, userPreferences] = await Promise.all([
+        getTimelineEvents(user.uid),
+        getCareerGoals(user.uid),
+        getSkills(user.uid),
+        getUserPreferences(user.uid),
+      ]);
+
+      if (!userPreferences) {
+        throw new Error("Please set your daily preferences in Settings to generate a plan.");
+      }
+
+      // Serialize data for the AI flow
+      const serializedEvents = timelineEvents.map(e => ({ ...e, date: e.date.toISOString(), endDate: e.endDate?.toISOString() }));
+      const serializedGoals = careerGoals.map(g => ({ ...g, deadline: g.deadline?.toISOString() }));
+      const serializedSkills = skills.map(s => ({ ...s, lastUpdated: s.lastUpdated.toISOString() }));
+      
+      const result = await generateDailyPlan({
+        apiKey,
+        currentDate: new Date().toISOString(),
+        timelineEvents: serializedEvents,
+        careerGoals: serializedGoals,
+        skills: serializedSkills,
+        userPreferences,
       });
-      setQuote(result.quote);
-      // Save to local storage with today's date
-      const todayStr = new Date().toISOString().split('T')[0];
-      localStorage.setItem('motivationalQuote', JSON.stringify({ quote: result.quote, date: todayStr }));
-    } catch (error: any) {
-      console.error('Error fetching motivational quote:', error);
-      setQuote("Remember, every small step counts towards your big goals!"); // Fallback quote
-      toast({
-        title: "Could not fetch quote",
-        description: error.message || "Using a fallback quote.",
-        variant: "destructive"
-      });
+
+      setPlan(result);
+    } catch (err: any) {
+      console.error('Error generating daily plan in modal:', err);
+      const errorMessage = err.message || "Failed to generate daily plan. Please try again later.";
+      setError(errorMessage);
+      toast({ title: "Planning Error", description: errorMessage, variant: "destructive" });
     } finally {
-      setIsLoadingQuote(false);
+      setIsLoading(false);
     }
-  };
+  }, [user, apiKey, toast]);
 
   useEffect(() => {
     if (isOpen) {
-      fetchQuote();
+      fetchAndGeneratePlan();
     }
-  }, [isOpen, apiKey]);
+  }, [isOpen, fetchAndGeneratePlan]);
+  
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center h-64 text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-muted-foreground">The AI is crafting your personalized plan...</p>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex flex-col items-center justify-center h-64 text-center text-destructive">
+          <AlertTriangle className="h-10 w-10 mb-2" />
+          <p className="font-semibold">Could not generate plan</p>
+          <p className="text-sm">{error}</p>
+        </div>
+      );
+    }
+
+    if (plan) {
+      return <TodaysPlanContent plan={plan} />;
+    }
+
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center text-muted-foreground">
+        <p>No plan available for today.</p>
+      </div>
+    );
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -80,15 +131,11 @@ export function TodaysPlanModal({ isOpen, onOpenChange }: TodaysPlanModalProps) 
             <Calendar className="mr-2 h-5 w-5 text-accent" /> Here's Your Plan for Today!
           </DialogTitle>
           <DialogDescription>
-            A quick look at your goals and schedule to get you started.
+            A quick look at your AI-generated goals and schedule to get you started.
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
-          <TodaysPlanContent
-            todaysPlan={todaysPlan}
-            quote={quote}
-            isLoadingQuote={isLoadingQuote}
-          />
+          {renderContent()}
         </div>
         <DialogFooter>
           <Button onClick={() => onOpenChange(false)} className="bg-accent hover:bg-accent/90 text-accent-foreground">

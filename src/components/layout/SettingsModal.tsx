@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -15,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useApiKey } from '@/hooks/use-api-key';
 import { useToast } from '@/hooks/use-toast';
-import { KeyRound, Globe, Unplug, CheckCircle, Smartphone, Trash2 } from 'lucide-react';
+import { KeyRound, Globe, Unplug, CheckCircle, Smartphone, Trash2, Clock } from 'lucide-react';
 import { Separator } from '../ui/separator';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
@@ -23,6 +24,8 @@ import { auth } from '@/lib/firebase';
 import { GoogleAuthProvider, linkWithPopup, RecaptchaVerifier, linkWithPhoneNumber, type ConfirmationResult, deleteUser } from 'firebase/auth';
 import 'react-phone-number-input/style.css';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
+import { getUserPreferences, saveUserPreferences } from '@/services/userService';
+import type { UserPreferences } from '@/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,6 +61,8 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
   const [linkingPhoneState, setLinkingPhoneState] = useState<'input' | 'otp-sent' | 'loading' | 'success'>('input');
   const [phoneForLinking, setPhoneForLinking] = useState<string | undefined>();
   const [otpForLinking, setOtpForLinking] = useState('');
+
+  const [preferences, setPreferences] = useState<UserPreferences>({ wakeUpTime: '07:00', bedtime: '23:00' });
   
   const [isPolling, setIsPolling] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -99,6 +104,10 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
             .catch(() => {
                 setIsGoogleConnected(false);
                 toast({ title: 'Error', description: 'Could not verify Google connection status.', variant: 'destructive' });
+            });
+            // Fetch user preferences
+            getUserPreferences(user.uid).then(prefs => {
+                if (prefs) setPreferences(prefs);
             });
         }
     }
@@ -146,6 +155,16 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
 
   }, [isLinkingPhone, auth, toast]);
 
+  const handlePreferencesSave = async () => {
+    if (!user) return;
+    try {
+        await saveUserPreferences(user.uid, preferences);
+        toast({ title: 'Preferences Saved', description: 'Your daily planning preferences have been updated.' });
+    } catch (error: any) {
+        toast({ title: 'Error', description: error.message || 'Failed to save preferences.', variant: 'destructive' });
+    }
+  };
+
   const handleApiKeySave = () => {
     const trimmedKey = apiKeyInput.trim();
     setApiKey(trimmedKey ? trimmedKey : null);
@@ -155,7 +174,6 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
             ? 'Your custom Gemini API key has been saved.'
             : 'The app will use its fallback key if available.',
     });
-    onOpenChange(false);
   };
   
   const startPollingForConnection = () => {
@@ -470,6 +488,38 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                 <div ref={recaptchaContainerRef} id="recaptcha-container-settings"></div>
             </div>
 
+            <Separator/>
+
+             <div className="space-y-3 px-2">
+                <Label className="font-semibold text-base flex items-center text-primary">
+                    <Clock className="mr-2 h-4 w-4" /> Daily Planning
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                    Set your typical schedule to help the AI generate a relevant daily plan.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="wakeUpTime">Wake-up Time</Label>
+                        <Input
+                            id="wakeUpTime"
+                            type="time"
+                            value={preferences.wakeUpTime}
+                            onChange={(e) => setPreferences({ ...preferences, wakeUpTime: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="bedtime">Bedtime</Label>
+                        <Input
+                            id="bedtime"
+                            type="time"
+                            value={preferences.bedtime}
+                            onChange={(e) => setPreferences({ ...preferences, bedtime: e.target.value })}
+                        />
+                    </div>
+                </div>
+                 <Button onClick={handlePreferencesSave} variant="outline" className="w-full">Save Preferences</Button>
+            </div>
+            
             <Separator />
             
             <div className="space-y-3 px-2">
@@ -481,13 +531,18 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
                 </p>
                 <div className="space-y-2">
                     <Label htmlFor="geminiApiKey" className="text-sm font-medium">Your Gemini API Key</Label>
-                    <Input
-                        id="geminiApiKey"
-                        type="password"
-                        placeholder="Enter your Gemini API key"
-                        value={apiKeyInput}
-                        onChange={(e) => setApiKeyInput(e.target.value)}
-                    />
+                    <div className="flex gap-2">
+                        <Input
+                            id="geminiApiKey"
+                            type="password"
+                            placeholder="Enter your Gemini API key"
+                            value={apiKeyInput}
+                            onChange={(e) => setApiKeyInput(e.target.value)}
+                        />
+                        <Button onClick={handleApiKeySave} className="bg-accent hover:bg-accent/90 text-accent-foreground">
+                            Save
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -528,9 +583,6 @@ export default function SettingsModal({ isOpen, onOpenChange }: SettingsModalPro
         </div>
         <DialogFooter>
            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-           <Button onClick={handleApiKeySave} className="bg-accent hover:bg-accent/90 text-accent-foreground">
-              Save API Key
-            </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
