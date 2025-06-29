@@ -49,7 +49,7 @@ export type ProcessGoogleDataInput = z.infer<typeof ProcessGoogleDataInputSchema
 const ActionableInsightSchema = z.object({
   id: z.string().describe("A unique ID for this insight (e.g., 'cal:original_event_id' or 'mail:original_message_id')."),
   title: z.string().describe("A concise title for the actionable item, event, or summarized email. If there's a specific time associated (e.g., 'Meeting at 10:00 AM'), include it here."),
-  date: z.string().datetime().describe("The primary date/time for this item (ISO 8601 format). For calendar events, use the full startDateTime. For Gmail messages, convert their internalDate (epoch milliseconds) to a full ISO 8601 datetime string."),
+  date: z.string().datetime().describe("The primary date/time for this item (ISO 8601 format). For calendar events, use the startDateTime. For Gmail messages, use the pre-converted ISO 8601 date provided."),
   endDate: z.string().datetime().optional().describe("The end date/time for this item (ISO 8601 format), if applicable (e.g., from calendar events)."),
   isAllDay: z.boolean().optional().describe("Set to true if this is an all-day event (typically from calendar). If true, 'date' should be the start of the day, and 'endDate' might be the start of the next day or omitted."),
   summary: z.string().describe("A brief AI-generated summary of the item, or key details from the event/email. If a specific time is crucial (e.g. 'Deadline: Today 5:00 PM') and not in the title, mention it here."),
@@ -84,13 +84,16 @@ export async function processGoogleData(input: ProcessGoogleDataInput): Promise<
 
   let gmailMessagesSection = 'No Gmail messages provided.';
   if (input.gmailMessages && input.gmailMessages.length > 0) {
-    gmailMessagesSection = input.gmailMessages.map(msg => `
+    gmailMessagesSection = input.gmailMessages.map(msg => {
+        const receivedDate = new Date(parseInt(msg.internalDate, 10));
+        const receivedDateISO = !isNaN(receivedDate.valueOf()) ? receivedDate.toISOString() : 'Invalid Date';
+        return `
 - Message ID: ${msg.id}
   Subject: ${msg.subject}
   Snippet: ${msg.snippet}
-  Received Date (Epoch MS): ${msg.internalDate}
+  Received Date (ISO 8601): ${receivedDateISO}
   Link: ${msg.link || ''}
-`).join('');
+`;}).join('');
   }
 
   const promptText = `You are an expert personal assistant AI. Your task is to analyze a user's Google Calendar events and Gmail messages to identify important upcoming events, deadlines, tasks, and actionable information.
@@ -112,7 +115,7 @@ Instructions:
 3.  Generate a concise 'title' for each insight. If there's a specific time associated with the item (e.g., "Meeting at 10:00 AM", "Webinar starts 3 PM"), try to include this time information naturally within the title.
 4.  For the 'date' field of the insight (start time):
     a.  For calendar events, use the full ISO 8601 string from the 'startDateTime' field of the event. This must include the time.
-    b.  For Gmail messages, convert their 'internalDate' (which is in epoch milliseconds) to a full ISO 8601 datetime string. This must include the time.
+    b.  For Gmail messages, use the value from their 'Received Date (ISO 8601)' field.
 5.  For the 'endDate' field of the insight:
     a.  For calendar events, use the full ISO 8601 string from the 'endDateTime' field of the event. This must include the time.
     b.  Gmail messages typically do not have an end date; leave this field undefined for them unless an explicit duration or end time is mentioned in the email body that you can reliably parse into ISO 8601 format.
