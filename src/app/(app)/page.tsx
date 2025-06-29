@@ -8,7 +8,7 @@ import TimelineListView from '@/components/timeline/TimelineListView';
 import DayTimetableView from '@/components/timeline/DayTimetableView';
 import EditEventModal from '@/components/timeline/EditEventModal';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { AlertCircle, Bot, Calendar, List, CalendarDays as CalendarIconLucide, PlusCircle } from 'lucide-react';
 import { processGoogleData } from '@/ai/flows/process-google-data-flow';
