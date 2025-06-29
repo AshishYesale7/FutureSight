@@ -23,6 +23,7 @@ import { useApiKey } from '@/hooks/use-api-key';
 import { useAuth } from '@/context/AuthContext';
 import { getTimelineEvents, saveTimelineEvent, deleteTimelineEvent } from '@/services/timelineService';
 import { getGoogleCalendarEvents } from '@/services/googleCalendarService';
+import { getGoogleTasks } from '@/services/googleTasksService';
 import ImportantEmailsCard from '@/components/timeline/ImportantEmailsCard';
 
 const LOCAL_STORAGE_KEY = 'futureSightTimelineEvents';
@@ -59,6 +60,7 @@ const syncToLocalStorage = (events: TimelineEvent[]) => {
             endDate: (event.endDate instanceof Date && !isNaN(event.endDate.valueOf())) ? event.endDate.toISOString() : undefined,
             color: event.color, // Include color
             googleEventId: event.googleEventId, // Include googleEventId
+            googleTaskId: event.googleTaskId,
             };
         });
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serializableEvents));
@@ -163,27 +165,49 @@ export default function ActualDashboardPage() {
 
   const transformInsightToEvent = useCallback((insight: ActionableInsight): TimelineEvent | null => {
     const eventDate = parseDatePreservingTime(insight.date);
-    if (!eventDate || !insight.googleEventId) {
+    if (!eventDate) {
       console.warn(`Invalid data for insight. Skipping insight.`);
       return null;
     }
     const eventEndDate = parseDatePreservingTime(insight.endDate);
 
-    return {
-      id: `gcal-${insight.googleEventId}`,
-      googleEventId: insight.googleEventId,
-      date: eventDate,
-      endDate: eventEndDate,
-      title: insight.title,
-      type: 'ai_suggestion',
-      notes: insight.summary,
-      url: insight.originalLink,
-      status: 'pending',
-      icon: Bot,
-      isDeletable: true,
-      isAllDay: insight.isAllDay || false,
-      priority: 'None',
-    };
+    if (insight.source === 'google_calendar' && insight.googleEventId) {
+        return {
+            id: `gcal-${insight.googleEventId}`,
+            googleEventId: insight.googleEventId,
+            date: eventDate,
+            endDate: eventEndDate,
+            title: insight.title,
+            type: 'ai_suggestion',
+            notes: insight.summary,
+            url: insight.originalLink,
+            status: 'pending',
+            icon: Bot,
+            isDeletable: true,
+            isAllDay: insight.isAllDay || false,
+            priority: 'None',
+        };
+    }
+
+    if (insight.source === 'google_tasks' && insight.googleTaskId) {
+        return {
+            id: `gtask-${insight.googleTaskId}`,
+            googleTaskId: insight.googleTaskId,
+            date: eventDate,
+            endDate: eventEndDate,
+            title: insight.title,
+            type: 'ai_suggestion',
+            notes: insight.summary,
+            url: insight.originalLink,
+            status: 'pending',
+            icon: Bot,
+            isDeletable: true,
+            isAllDay: true, // Tasks are always all-day
+            priority: 'None',
+        };
+    }
+    
+    return null;
   }, []);
 
   const handleSyncCalendarData = useCallback(async () => {
@@ -204,16 +228,20 @@ export default function ActualDashboardPage() {
     setSyncError(null);
     
     try {
-      const calendarEvents = await getGoogleCalendarEvents(user.uid);
+      const [calendarEvents, googleTasks] = await Promise.all([
+          getGoogleCalendarEvents(user.uid),
+          getGoogleTasks(user.uid)
+      ]);
 
-      if (calendarEvents.length === 0) {
-        toast({ title: "No New Calendar Events", description: "No new events found in your primary calendar." });
+      if (calendarEvents.length === 0 && googleTasks.length === 0) {
+        toast({ title: "No New Items", description: "No new events or tasks found in your Google account." });
         setIsLoading(false);
         return;
       }
 
       const input: ProcessGoogleDataInput = {
         calendarEvents,
+        googleTasks,
         apiKey,
         userId: user.uid,
       };
@@ -234,19 +262,19 @@ export default function ActualDashboardPage() {
             for (const event of uniqueNewEventsToAdd) {
               const { icon, ...data } = event;
               const payload = { ...data, date: data.date.toISOString(), endDate: data.endDate ? data.endDate.toISOString() : null };
-              // Imported events are already on GoogleCal, so we don't sync them back.
+              // Imported events are already on Google, so we don't sync them back.
               await saveTimelineEvent(user.uid, payload, { syncToGoogle: false });
             }
-            toast({ title: "Timeline Updated", description: `${uniqueNewEventsToAdd.length} new calendar event(s) added.` });
+            toast({ title: "Timeline Updated", description: `${uniqueNewEventsToAdd.length} new item(s) from Google added.` });
         } else {
-            toast({ title: "Already Synced", description: "Your calendar is up-to-date." });
+            toast({ title: "Already Synced", description: "Your calendar and tasks are up-to-date." });
         }
       } else {
-        toast({ title: "No Actionable Insights", description: "The AI didn't find any new actionable items in your calendar data." });
+        toast({ title: "No Actionable Insights", description: "The AI didn't find any new actionable items in your data." });
       }
     } catch (error: any) {
-      console.error('Error processing Google Calendar data:', error);
-      const errorMessage = error.message || 'Failed to fetch or process calendar data.';
+      console.error('Error processing Google data:', error);
+      const errorMessage = error.message || 'Failed to fetch or process Google data.';
       setSyncError(errorMessage);
       toast({ title: "Sync Error", description: errorMessage, variant: "destructive" });
     }
@@ -504,20 +532,20 @@ export default function ActualDashboardPage() {
       <Card className="frosted-glass shadow-lg">
         <CardHeader>
           <CardTitle className="font-headline text-xl text-primary flex items-center">
-            <Bot className="mr-2 h-5 w-5 text-accent" /> AI-Powered Calendar Sync
+            <Bot className="mr-2 h-5 w-5 text-accent" /> AI-Powered Sync
           </CardTitle>
           <CardDescription>
-            Sync your Google Calendar to get AI-powered insights and add events to your timeline.
+            Sync your Google Calendar & Tasks to get AI-powered insights and add events to your timeline.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Button onClick={handleSyncCalendarData} disabled={isLoading} className="bg-accent hover:bg-accent/90 text-accent-foreground">
             {isLoading ? (
               <>
-                <LoadingSpinner size="sm" className="mr-2" /> Syncing Calendar...
+                <LoadingSpinner size="sm" className="mr-2" /> Syncing from Google...
               </>
             ) : (
-              'Sync Google Calendar'
+              'Sync Google Calendar & Tasks'
             )}
           </Button>
         </CardContent>

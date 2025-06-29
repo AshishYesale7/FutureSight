@@ -31,6 +31,7 @@ export interface TimelineEvent {
   isAllDay?: boolean; // Flag for all-day events
   color?: string; // Optional custom color for the event
   googleEventId?: string; // ID of the event in Google Calendar
+  googleTaskId?: string; // ID of the event in Google Tasks
 }
 
 export interface CareerGoal {
@@ -103,6 +104,15 @@ export interface RawCalendarEvent {
   // For simplicity, we'll let the AI determine if it's an all-day event
 }
 
+export interface RawGoogleTask {
+  id: string;
+  title: string;
+  notes?: string;
+  due?: string; // ISO 8601 date string, e.g., "2024-05-30T00:00:00.000Z"
+  status: 'needsAction' | 'completed';
+  link?: string;
+}
+
 export interface RawGmailMessage {
   id: string;
   subject: string;
@@ -117,14 +127,15 @@ export interface GmailLabel {
 }
 
 export interface ActionableInsight {
-  id:string; // e.g., 'cal:original_event_id' or 'mail:original_message_id'
-  googleEventId?: string; // The original Google Calendar event ID.
+  id:string; // e.g., 'cal:original_event_id' or 'task:original_task_id'
+  googleEventId?: string; // The original, unmodified event ID from the Google Calendar API.
+  googleTaskId?: string; // The original, unmodified task ID from the Google Tasks API.
   title: string;
   date: string; // ISO 8601 format, should include time (start time for events)
   endDate?: string; // ISO 8601 format, end time for events, optional
   isAllDay?: boolean; // Optional flag for all-day events
   summary: string;
-  source: 'google_calendar' | 'gmail';
+  source: 'google_calendar' | 'gmail' | 'google_tasks';
   originalLink?: string;
 }
 
