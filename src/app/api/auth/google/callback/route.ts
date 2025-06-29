@@ -77,7 +77,33 @@ export async function GET(request: NextRequest) {
 
     } catch (err: any) {
         console.error("Failed to exchange code for tokens:", err.message);
-        redirectUrl.searchParams.set('google_auth_error', 'token_exchange_failed');
-        return NextResponse.redirect(redirectUrl);
+        
+        // Return an error page that closes itself instead of redirecting
+        const htmlResponse = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Authentication Failed</title>
+              <style>
+                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background-color: #f0f2f5; text-align: center; color: #333; }
+                .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                h1 { color: #dc3545; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h1>Error</h1>
+                <p>Authentication failed: ${err.message || 'Unknown error'}. Please try again.</p>
+                <p>This window will now close.</p>
+              </div>
+              <script>setTimeout(() => window.close(), 4000);</script>
+            </body>
+          </html>
+        `;
+
+        return new NextResponse(htmlResponse, {
+          status: 500,
+          headers: { 'Content-Type': 'text/html' },
+        });
     }
 }
