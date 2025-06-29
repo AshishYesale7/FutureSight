@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, type FC } from 'react';
@@ -21,9 +20,14 @@ import { useAuth } from '@/context/AuthContext';
 import { getUserPreferences, saveUserPreferences } from '@/services/userService';
 import type { UserPreferences, RoutineItem } from '@/types';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '../ui/scroll-area';
 
 const WEEK_DAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+const DEFAULT_ROUTINE: RoutineItem[] = [
+    { id: 'default-1', activity: 'Sleep', startTime: '23:00', endTime: '07:00', days: [0, 1, 2, 3, 4, 5, 6] },
+    { id: 'default-2', activity: 'College/Work', startTime: '09:00', endTime: '17:00', days: [1, 2, 3, 4, 5] },
+];
+
 
 interface EditRoutineModalProps {
   isOpen: boolean;
@@ -42,10 +46,16 @@ const EditRoutineModal: FC<EditRoutineModalProps> = ({ isOpen, onOpenChange, onR
       setIsLoading(true);
       getUserPreferences(user.uid)
         .then(prefs => {
-          if (prefs) setPreferences(prefs);
+          if (prefs && prefs.routine.length > 0) {
+            setPreferences(prefs);
+          } else {
+            // If user has no routine saved, start them with a default.
+            setPreferences({ routine: DEFAULT_ROUTINE.map(r => ({...r, id: shortid.generate()})) });
+          }
         })
         .catch(err => {
           toast({ title: 'Error', description: 'Could not load your routine.', variant: 'destructive' });
+          setPreferences({ routine: DEFAULT_ROUTINE.map(r => ({...r, id: shortid.generate()})) });
         })
         .finally(() => setIsLoading(false));
     }
@@ -94,7 +104,7 @@ const EditRoutineModal: FC<EditRoutineModalProps> = ({ isOpen, onOpenChange, onR
     try {
       await saveUserPreferences(user.uid, preferences);
       toast({ title: 'Routine Saved', description: 'Your weekly routine has been updated.' });
-      onRoutineSave(); // Callback to parent
+      onRoutineSave();
       onOpenChange(false);
     } catch (error: any) {
       toast({ title: 'Error', description: error.message || 'Failed to save routine.', variant: 'destructive' });
@@ -197,7 +207,7 @@ const EditRoutineModal: FC<EditRoutineModalProps> = ({ isOpen, onOpenChange, onR
           </Button>
           <Button onClick={handleSave} disabled={isLoading}>
             {isLoading && <LoadingSpinner size="sm" className="mr-2" />}
-            Save & Regenerate Plan
+            Save Routine
           </Button>
         </DialogFooter>
       </DialogContent>
