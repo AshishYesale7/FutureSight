@@ -293,6 +293,7 @@ export default function SignUpForm() {
                       <PhoneInput
                         id="phone-number-signup"
                         international
+                        defaultCountry="US"
                         countryCallingCodeEditable={false}
                         placeholder="Enter phone number"
                         value={phoneNumber}

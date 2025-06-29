@@ -125,7 +125,7 @@ export default function SignInForm() {
       await signInWithPopup(auth, provider);
       toast({ title: 'Success', description: 'Signed in with Google successfully.' });
       router.push('/');
-    } catch (error: any) {
+    } catch (error: any) => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to sign in with Google.',
@@ -262,6 +262,7 @@ export default function SignInForm() {
                       <PhoneInput
                         id="phone-number"
                         international
+                        defaultCountry="US"
                         countryCallingCodeEditable={false}
                         placeholder="Enter phone number"
                         value={phoneNumber}
